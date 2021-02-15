@@ -36,9 +36,52 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1)
         replay_buffer.add_path(path)
 
 
-def load_data_from_npy(variant, expl_env, observation_key, extra_buffer_size=100, bin_change=False, target_segment = 'fixed_other', scale_rew=False, internal_keys=None):
+def load_data_from_npy_drawermult(variant, expl_env, observation_key, extra_buffer_size=100):
+    paths = variant['buffer']
+    buffers = []
+    ps = []
+    for p, p_params in paths:
+        print(p, p_params)
+        with open(p, 'rb') as f:
+            data = np.load(f, allow_pickle=True)
+
+        num_transitions = get_buffer_size(data)
+        buffer_size = num_transitions + extra_buffer_size
+
+        replay_buffer = ObsDictReplayBuffer(
+            buffer_size,
+            expl_env,
+            observation_key=observation_key,
+        )
+        add_data_to_buffer(data, replay_buffer)
+
+        if p_params['alter_type'] == None:
+            print('not changed')
+        elif p_params['alter_type'] == 'noise':
+            print('noise')
+            noise = np.random.normal(0, 1, replay_buffer._rewards.shape)
+            replay_buffer._rewards = replay_buffer._rewards+noise
+        elif p_params['alter_type'] == 'zero':
+            print('zero')
+            replay_buffer._rewards = np.zeros_like(replay_buffer._rewards)
+        else:
+            assert False
+
+        buffers.append(replay_buffer)
+        ps.append(p_params['p'])
+        print('Data loaded from npy file', replay_buffer._top)
+
+    print('TRANSFER:', len(buffers))
+    return CombinedReplayBuffer2(buffers=buffers, p=ps)
+
+
+def load_data_from_npy(variant, expl_env, observation_key, extra_buffer_size=100, bin_change=False, target_segment = 'fixed_other', scale_rew=False, internal_keys=None, debug=False):
     with open(variant['buffer'], 'rb') as f:
         data = np.load(f, allow_pickle=True)
+    
+    if debug:
+        scale = 0.01
+        data = data[:int(len(data)*scale)]
 
     num_transitions = get_buffer_size(data)
     buffer_size = num_transitions + extra_buffer_size
@@ -200,7 +243,7 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
     print('Task data loaded from npy file', replay_buffer._top)
     return replay_buffer
 
-
+"""
 def process_images(observations):
     output = []
     for i in range(len(observations)):
@@ -214,4 +257,18 @@ def process_images(observations):
             raise ValueError
         co = np.array(list(co.values()))
         output.append(dict(image=image,camera_orientation=co))
+    return output
+"""
+
+def process_images(observations):
+    output = []
+    for i in range(len(observations)):
+        image = observations[i]['image']
+        if len(image.shape) == 3:
+            image = np.transpose(image, [2, 0, 1])
+            image = (image.flatten())/255.0
+        else:
+            print('image shape: {}'.format(image.shape))
+            raise ValueError
+        output.append(dict(image=image))
     return output

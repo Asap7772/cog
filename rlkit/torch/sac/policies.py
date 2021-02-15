@@ -68,12 +68,16 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
             self.log_std = np.log(std)
             assert LOG_SIG_MIN <= self.log_std <= LOG_SIG_MAX
 
-    def get_action(self, obs_np, deterministic=False):
-        actions = self.get_actions(obs_np[None], deterministic=deterministic)
+    def get_action(self, obs_np, deterministic=False, context_key='camera_orientation'):
+        if type(obs_np) == dict:
+            obs_np, context = obs_np['image'], np.array(list(obs_np[context_key].values()))[None]
+        else: 
+            context = None
+        actions = self.get_actions(obs_np[None], deterministic=deterministic, fc_input=context)
         return actions[0, :], {}
 
-    def get_actions(self, obs_np, deterministic=False):
-        return eval_np(self, obs_np, deterministic=deterministic)[0]
+    def get_actions(self, obs_np, deterministic=False, fc_input=None):
+        return eval_np(self, obs_np, deterministic=deterministic, extra_fc_input=fc_input)[0]
 
     def log_prob(self, obs, actions, extra_fc_input=None,):
         raw_actions = atanh(actions)
@@ -81,10 +85,10 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
         if self.obs_processor is None:
             h = obs
         else:
-            h = self.obs_processor(obs)
-
-        if extra_fc_input is not None:
-            h = torch.cat((h, extra_fc_input), dim=1)
+            h = obs
+            if extra_fc_input is not None:
+                h = torch.cat((h, extra_fc_input), dim=1)
+            h = self.obs_processor(h)
 
         for i, fc in enumerate(self.fcs):
             h = self.hidden_activation(fc(h))
@@ -115,14 +119,15 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
         :param deterministic: If True, do not sample
         :param return_log_prob: If True, return a sample and its log probability
         """
-
+        # import ipdb; ipdb.set_trace()
         if self.obs_processor is None:
             h = obs
         else:
-            h = self.obs_processor(obs)
+            h = obs
+            if extra_fc_input is not None:
+                h = torch.cat((h, extra_fc_input), dim=1)
+            h = self.obs_processor(h)
 
-        if extra_fc_input is not None:
-            h = torch.cat((h, extra_fc_input), dim=1)
         for i, fc in enumerate(self.fcs):
             h = self.hidden_activation(fc(h))
         mean = self.last_fc(h)

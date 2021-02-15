@@ -140,22 +140,19 @@ class CQLTrainer(TorchTrainer):
         # For implementation on the 
         self.discrete = False
     
-    def _get_tensor_values(self, obs, actions, network=None, context=None):
+    def _get_tensor_values(self, obs, actions, network=None):
         action_shape = actions.shape[0]
         obs_shape = obs.shape[0]
         num_repeat = int (action_shape / obs_shape)
         obs_temp = obs.unsqueeze(1).repeat(1, num_repeat, 1).view(obs.shape[0] * num_repeat, obs.shape[1])
-        if context is None:
-            preds = network(obs_temp, actions)
-        else:
-            preds = network(obs_temp, actions, context)
+        preds = network(obs_temp, actions)[0]
         preds = preds.view(obs.shape[0], num_repeat, 1)
         return preds
 
-    def _get_policy_actions(self, obs, num_actions, network=None, context=None):
+    def _get_policy_actions(self, obs, num_actions, network=None):
         obs_temp = obs.unsqueeze(1).repeat(1, num_actions, 1).view(obs.shape[0] * num_actions, obs.shape[1])
         new_obs_actions, _, _, new_obs_log_pi, *_ = network(
-            obs_temp, reparameterize=True, return_log_prob=True, extra_fc_input=context
+            obs_temp, reparameterize=True, return_log_prob=True,
         )
         if not self.discrete:
             return new_obs_actions, new_obs_log_pi.view(obs.shape[0], num_actions, 1)
@@ -169,13 +166,12 @@ class CQLTrainer(TorchTrainer):
         obs = batch['observations']
         actions = batch['actions']
         next_obs = batch['next_observations']
-        orient = batch['camera_orientation']
 
         """
         Policy and Alpha Loss
         """
         new_obs_actions, policy_mean, policy_log_std, log_pi, *_ = self.policy(
-            obs, reparameterize=True, return_log_prob=True, extra_fc_input=orient
+            obs, reparameterize=True, return_log_prob=True,
         )
         
         if self.use_automatic_entropy_tuning:
@@ -192,8 +188,8 @@ class CQLTrainer(TorchTrainer):
             q_new_actions = self.qf1(obs, new_obs_actions)
         else:
             q_new_actions = torch.min(
-                self.qf1(obs, new_obs_actions, orient),
-                self.qf2(obs, new_obs_actions, orient),
+                self.qf1(obs, new_obs_actions)[0],
+                self.qf2(obs, new_obs_actions)[0],
             )
 
         policy_loss = (alpha*log_pi - q_new_actions).mean()
@@ -204,21 +200,21 @@ class CQLTrainer(TorchTrainer):
             conventionally, there's not much difference in performance with having 20k 
             gradient steps here, or not having it
             """
-            policy_log_prob = self.policy.log_prob(obs, actions, extra_fc_input=orient)
+            policy_log_prob = self.policy.log_prob(obs, actions)
             policy_loss = (alpha * log_pi - policy_log_prob).mean()
         
         """
         QF Loss
         """
-        q1_pred = self.qf1(obs, actions,orient)
+        q1_pred, q1_regress = self.qf1(obs, actions)
         if self.num_qs > 1:
-            q2_pred = self.qf2(obs, actions,orient)
+            q2_pred, q2_regress = self.qf2(obs, actions)
         
         new_next_actions, _, _, new_log_pi, *_ = self.policy(
-            next_obs, reparameterize=True, return_log_prob=True, extra_fc_input=orient
+            next_obs, reparameterize=True, return_log_prob=True,
         )
         new_curr_actions, _, _, new_curr_log_pi, *_ = self.policy(
-            obs, reparameterize=True, return_log_prob=True, extra_fc_input=orient
+            obs, reparameterize=True, return_log_prob=True,
         )
 
         if not self.max_q_backup:
@@ -226,8 +222,8 @@ class CQLTrainer(TorchTrainer):
                 target_q_values = self.target_qf1(next_obs, new_next_actions)
             else:
                 target_q_values = torch.min(
-                    self.target_qf1(next_obs, new_next_actions, orient),
-                    self.target_qf2(next_obs, new_next_actions, orient),
+                    self.target_qf1(next_obs, new_next_actions),
+                    self.target_qf2(next_obs, new_next_actions),
                 )
             
             if not self.deterministic_backup:
@@ -261,14 +257,14 @@ class CQLTrainer(TorchTrainer):
 
         ## add CQL
         random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.num_random, actions.shape[-1]).uniform_(-1, 1).cuda()
-        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.policy, context=orient)
-        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.policy, context=orient)
-        q1_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.qf1, context=orient)
-        q2_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.qf2, context=orient)
-        q1_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.qf1, context=orient)
-        q2_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.qf2, context=orient)
-        q1_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf1, context=orient)
-        q2_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf2, context=orient)
+        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.policy)
+        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.policy)
+        q1_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.qf1)
+        q2_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.qf2)
+        q1_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.qf1)
+        q2_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.qf2)
+        q1_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf1)
+        q2_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf2)
 
         if self.min_q_version == 3:
             # importance sampled version

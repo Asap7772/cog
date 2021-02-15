@@ -192,8 +192,66 @@ class CNN(nn.Module):
             h = self.hidden_activation(h)
         return h
 
+class RegressCNN(CNN):
+    def __init__(self, *args, dim=1, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dim = dim
+        
+        init_w=1e-4
+        self.regress_layer = nn.Linear(conv_output_flat_size, dim)
+        self.regress_layer.weight.data.uniform_(-init_w, init_w)
+        self.regress_layer.bias.data.uniform_(-init_w, init_w)
+
+    def forward(self, input, return_last_activations=False):
+        conv_input = input.narrow(start=0,
+                                  length=self.conv_input_length,
+                                  dim=1).contiguous()
+        # reshape from batch of flattened images into (channels, w, h)
+        h = conv_input.view(conv_input.shape[0],
+                            self.input_channels,
+                            self.input_height,
+                            self.input_width)
+
+        if h.shape[0] > 1 and self.image_augmentation:
+            # h.shape[0] > 1 ensures we apply this only during training
+            h = self.augmentation_transform(h)
+
+        h = self.apply_forward_conv(h)
+
+        if self.output_conv_channels:
+            return h
+
+        # flatten channels for fc layers
+        h = h.view(h.size(0), -1)
+
+        regress_out = self.regress_layer(h)
+
+        if self.added_fc_input_size != 0:
+            extra_fc_input = input.narrow(
+                start=self.conv_input_length,
+                length=self.added_fc_input_size,
+                dim=1,
+            )
+            h = torch.cat((h, extra_fc_input), dim=1)
+        h = self.apply_forward_fc(h)
+
+        if return_last_activations:
+            return h
+        return self.output_activation(self.last_fc(h)), regress_out
 
 class ConcatCNN(CNN):
+    """
+    Concatenate inputs along dimension and then pass through MLP.
+    """
+    def __init__(self, *args, dim=1, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dim = dim
+
+    def forward(self, *inputs, **kwargs):
+        flat_inputs = torch.cat(inputs, dim=self.dim)
+        return super().forward(flat_inputs, **kwargs)
+
+class ConcatRegressCNN(RegressCNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """

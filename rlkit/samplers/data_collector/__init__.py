@@ -8,6 +8,7 @@ from rlkit.samplers.data_collector.path_collector import (
     GoalConditionedPathCollector,
     CustomMDPPathCollector,
     CustomMDPPathCollector_EVAL,
+    MdpPathCollector_Context,
 )
 from rlkit.samplers.data_collector.step_collector import (
     GoalConditionedStepCollector

@@ -16,6 +16,7 @@ class BCTrainer(TorchTrainer):
             policy,
             policy_lr=1e-3,
             optimizer_class=optim.Adam,
+            *args, **kwargs
     ):
         super().__init__()
         self.env = env

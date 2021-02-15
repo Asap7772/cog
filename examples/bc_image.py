@@ -1,10 +1,10 @@
 import rlkit.torch.pytorch_util as ptu
 from rlkit.data_management.load_buffer import load_data_from_npy, load_data_from_npy_mult
 from rlkit.samplers.data_collector import MdpPathCollector, \
-    CustomMDPPathCollector, CustomMDPPathCollector_EVAL, MdpPathCollector_Context
+    CustomMDPPathCollector, CustomMDPPathCollector_EVAL
 
 from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
-from rlkit.torch.sac.cql_context import CQLTrainer
+from rlkit.torch.sac.bc import BCTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
@@ -32,15 +32,13 @@ def experiment(variant):
         eval_env.multi_tray = True
         expl_env.multi_tray = False
 
-    context_dim=3
-
     cnn_params = variant['cnn_params']
     cnn_params.update(
         input_width=48,
         input_height=48,
         input_channels=3,
         output_size=1,
-        added_fc_input_size=action_dim+context_dim,
+        added_fc_input_size=action_dim,
     )
     qf1 = ConcatCNN(**cnn_params)
     qf2 = ConcatCNN(**cnn_params)
@@ -49,7 +47,7 @@ def experiment(variant):
 
     cnn_params.update(
         output_size=256,
-        added_fc_input_size=context_dim,
+        added_fc_input_size=0,
         hidden_sizes=[1024, 512],
     )
 
@@ -62,7 +60,7 @@ def experiment(variant):
     )
 
     eval_policy = MakeDeterministic(policy)
-    eval_path_collector = MdpPathCollector_Context(
+    eval_path_collector = MdpPathCollector(
         eval_env,
         eval_policy,
     )
@@ -72,23 +70,33 @@ def experiment(variant):
     )
 
     observation_key = 'image'
-    internal_keys = ['camera_orientation']
-    
+
     if variant['transfer_multiview']:
         eval_env.multi_view = True
         eval_env.multi_view_type = variant['eval_multiview']
 
         if type(args.buffer) != list:
-            replay_buffer = load_data_from_npy(variant, expl_env, observation_key, bin_change=variant['bin'], target_segment=variant['segment_type'], scale_rew=variant['trainer_kwargs']['with_lagrange'], internal_keys=internal_keys)
+            replay_buffer = load_data_from_npy(variant, expl_env, observation_key, bin_change=variant['bin'], target_segment=variant['segment_type'], scale_rew=variant['trainer_kwargs']['with_lagrange'])
         else:
             p = [1] * len(args.buffer)
             bin_changes = [False] * len(args.buffer)
             target_segments = [None] * len(args.buffer)
-            replay_buffer = load_data_from_npy_mult(variant, expl_env, observation_key, bin_changes=bin_changes, target_segments=target_segments, p = p, scale_rew=variant['trainer_kwargs']['with_lagrange'], internal_keys=internal_keys)
-    else:
-        replay_buffer = load_data_from_npy(variant, expl_env, observation_key, bin_change=variant['bin'], target_segment=variant['segment_type'], scale_rew=variant['trainer_kwargs']['with_lagrange'], internal_keys=internal_keys)
+            replay_buffer = load_data_from_npy_mult(variant, expl_env, observation_key, bin_changes=bin_changes, target_segments=target_segments, p = p, scale_rew=variant['trainer_kwargs']['with_lagrange'])
 
-    trainer = CQLTrainer(
+    elif variant['mixture']:
+        p = [variant['p'], 1]
+        bin_changes = [True, variant['bin']]
+        target_segments = ['random_control', variant['segment_type']]
+        replay_buffer = load_data_from_npy_mult(variant, expl_env, observation_key, bin_changes=bin_changes, target_segments=target_segments, p = p, scale_rew=variant['trainer_kwargs']['with_lagrange'])
+    elif variant['transfer']:
+        p = [variant['p'], 1]
+        bin_changes = [False, variant['bin']]
+        target_segments = [None, variant['segment_type']]
+        replay_buffer = load_data_from_npy_mult(variant, expl_env, observation_key, bin_changes=bin_changes, target_segments=target_segments, p = p, scale_rew=variant['trainer_kwargs']['with_lagrange'])
+    else:
+        replay_buffer = load_data_from_npy(variant, expl_env, observation_key, bin_change=variant['bin'], target_segment=variant['segment_type'], scale_rew=variant['trainer_kwargs']['with_lagrange'])
+
+    trainer = BCTrainer(
         env=eval_env,
         policy=policy,
         qf1=qf1,
@@ -98,6 +106,7 @@ def experiment(variant):
         dist_diff=variant['dist_diff'],
         **variant['trainer_kwargs']
     )
+
     algorithm = TorchBatchRLAlgorithm(
         trainer=trainer,
         exploration_env=expl_env,
