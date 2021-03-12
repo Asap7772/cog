@@ -1,5 +1,5 @@
 import rlkit.torch.pytorch_util as ptu
-from rlkit.data_management.load_buffer import load_data_from_npy_chaining
+from rlkit.data_management.load_buffer import load_data_from_npy_chaining,load_data_from_npy_chaining_mult
 from rlkit.samplers.data_collector import MdpPathCollector, \
     CustomMDPPathCollector
 
@@ -14,13 +14,17 @@ import argparse, os
 import roboverse
 import numpy as np
 
+DEFAULT_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
+                        '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
+                        '_noise_0.1_2020-10-06T19-37-26_100.npy')
+
 DEFAULT_PRIOR_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
                         '_noise_0.1_2020-10-06T19-37-26_100.npy')
 DEFAULT_TASK_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
                         '_noise_0.1_2020-10-06T19-37-26_100.npy')
-CUSTOM_LOG_DIR = '/nfs/kun1/users/avi/doodad-output/'
+CUSTOM_LOG_DIR = '/home/asap7772/doodad-output'
 
 
 def experiment(variant):
@@ -65,8 +69,12 @@ def experiment(variant):
     )
 
     observation_key = 'image'
-    replay_buffer = load_data_from_npy_chaining(
-        variant, expl_env, observation_key)
+    if args.buffer ==5:
+        replay_buffer = load_data_from_npy_chaining_mult(
+            variant, expl_env, observation_key)
+    else:
+        replay_buffer = load_data_from_npy_chaining(
+            variant, expl_env, observation_key, duplicate=True)
 
     # Translate 0/1 rewards to +4/+10 rewards.
     if variant['use_positive_rew']:
@@ -179,6 +187,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-path-length", type=int, required=True)
     parser.add_argument("--prior-buffer", type=str, default=DEFAULT_PRIOR_BUFFER)
     parser.add_argument("--task-buffer", type=str, default=DEFAULT_TASK_BUFFER)
+    parser.add_argument("--buffer", type=str, default=DEFAULT_BUFFER)
     parser.add_argument("--gpu", default='0', type=str)
     parser.add_argument("--min-q-weight", default=1.0, type=float,
                         help="Value of alpha in CQL")
@@ -199,6 +208,7 @@ if __name__ == "__main__":
                               "version = 2 (CQL(rho))"))
     parser.add_argument("--num-eval-per-epoch", type=int, default=5)
     parser.add_argument("--seed", default=10, type=int)
+    parser.add_argument("--name", default='test', type=str)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -209,6 +219,46 @@ if __name__ == "__main__":
 
     variant['prior_buffer'] = args.prior_buffer
     variant['task_buffer'] = args.task_buffer
+
+    if args.buffer.isnumeric():
+        args.buffer = int(args.buffer)
+        path = '/nfs/kun1/users/asap7772/cog_data/'
+        buffers = []
+        ba = lambda x, p=1, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
+        if args.buffer == 0:
+            ba('closed_drawer_prior.npy',y='zero')
+            ba('drawer_task.npy')
+        elif args.buffer == 1:
+            ba('closed_drawer_prior.npy',y='zero')
+            ba('drawer_task.npy',y='zero')
+        elif args.buffer == 2:
+            ba('closed_drawer_prior.npy',y='zero')
+            ba('drawer_task.npy',y='noise')
+        elif args.buffer == 3:
+            ba('closed_drawer_prior.npy',y='noise')
+            ba('drawer_task.npy',y='zero')
+        elif args.buffer == 4:
+            ba('closed_drawer_prior.npy',y='noise')
+            ba('drawer_task.npy',y='noise')
+        elif args.buffer == 5:
+            ba('drawer_task.npy')
+            path = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('grasp_Widow250MultiObjectGraspTrain-v0_10K_save_all_noise_0.1_2021-03-05T11-29-16_9250.npy',y='zero')
+            ba('pick_place_Widow250PickPlaceMultiObjectMultiContainerTrain-v0_10K_save_all_noise_0.1_2021-03-05T11-29-25_9750.npy',y='zero')
+            ba('single_drawer_Widow250DrawerOpen-v0_10K_save_all_noise_0.1_2021-03-05T11-29-43_9750.npy', y='zero')
+            ba('double_drawer_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-05T11-29-34_10000.npy', y='zero')
+        variant['buffer'] = buffers
+        variant['bufferidx'] = args.buffer
+    else:
+        variant['buffer'] = None
+    
+    if variant['buffer'] is not None:
+        if args.buffer == 5:
+            variant['prior_buffer'] = buffers[1:]
+            variant['task_buffer'] = buffers[0]
+        else:
+            variant['prior_buffer'] = buffers[0]
+            variant['task_buffer'] = buffers[1]
 
     variant['trainer_kwargs']['max_q_backup'] = args.max_q_backup
     variant['trainer_kwargs']['deterministic_backup'] = \
@@ -230,7 +280,9 @@ if __name__ == "__main__":
         base_log_dir = CUSTOM_LOG_DIR
     else:
         base_log_dir = None
-
-    setup_logger(exp_prefix, variant=variant, base_log_dir=base_log_dir,
+    
+    variant['base_log_dir'] = base_log_dir
+    
+    setup_logger(args.name, variant=variant, base_log_dir=base_log_dir,
                  snapshot_mode='gap_and_last', snapshot_gap=10,)
     experiment(variant)

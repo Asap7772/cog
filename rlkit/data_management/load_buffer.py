@@ -1,7 +1,6 @@
 import numpy as np
 from rlkit.data_management.obs_dict_replay_buffer import \
     ObsDictReplayBuffer
-
 from rlkit.data_management.combined_replay_buffer_prop import CombinedReplayBuffer2
 
 # TODO Clean up this file
@@ -197,7 +196,14 @@ def load_data_from_npy_mult(variant, expl_env, observation_key, extra_buffer_siz
     return CombinedReplayBuffer2(buffers=buffers, p=p)
 
 def load_data_from_npy_chaining(variant, expl_env, observation_key,
-                                extra_buffer_size=100):
+                                extra_buffer_size=100, duplicate=False):
+    if type(variant['prior_buffer']) == tuple:
+        variant['prior_buffer'], p_dict = variant['prior_buffer']
+        variant['task_buffer'], t_dict = variant['task_buffer'] # may change
+        print(p_dict)
+    else:
+        assert False
+        
     with open(variant['prior_buffer'], 'rb') as f:
         data_prior = np.load(f, allow_pickle=True)
     with open(variant['task_buffer'], 'rb') as f:
@@ -205,6 +211,8 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
 
     buffer_size = get_buffer_size(data_prior)
     buffer_size += get_buffer_size(data_task)
+    if duplicate:
+        buffer_size += get_buffer_size(data_task)
     buffer_size += extra_buffer_size
 
     # TODO Clean this up
@@ -236,11 +244,82 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
     add_data_to_buffer(data_prior, replay_buffer)
     top = replay_buffer._top
     print('Prior data loaded from npy file', top)
-    replay_buffer._rewards[:top] = 0.0*replay_buffer._rewards[:top]
-    print('Zero-ed the rewards for prior data', top)
+    if p_dict['alter_type'] == 'zero':
+        replay_buffer._rewards[:top] = 0.0*replay_buffer._rewards[:top]
+        print('Zero-ed the rewards for prior data', top)
+    elif p_dict['alter_type'] == 'noise':
+        noise = np.random.normal(0, 1, replay_buffer._rewards[:top].shape)
+        replay_buffer._rewards[:top] = replay_buffer._rewards[:top] + noise
+        print('Noise-ed the rewards for prior data', top)
+    else:
+        assert False
 
+    top2 = replay_buffer._top
     add_data_to_buffer(data_task, replay_buffer)
+    if t_dict['alter_type'] == 'zero':
+        replay_buffer._rewards[top:top2] = 0.0*replay_buffer._rewards[top:top2]
+        print('Zero-ed the rewards for task data', top)
+    elif t_dict['alter_type'] == 'noise':
+        noise = np.random.normal(0, 1, replay_buffer._rewards[top:top2].shape)
+        replay_buffer._rewards[top:top2] = replay_buffer._rewards[top:top2] + noise
+        print('Noise-ed the rewards for task data', top)
+    elif t_dict['alter_type'] == None:
+        pass
+    else:
+        assert False
     print('Task data loaded from npy file', replay_buffer._top)
+    
+    if duplicate:
+        add_data_to_buffer(data_task, replay_buffer)
+        print('Duplicate data loaded from npy file', replay_buffer._top)
+    return replay_buffer
+
+def load_data_from_npy_chaining_mult(variant, expl_env, observation_key, extra_buffer_size=100):
+    variant['task_buffer'], t_dict = variant['task_buffer'] # may change
+    
+    data_prior = list()
+    for p_buff, p_dict in variant['prior_buffer']:
+        with open(p_buff, 'rb') as f:
+            data_prior.append(np.load(f, allow_pickle=True)) 
+    with open(variant['task_buffer'], 'rb') as f:
+        data_task = np.load(f, allow_pickle=True)
+    
+    buffer_size = sum([get_buffer_size(x) for x in data_prior])
+    buffer_size += get_buffer_size(data_task)
+    buffer_size += extra_buffer_size
+
+    if 'biased_sampling' in variant:
+        if variant['biased_sampling']:
+            bias_point = buffer_size - extra_buffer_size
+            print('Setting bias point', bias_point)
+            replay_buffer = ObsDictReplayBuffer(
+                buffer_size,
+                expl_env,
+                observation_key=observation_key,
+                biased_sampling=True,
+                bias_point=bias_point,
+                before_bias_point_probability=0.5,
+            )
+        else:
+            replay_buffer = ObsDictReplayBuffer(
+                buffer_size,
+                expl_env,
+                observation_key=observation_key,
+            )
+    else:
+        replay_buffer = ObsDictReplayBuffer(
+            buffer_size,
+            expl_env,
+            observation_key=observation_key,
+        )
+    
+    top_prev = 0
+    for buff in data_prior:
+        print('prior buff', top_prev)
+        add_data_to_buffer(buff, replay_buffer)
+        replay_buffer._rewards[top_prev:replay_buffer._top] = 0.0
+        top_prev = replay_buffer._top
+    add_data_to_buffer(data_task, replay_buffer)
     return replay_buffer
 
 """
@@ -272,3 +351,38 @@ def process_images(observations):
             raise ValueError
         output.append(dict(image=image))
     return output
+
+if __name__ == "__main__":
+    observation_key = 'image'
+    variant = dict(env = 'Widow250DoubleDrawerOpenGraspNeutral-v0')
+    import roboverse
+    env = roboverse.make(variant['env'], transpose_image=True)
+    
+    args = lambda:0 #RANDOM Object
+    args.buffer = 1
+    path = '/nfs/kun1/users/asap7772/cog_data/'
+    buffers = []
+    ba = lambda x, p=1, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
+
+    if args.buffer == 0:
+        ba('closed_drawer_prior.npy',y='zero')
+        ba('drawer_task.npy')
+    elif args.buffer == 1:
+        ba('closed_drawer_prior.npy',y='zero')
+        ba('drawer_task.npy',y='zero')
+    elif args.buffer == 2:
+        ba('closed_drawer_prior.npy',y='zero')
+        ba('drawer_task.npy',y='noise')
+    elif args.buffer == 3:
+        ba('closed_drawer_prior.npy',y='noise')
+        ba('drawer_task.npy',y='zero')
+    elif args.buffer == 4:
+        ba('closed_drawer_prior.npy',y='noise')
+        ba('drawer_task.npy',y='noise')
+    variant['buffer'] = buffers
+    
+    if variant['buffer'] is not None:
+        variant['prior_buffer'] = buffers[0]
+        variant['task_buffer'] = buffers[1]
+
+    replay_buffer = load_data_from_npy_chaining(variant, env, observation_key, duplicate=True)
