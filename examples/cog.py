@@ -208,6 +208,7 @@ if __name__ == "__main__":
                               "version = 2 (CQL(rho))"))
     parser.add_argument("--num-eval-per-epoch", type=int, default=5)
     parser.add_argument("--seed", default=10, type=int)
+    parser.add_argument("--old_prior_prob", default=1, type=float)
     parser.add_argument("--name", default='test', type=str)
 
     args = parser.parse_args()
@@ -242,11 +243,12 @@ if __name__ == "__main__":
             ba('drawer_task.npy',y='noise')
         elif args.buffer == 5:
             ba('drawer_task.npy')
+            ba('closed_drawer_prior.npy',y='zero',p=args.old_prior_prob)
             path = '/nfs/kun1/users/asap7772/prior_data/'
-            ba('grasp_Widow250MultiObjectGraspTrain-v0_10K_save_all_noise_0.1_2021-03-05T11-29-16_9250.npy',y='zero')
-            ba('pick_place_Widow250PickPlaceMultiObjectMultiContainerTrain-v0_10K_save_all_noise_0.1_2021-03-05T11-29-25_9750.npy',y='zero')
-            ba('single_drawer_Widow250DrawerOpen-v0_10K_save_all_noise_0.1_2021-03-05T11-29-43_9750.npy', y='zero')
-            ba('double_drawer_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-05T11-29-34_10000.npy', y='zero')
+            ba('grasp_newenv_Widow250DoubleDrawerOpenGraspNeutral-v0_20K_save_all_noise_0.1_2021-03-18T01-36-52_20000.npy',y='zero')
+            ba('pickplace_newenv_Widow250PickPlaceMultiObjectMultiContainerTrain-v0_20K_save_all_noise_0.1_2021-03-18T01-38-58_19500.npy',y='zero')
+            ba('drawer_newenv_Widow250DoubleDrawerOpenGraspNeutral-v0_20K_save_all_noise_0.1_2021-03-18T01-37-08_19500.npy', y='zero')
+
         variant['buffer'] = buffers
         variant['bufferidx'] = args.buffer
     else:

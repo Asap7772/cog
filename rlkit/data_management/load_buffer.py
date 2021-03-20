@@ -280,7 +280,11 @@ def load_data_from_npy_chaining_mult(variant, expl_env, observation_key, extra_b
     data_prior = list()
     for p_buff, p_dict in variant['prior_buffer']:
         with open(p_buff, 'rb') as f:
-            data_prior.append(np.load(f, allow_pickle=True)) 
+            data = np.load(f, allow_pickle=True)
+            if p_dict['p'] != 1:
+                print('truncated', p_buff, 'to size', p_dict['p'])
+                data = data[:int(len(data)*p_dict['p'])]
+            data_prior.append(data) 
     with open(variant['task_buffer'], 'rb') as f:
         data_task = np.load(f, allow_pickle=True)
     
