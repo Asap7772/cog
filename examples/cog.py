@@ -5,7 +5,7 @@ from rlkit.samplers.data_collector import MdpPathCollector, \
 
 from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
-from rlkit.torch.conv_networks import CNN, ConcatCNN
+from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.launchers.launcher_util import setup_logger
@@ -40,10 +40,16 @@ def experiment(variant):
         output_size=1,
         added_fc_input_size=action_dim,
     )
-    qf1 = ConcatCNN(**cnn_params)
-    qf2 = ConcatCNN(**cnn_params)
-    target_qf1 = ConcatCNN(**cnn_params)
-    target_qf2 = ConcatCNN(**cnn_params)
+    if variant['bottleneck']:
+        qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'])
+        qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'])
+        target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'])
+        target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'])
+    else:
+        qf1 = ConcatCNN(**cnn_params)
+        qf2 = ConcatCNN(**cnn_params)
+        target_qf1 = ConcatCNN(**cnn_params)
+        target_qf2 = ConcatCNN(**cnn_params)
 
     cnn_params.update(
         output_size=256,
@@ -69,7 +75,7 @@ def experiment(variant):
     )
 
     observation_key = 'image'
-    if args.buffer ==5:
+    if args.buffer in [5,6]:
         replay_buffer = load_data_from_npy_chaining_mult(
             variant, expl_env, observation_key)
     else:
@@ -91,6 +97,9 @@ def experiment(variant):
         qf2=qf2,
         target_qf1=target_qf1,
         target_qf2=target_qf2,
+        bottleneck=variant['bottleneck'],
+        bottleneck_const=variant['bottleneck_const'],
+        bottleneck_lagrange=variant['bottleneck_lagrange'],
         **variant['trainer_kwargs']
     )
     algorithm = TorchBatchRLAlgorithm(
@@ -185,6 +194,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", type=str, required=True)
     parser.add_argument("--max-path-length", type=int, required=True)
+    parser.add_argument("--bottleneck", action='store_true')
+    parser.add_argument('--bottleneck_const', type=float, default=0.5)
+    parser.add_argument('--bottleneck_dim', type=int, default=16)
+    parser.add_argument('--bottleneck_lagrange', action='store_true')
     parser.add_argument("--prior-buffer", type=str, default=DEFAULT_PRIOR_BUFFER)
     parser.add_argument("--task-buffer", type=str, default=DEFAULT_TASK_BUFFER)
     parser.add_argument("--buffer", type=str, default=DEFAULT_BUFFER)
@@ -208,7 +221,7 @@ if __name__ == "__main__":
                               "version = 2 (CQL(rho))"))
     parser.add_argument("--num-eval-per-epoch", type=int, default=5)
     parser.add_argument("--seed", default=10, type=int)
-    parser.add_argument("--old_prior_prob", default=1, type=float)
+    parser.add_argument("--old_prior_prob", default=0, type=float)
     parser.add_argument("--name", default='test', type=str)
 
     args = parser.parse_args()
@@ -220,6 +233,11 @@ if __name__ == "__main__":
 
     variant['prior_buffer'] = args.prior_buffer
     variant['task_buffer'] = args.task_buffer
+    
+    variant['bottleneck'] = args.bottleneck
+    variant['bottleneck_const'] = args.bottleneck_const
+    variant['bottleneck_lagrange'] = args.bottleneck_lagrange
+    variant['bottleneck_dim'] = args.bottleneck_dim
 
     if args.buffer.isnumeric():
         args.buffer = int(args.buffer)
@@ -228,7 +246,8 @@ if __name__ == "__main__":
         ba = lambda x, p=1, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
         if args.buffer == 0:
             ba('closed_drawer_prior.npy',y='zero')
-            ba('drawer_task.npy')
+            path = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('task_singleneut_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-25T22-52-59_9750.npy')
         elif args.buffer == 1:
             ba('closed_drawer_prior.npy',y='zero')
             ba('drawer_task.npy',y='zero')
@@ -243,11 +262,26 @@ if __name__ == "__main__":
             ba('drawer_task.npy',y='noise')
         elif args.buffer == 5:
             ba('drawer_task.npy')
-            ba('closed_drawer_prior.npy',y='zero',p=args.old_prior_prob)
+            if args.old_prior_prob > 0:
+                ba('closed_drawer_prior.npy',y='zero',p=args.old_prior_prob)
             path = '/nfs/kun1/users/asap7772/prior_data/'
             ba('grasp_newenv_Widow250DoubleDrawerOpenGraspNeutral-v0_20K_save_all_noise_0.1_2021-03-18T01-36-52_20000.npy',y='zero')
             ba('pickplace_newenv_Widow250PickPlaceMultiObjectMultiContainerTrain-v0_20K_save_all_noise_0.1_2021-03-18T01-38-58_19500.npy',y='zero')
             ba('drawer_newenv_Widow250DoubleDrawerOpenGraspNeutral-v0_20K_save_all_noise_0.1_2021-03-18T01-37-08_19500.npy', y='zero')
+        elif args.buffer == 6:
+            path = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('task_multneut_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-25T22-53-21_9250.npy')
+            if args.old_prior_prob > 0:
+                path = '/nfs/kun1/users/asap7772/cog_data/'
+                ba('closed_drawer_prior.npy',y='zero',p=args.old_prior_prob)
+                ba('drawer_task.npy',y='noise')
+                path = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('grasp_multneut_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-24T01-17-30_10000.npy', y='zero')
+            ba('double_drawer_multneut_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-24T01-19-23_9750.npy', y='zero')
+        elif args.buffer == 9000:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('debug.npy',y='noise')
+            ba('debug.npy',y='noise')
 
         variant['buffer'] = buffers
         variant['bufferidx'] = args.buffer
@@ -255,7 +289,7 @@ if __name__ == "__main__":
         variant['buffer'] = None
     
     if variant['buffer'] is not None:
-        if args.buffer == 5:
+        if args.buffer in [5,6]:
             variant['prior_buffer'] = buffers[1:]
             variant['task_buffer'] = buffers[0]
         else:

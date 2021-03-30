@@ -257,12 +257,12 @@ class ConcatBottleneckCNN(CNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, action_dim, output_size=1, dim=1):
+    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1):
         cnn_params=dict(
             kernel_sizes=[3, 3, 3],
             n_channels=[16, 16, 16],
             strides=[1, 1, 1],
-            hidden_sizes=[1024],
+            hidden_sizes=[1024], #mean/std
             paddings=[1, 1, 1],
             pool_type='max2d',
             pool_sizes=[2, 2, 1],  # the one at the end means no pool
@@ -276,14 +276,15 @@ class ConcatBottleneckCNN(CNN):
             input_width=48,
             input_height=48,
             input_channels=3,
-            output_size=1024,
+            output_size=bottleneck_dim*2,
             added_fc_input_size=action_dim,
         )
 
         self.cnn_params = cnn_params
+        self.action_dim = action_dim
 
         super().__init__(**cnn_params)
-        self.mlp = Mlp([512,512,512],output_size,self.cnn_params['hidden_sizes'][0]//2)
+        self.mlp = Mlp([512,512,512],output_size,self.cnn_params['output_size']//2)
         self.dim = dim
 
     def forward(self, *inputs, **kwargs):
@@ -292,8 +293,8 @@ class ConcatBottleneckCNN(CNN):
     def detailed_forward(self, *inputs, **kwargs): # used to calculate loss
         flat_inputs = torch.cat(inputs, dim=self.dim)
         cnn_out = super().forward(flat_inputs, **kwargs)
-        size = self.cnn_params['hidden_sizes'][0]//2
-        mean, log_std = cnn_out[:size], cnn_out[size:]
+        size = self.cnn_params['output_size']//2
+        mean, log_std = cnn_out[:,:size], cnn_out[:,size:]
         assert mean.shape == log_std.shape
         std = torch.exp(log_std)
         
@@ -301,8 +302,8 @@ class ConcatBottleneckCNN(CNN):
         sample = dist.rsample()
         log_prob = dist.log_prob(sample)
         # equation is $$\frac{1}{2}[\mu^T\mu + tr(\Sigma) -k -log|\Sigma|]$$
-        reg_loss = 1/2*(mean.norm(dim=-1, keepdim=True)**2 + (std**2).sum(axis=-1, keepdim=True)-self.latent_dim -torch.log(std**2+1E-4).sum(axis=-1, keepdim=True))
-        return self.mlp(sample), log_prob, reg_loss
+        reg_loss = 1/2*(mean.norm(dim=-1, keepdim=True)**2 + (std**2).sum(axis=-1, keepdim=True)-self.action_dim -torch.log(std**2+1E-4).sum(axis=-1, keepdim=True))
+        return self.mlp(sample), log_prob, reg_loss, mean, log_std
 
 class ConcatRegressCNN(RegressCNN):
     """

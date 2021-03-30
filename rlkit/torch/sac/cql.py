@@ -54,6 +54,10 @@ class CQLTrainer(TorchTrainer):
             dist_diff=False,
             dist1 = 0,
             dist2 = 1,
+
+            bottleneck= False,
+            bottleneck_const=0.5,
+            bottleneck_lagrange=False,
     ):
         super().__init__()
         self.env = env
@@ -83,7 +87,8 @@ class CQLTrainer(TorchTrainer):
             )
         
         self.with_lagrange = with_lagrange
-        if self.with_lagrange:
+        self.bottleneck_lagrange = bottleneck_lagrange
+        if self.with_lagrange or self.bottleneck_lagrange: #TODO separate out later
             self.target_action_gap = lagrange_thresh
             self.log_alpha_prime = ptu.zeros(1, requires_grad=True)
             self.alpha_prime_optimizer = optimizer_class(
@@ -110,6 +115,8 @@ class CQLTrainer(TorchTrainer):
             lr=qf_lr,
         )
 
+        self.bottleneck = bottleneck
+        self.bottleneck_const = bottleneck_const
         self.discount = discount
         self.reward_scale = reward_scale
         self.eval_statistics = OrderedDict()
@@ -294,6 +301,23 @@ class CQLTrainer(TorchTrainer):
         """Subtract the log likelihood of data"""
         min_qf1_loss = min_qf1_loss - q1_pred.mean() * self.min_q_weight
         min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.min_q_weight
+
+        if self.bottleneck:
+            qf1_bottleneck_sample, qf1_bottleneck_sample_log_prob, qf1_bottleneck_loss, qf1_bottleneck_mean, qf1_bottleneck_logstd = self.qf1.detailed_forward(obs,actions)
+            qf2_bottleneck_sample, qf2_bottleneck_sample_log_prob, qf2_bottleneck_loss, qf2_bottleneck_mean, qf2_bottleneck_logstd = self.qf2.detailed_forward(obs,actions)
+            
+            min_qf1_loss = min_qf2_loss + self.bottleneck_const * qf1_bottleneck_loss.mean()
+            min_qf2_loss = min_qf2_loss + self.bottleneck_const * qf2_bottleneck_loss.mean() 
+            
+            reg_loss = qf1_bottleneck_loss + qf2_bottleneck_loss
+            
+            if self.bottleneck_lagrange:	
+                alpha_prime = torch.clamp(self.log_alpha_prime.exp(), min=0, max=2000000.0)	
+                reg_loss_stop_grad = (alpha_prime).detach() * (reg_loss.mean() - self.target_action_gap)
+                reg_loss_stop_grad_decoder = alpha_prime * (reg_loss.mean() - self.target_action_gap).detach()
+                
+                min_qf1_loss = min_qf1_loss + reg_loss_stop_grad - reg_loss_stop_grad_decoder
+                min_qf2_loss = min_qf2_loss + reg_loss_stop_grad - reg_loss_stop_grad_decoder
         
         if self.with_lagrange:
             alpha_prime = torch.clamp(self.log_alpha_prime.exp(), min=0.0, max=1000000.0)
@@ -422,17 +446,26 @@ class CQLTrainer(TorchTrainer):
                     'Policy log std',
                     ptu.get_numpy(policy_log_std),
                 ))
+
+            if self.bottleneck:
+                self.eval_statistics['QF1 Bottleneck Loss'] = np.mean(ptu.get_numpy(qf1_bottleneck_loss))
+                self.eval_statistics['QF2 Bottleneck Loss'] = np.mean(ptu.get_numpy(qf2_bottleneck_loss))
+                self.eval_statistics['QF1 Bottleneck Mean'] = np.mean(ptu.get_numpy(qf1_bottleneck_mean))
+                self.eval_statistics['QF2 Bottleneck Mean'] = np.mean(ptu.get_numpy(qf2_bottleneck_mean))
+                self.eval_statistics['QF1 Bottleneck LogStd'] = np.mean(ptu.get_numpy(qf1_bottleneck_logstd))
+                self.eval_statistics['QF2 Bottleneck LogStd'] = np.mean(ptu.get_numpy(qf2_bottleneck_logstd))
             
             if self.use_automatic_entropy_tuning:
                 self.eval_statistics['Alpha'] = alpha.item()
                 self.eval_statistics['Alpha Loss'] = alpha_loss.item()
             
-            if self.with_lagrange:
+            if self.with_lagrange or self.bottleneck_lagrange:
                 self.eval_statistics['Alpha_prime'] = alpha_prime.item()
                 self.eval_statistics['min_q1_loss'] = ptu.get_numpy(min_qf1_loss).mean()
                 self.eval_statistics['min_q2_loss'] = ptu.get_numpy(min_qf2_loss).mean()
                 self.eval_statistics['threshold action gap'] = self.target_action_gap
-                self.eval_statistics['alpha prime loss'] = alpha_prime_loss.item()
+                if not self.bottleneck_lagrange:
+                    self.eval_statistics['alpha prime loss'] = alpha_prime_loss.item()
             
         self._n_train_steps_total += 1
 
