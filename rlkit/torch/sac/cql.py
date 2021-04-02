@@ -9,6 +9,11 @@ import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
 from torch import autograd
+import matplotlib.pyplot as plt
+import os
+
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 
 class CQLTrainer(TorchTrainer):
     def __init__(
@@ -58,6 +63,7 @@ class CQLTrainer(TorchTrainer):
             bottleneck= False,
             bottleneck_const=0.5,
             bottleneck_lagrange=False,
+            log_dir=None
     ):
         super().__init__()
         self.env = env
@@ -67,6 +73,7 @@ class CQLTrainer(TorchTrainer):
         self.target_qf1 = target_qf1
         self.target_qf2 = target_qf2
         self.soft_target_tau = soft_target_tau
+        self.log_dir = log_dir
 
 
         self.hinge_trans=hinge_trans
@@ -129,6 +136,7 @@ class CQLTrainer(TorchTrainer):
         self._num_q_update_steps = 0
         self._num_policy_update_steps = 0
         self._num_policy_steps = 1
+        self._log_epoch = 0
         
         self.num_qs = num_qs
 
@@ -146,6 +154,7 @@ class CQLTrainer(TorchTrainer):
 
         # For implementation on the 
         self.discrete = False
+        self.tsne = True
     
     def _get_tensor_values(self, obs, actions, network=None):
         action_shape = actions.shape[0]
@@ -303,8 +312,8 @@ class CQLTrainer(TorchTrainer):
         min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.min_q_weight
 
         if self.bottleneck:
-            qf1_bottleneck_sample, qf1_bottleneck_sample_log_prob, qf1_bottleneck_loss, qf1_bottleneck_mean, qf1_bottleneck_logstd = self.qf1.detailed_forward(obs,actions)
-            qf2_bottleneck_sample, qf2_bottleneck_sample_log_prob, qf2_bottleneck_loss, qf2_bottleneck_mean, qf2_bottleneck_logstd = self.qf2.detailed_forward(obs,actions)
+            qf1_bottleneck_sample, qf1_bottleneck_sample_log_prob, qf1_bottleneck_loss, qf1_bottleneck_mean, qf1_bottleneck_logstd, qf1_sample = self.qf1.detailed_forward(obs,actions)
+            qf2_bottleneck_sample, qf2_bottleneck_sample_log_prob, qf2_bottleneck_loss, qf2_bottleneck_mean, qf2_bottleneck_logstd, qf2_sample = self.qf2.detailed_forward(obs,actions)
             
             min_qf1_loss = min_qf2_loss + self.bottleneck_const * qf1_bottleneck_loss.mean()
             min_qf2_loss = min_qf2_loss + self.bottleneck_const * qf2_bottleneck_loss.mean() 
@@ -312,12 +321,17 @@ class CQLTrainer(TorchTrainer):
             reg_loss = qf1_bottleneck_loss + qf2_bottleneck_loss
             
             if self.bottleneck_lagrange:	
-                alpha_prime = torch.clamp(self.log_alpha_prime.exp(), min=0, max=2000000.0)	
+                alpha_prime = torch.clamp(self.log_alpha_prime.exp(), min=0, max=1000000.0)	
                 reg_loss_stop_grad = (alpha_prime).detach() * (reg_loss.mean() - self.target_action_gap)
                 reg_loss_stop_grad_decoder = alpha_prime * (reg_loss.mean() - self.target_action_gap).detach()
                 
-                min_qf1_loss = min_qf1_loss + reg_loss_stop_grad - reg_loss_stop_grad_decoder
-                min_qf2_loss = min_qf2_loss + reg_loss_stop_grad - reg_loss_stop_grad_decoder
+                min_qf1_loss = min_qf1_loss + reg_loss_stop_grad
+                min_qf2_loss = min_qf2_loss + reg_loss_stop_grad
+
+                self.alpha_prime_optimizer.zero_grad()
+                alpha_prime_loss = (-reg_loss_stop_grad_decoder - reg_loss_stop_grad_decoder)*0.5 
+                alpha_prime_loss.backward(retain_graph=True)
+                self.alpha_prime_optimizer.step()
         
         if self.with_lagrange:
             alpha_prime = torch.clamp(self.log_alpha_prime.exp(), min=0.0, max=1000000.0)
@@ -454,6 +468,52 @@ class CQLTrainer(TorchTrainer):
                 self.eval_statistics['QF2 Bottleneck Mean'] = np.mean(ptu.get_numpy(qf2_bottleneck_mean))
                 self.eval_statistics['QF1 Bottleneck LogStd'] = np.mean(ptu.get_numpy(qf1_bottleneck_logstd))
                 self.eval_statistics['QF2 Bottleneck LogStd'] = np.mean(ptu.get_numpy(qf2_bottleneck_logstd))
+
+                if self.tsne and self.log_dir is not None:
+                    new_path = os.path.join(self.log_dir,'visualize')
+                    if not os.path.isdir(new_path):
+                        os.mkdir(new_path)
+
+                    qf1_sample_npy = qf1_sample.detach().cpu().numpy()
+                    qf1_bottleneck_sample_npy = qf1_bottleneck_sample.detach().cpu().numpy().squeeze()
+                    rewards_npy = rewards.detach().cpu().numpy().squeeze()
+                    
+                    tsne = TSNE(n_components=2,perplexity=40,n_iter=300)
+                    tsne_results = tsne.fit_transform(qf1_sample_npy)
+                    plt.figure()
+                    plt.scatter(tsne_results.T[0], tsne_results.T[1], c=qf1_bottleneck_sample_npy)
+                    plt.colorbar()
+                    plt.title("TSNE on Bottleneck Sample on Epoch" + str(self._log_epoch))
+                    plt.savefig(os.path.join(new_path,'qf_tsne_'+str(self._log_epoch)))
+                    plt.close()
+
+                    plt.figure()
+                    plt.scatter(tsne_results.T[0], tsne_results.T[1], c=rewards_npy)
+                    plt.colorbar()
+                    plt.title("TSNE on Bottleneck Sample on Epoch" + str(self._log_epoch))
+                    plt.savefig(os.path.join(new_path,'rew_tsne_'+str(self._log_epoch)))
+                    plt.close()
+
+                    pca = PCA(n_components=2)
+                    pca.fit(qf1_sample_npy)
+                    pca_results = pca.transform(qf1_sample_npy)
+                    plt.figure()
+                    plt.scatter(pca_results.T[0], pca_results.T[1], c=qf1_bottleneck_sample_npy)
+                    plt.colorbar()
+                    plt.title("PCA on Bottleneck Sample on Epoch" + str(self._log_epoch))
+                    plt.savefig(os.path.join(new_path,'qf_pca_'+str(self._log_epoch)))
+                    plt.close()
+
+                    plt.figure()
+                    plt.scatter(pca_results.T[0], pca_results.T[1], c=rewards_npy)
+                    plt.colorbar()
+                    plt.title("PCA on Bottleneck Sample on Epoch" + str(self._log_epoch))
+                    plt.savefig(os.path.join(new_path,'rew_pca_'+str(self._log_epoch)))
+                    plt.close()
+
+                    print(new_path)
+                    
+
             
             if self.use_automatic_entropy_tuning:
                 self.eval_statistics['Alpha'] = alpha.item()
@@ -466,7 +526,7 @@ class CQLTrainer(TorchTrainer):
                 self.eval_statistics['threshold action gap'] = self.target_action_gap
                 if not self.bottleneck_lagrange:
                     self.eval_statistics['alpha prime loss'] = alpha_prime_loss.item()
-            
+            self._log_epoch += 1
         self._n_train_steps_total += 1
 
     def get_diagnostics(self):

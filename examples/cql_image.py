@@ -218,6 +218,7 @@ if __name__ == "__main__":
     parser.add_argument('--eval_multiview', default='single', type = str)
     parser.add_argument('--larger_net', action="store_true", default=False)
     parser.add_argument('--dist_diff', action="store_true", default=False)
+    parser.add_argument('--debug', action="store_true", default=False)
 
     args = parser.parse_args()
     variant['transfer'] = args.transfer
@@ -255,7 +256,11 @@ if __name__ == "__main__":
             rand2 = '/nfs/kun1/users/asap7772/roboverse/data/val_rand/scripted_Widow250MultiObjectGraspTrain-v0_2020-12-30T00-07-07.npy'
             grasp = '/nfs/kun1/users/asap7772/roboverse/data/val_grasp/scripted_Widow250MultiObjectGraspTrain-v0_2020-12-30T00-06-55.npy'
             args.buffer = [rand1, rand2, grasp]
-
+    elif args.buffer == 0:
+        if args.debug:
+            args.buffer = '/nfs/kun1/users/asap7772/prior_data/debug.npy'
+        else:
+            args.buffer = '/nfs/kun1/users/asap7772/prior_data/task_singleneut_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-25T22-52-59_9750.npy'
     elif args.buffer == 1:
         args.buffer = '/nfs/kun1/users/avi/imitation_datasets/scripted_Widow250MultiObjectGraspTrain-v0_2020-12-07T10-22-05.npy'
     elif args.buffer == 2:

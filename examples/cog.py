@@ -41,10 +41,10 @@ def experiment(variant):
         added_fc_input_size=action_dim,
     )
     if variant['bottleneck']:
-        qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'])
-        qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'])
-        target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'])
-        target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'])
+        qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+        qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+        target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+        target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
     else:
         qf1 = ConcatCNN(**cnn_params)
         qf2 = ConcatCNN(**cnn_params)
@@ -100,6 +100,7 @@ def experiment(variant):
         bottleneck=variant['bottleneck'],
         bottleneck_const=variant['bottleneck_const'],
         bottleneck_lagrange=variant['bottleneck_lagrange'],
+        log_dir = variant['log_dir'],
         **variant['trainer_kwargs']
     )
     algorithm = TorchBatchRLAlgorithm(
@@ -198,6 +199,7 @@ if __name__ == "__main__":
     parser.add_argument('--bottleneck_const', type=float, default=0.5)
     parser.add_argument('--bottleneck_dim', type=int, default=16)
     parser.add_argument('--bottleneck_lagrange', action='store_true')
+    parser.add_argument("--deterministic_bottleneck", action="store_true", default=False)
     parser.add_argument("--prior-buffer", type=str, default=DEFAULT_PRIOR_BUFFER)
     parser.add_argument("--task-buffer", type=str, default=DEFAULT_TASK_BUFFER)
     parser.add_argument("--buffer", type=str, default=DEFAULT_BUFFER)
@@ -238,6 +240,7 @@ if __name__ == "__main__":
     variant['bottleneck_const'] = args.bottleneck_const
     variant['bottleneck_lagrange'] = args.bottleneck_lagrange
     variant['bottleneck_dim'] = args.bottleneck_dim
+    variant['deterministic_bottleneck']=args.deterministic_bottleneck
 
     if args.buffer.isnumeric():
         args.buffer = int(args.buffer)
@@ -250,7 +253,7 @@ if __name__ == "__main__":
             ba('task_singleneut_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-25T22-52-59_9750.npy')
         elif args.buffer == 1:
             ba('closed_drawer_prior.npy',y='zero')
-            ba('drawer_task.npy',y='zero')
+            ba('drawer_task.npy')
         elif args.buffer == 2:
             ba('closed_drawer_prior.npy',y='zero')
             ba('drawer_task.npy',y='noise')
@@ -319,6 +322,7 @@ if __name__ == "__main__":
     
     variant['base_log_dir'] = base_log_dir
     
-    setup_logger(args.name, variant=variant, base_log_dir=base_log_dir,
+    log_dir = setup_logger(args.name, variant=variant, base_log_dir=base_log_dir,
                  snapshot_mode='gap_and_last', snapshot_gap=10,)
+    variant['log_dir'] = log_dir
     experiment(variant)

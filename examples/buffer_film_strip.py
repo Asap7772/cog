@@ -11,8 +11,8 @@ def plot_traj(imgs, rows, cols):
     fig.tight_layout()
     return fig
 
-p = '/nfs/kun1/users/asap7772/cog_data/closed_drawer_prior.npy'
-save_path = '/home/asap7772/cog/images/closed_drawer_prior'
+p = '/nfs/kun1/users/asap7772/prior_data/task_singleneut_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-25T22-52-59_9750.npy'
+save_path = '/home/asap7772/cog/images/new_task'
 num_traj = 10
 
 with open(p, 'rb') as f:

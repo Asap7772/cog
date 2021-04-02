@@ -257,7 +257,7 @@ class ConcatBottleneckCNN(CNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1):
+    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False):
         cnn_params=dict(
             kernel_sizes=[3, 3, 3],
             n_channels=[16, 16, 16],
@@ -284,6 +284,8 @@ class ConcatBottleneckCNN(CNN):
         self.action_dim = action_dim
 
         super().__init__(**cnn_params)
+
+        self.deterministic=deterministic
         self.mlp = Mlp([512,512,512],output_size,self.cnn_params['output_size']//2)
         self.dim = dim
 
@@ -303,7 +305,12 @@ class ConcatBottleneckCNN(CNN):
         log_prob = dist.log_prob(sample)
         # equation is $$\frac{1}{2}[\mu^T\mu + tr(\Sigma) -k -log|\Sigma|]$$
         reg_loss = 1/2*(mean.norm(dim=-1, keepdim=True)**2 + (std**2).sum(axis=-1, keepdim=True)-self.action_dim -torch.log(std**2+1E-4).sum(axis=-1, keepdim=True))
-        return self.mlp(sample), log_prob, reg_loss, mean, log_std
+
+        if self.deterministic:
+            sample=mean
+            log_prob= -torch.ones_like(log_prob).cuda()
+            reg_loss = torch.zeros_like(reg_loss).cuda()
+        return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
 
 class ConcatRegressCNN(RegressCNN):
     """

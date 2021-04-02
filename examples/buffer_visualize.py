@@ -50,9 +50,9 @@ def plot(data, num_traj, fig, ax1,ax2, ax3, color, legend_name):
         print(x[0],y[0],z[0])
         # c = int(np.random.rand()*num_traj)
         if j == 0:
-            params = dict(c=color, marker='.', linewidth=0.1, markersize=1, label=legend_name) #linewidth=0.05, c=color(c)
+            params = dict(c=color, marker='.', linewidth=0, markersize=1, label=legend_name) #linewidth=0.05, c=color(c)
         else:
-            params = dict(c=color, marker='.', linewidth=0.1, markersize=1)
+            params = dict(c=color, marker='.', linewidth=0, markersize=1)
         l1 = ax1.plot(x,y,**params)
         l2 = ax2.plot(x,z,**params)
         l3 = ax3.plot(y,z,**params)
@@ -64,47 +64,47 @@ def plot(data, num_traj, fig, ax1,ax2, ax3, color, legend_name):
     return l1,l2,l3
 
 if __name__ == '__main__':
-    save_path='/home/asap7772/cog/images/mult_buff_new_prior_fewtraj'
-    num_traj = 5
+    save_path='/home/asap7772/cog/images/newoldtask_scatter'
+    num_traj = 100
 
     fig, (ax1,ax2,ax3) = plt.subplots(3,1)
     fig.set_figheight(10)
     fig.set_figwidth(7)
     
-    p = '/nfs/kun1/users/asap7772/prior_data/drawer_newenv_Widow250DoubleDrawerOpenGraspNeutral-v0_20K_save_all_noise_0.1_2021-03-18T01-37-08_19500.npy'
+    p = '/nfs/kun1/users/asap7772/prior_data/task_singleneut_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-25T22-52-59_9750.npy'
     with open(p, 'rb') as f:
         data = np.load(f, allow_pickle=True)
     
-    plots1 = plot(data, num_traj,fig,ax1,ax2,ax3,'r', 'prior_drawer')
-    print('finished',p)
-
-    p = '/nfs/kun1/users/asap7772/prior_data/grasp_newenv_Widow250DoubleDrawerOpenGraspNeutral-v0_20K_save_all_noise_0.1_2021-03-18T01-36-52_20000.npy'
-    with open(p, 'rb') as f:
-        data = np.load(f, allow_pickle=True)
-    
-    plots2 = plot(data, num_traj,fig,ax1,ax2,ax3,'g', 'prior_grasp')
-    print('finished',p)
-
-    p = '/nfs/kun1/users/asap7772/prior_data/pickplace_newenv_Widow250PickPlaceMultiObjectMultiContainerTrain-v0_20K_save_all_noise_0.1_2021-03-18T01-38-58_19500.npy'
-    with open(p, 'rb') as f:
-        data = np.load(f, allow_pickle=True)
-    
-    plots3 = plot(data, num_traj,fig,ax1,ax2,ax3,'b', 'prior_pickplace')
+    plots1 = plot(data, num_traj,fig,ax1,ax2,ax3,'r', 'new_task')
     print('finished',p)
 
     p = '/nfs/kun1/users/asap7772/cog_data/drawer_task.npy'
     with open(p, 'rb') as f:
         data = np.load(f, allow_pickle=True)
     
-    plots4 = plot(data, num_traj,fig,ax1,ax2,ax3,'r', 'task_drawer')
+    plots2 = plot(data, num_traj,fig,ax1,ax2,ax3,'g', 'old_task')
     print('finished',p)
 
-    p = '/nfs/kun1/users/asap7772/cog_data/closed_drawer_prior.npy'
-    with open(p, 'rb') as f:
-        data = np.load(f, allow_pickle=True)
+    # p = '/nfs/kun1/users/asap7772/prior_data/pickplace_newenv_Widow250PickPlaceMultiObjectMultiContainerTrain-v0_20K_save_all_noise_0.1_2021-03-18T01-38-58_19500.npy'
+    # with open(p, 'rb') as f:
+    #     data = np.load(f, allow_pickle=True)
     
-    plots5 = plot(data, num_traj,fig,ax1,ax2,ax3,'y', 'prior_drawer')
-    print('finished',p)
+    # plots3 = plot(data, num_traj,fig,ax1,ax2,ax3,'b', 'prior_pickplace')
+    # print('finished',p)
+
+    # p = '/nfs/kun1/users/asap7772/cog_data/drawer_task.npy'
+    # with open(p, 'rb') as f:
+    #     data = np.load(f, allow_pickle=True)
+    
+    # plots4 = plot(data, num_traj,fig,ax1,ax2,ax3,'r', 'task_drawer')
+    # print('finished',p)
+
+    # p = '/nfs/kun1/users/asap7772/cog_data/closed_drawer_prior.npy'
+    # with open(p, 'rb') as f:
+    #     data = np.load(f, allow_pickle=True)
+    
+    # plots5 = plot(data, num_traj,fig,ax1,ax2,ax3,'y', 'prior_drawer')
+    # print('finished',p)
     
     plt.legend()
     plt.savefig(save_path+'.png',dpi=1200)
