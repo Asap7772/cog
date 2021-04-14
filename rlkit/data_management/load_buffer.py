@@ -19,9 +19,12 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1)
     for j in range(len(data)):
         assert (len(data[j]['actions']) == len(data[j]['observations']) == len(
             data[j]['next_observations']))
-
+        
+        rew = np.array(data[j]['rewards']) * (0.99**np.arange(len(data[j]['rewards'])))
+        mcrewards = np.cumsum(rew[::-1])[::-1].tolist() 
         path = dict(
             rewards=[np.asarray([r]) for r in data[j]['rewards']],
+            mcrewards=[np.asarray([r]) for r in mcrewards],
             actions=data[j]['actions'],
             terminals=[np.asarray([t]) for t in data[j]['terminals']],
             observations=process_images(data[j]['observations']),
@@ -390,3 +393,4 @@ if __name__ == "__main__":
         variant['task_buffer'] = buffers[1]
 
     replay_buffer = load_data_from_npy_chaining(variant, env, observation_key, duplicate=True)
+    import ipdb; ipdb.set_trace()

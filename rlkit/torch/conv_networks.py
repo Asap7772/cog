@@ -284,7 +284,7 @@ class ConcatBottleneckCNN(CNN):
         self.action_dim = action_dim
 
         super().__init__(**cnn_params)
-
+        self.bottleneck_dim = bottleneck_dim
         self.deterministic=deterministic
         self.mlp = Mlp([512,512,512],output_size,self.cnn_params['output_size']//2)
         self.dim = dim
@@ -304,13 +304,56 @@ class ConcatBottleneckCNN(CNN):
         sample = dist.rsample()
         log_prob = dist.log_prob(sample)
         # equation is $$\frac{1}{2}[\mu^T\mu + tr(\Sigma) -k -log|\Sigma|]$$
-        reg_loss = 1/2*(mean.norm(dim=-1, keepdim=True)**2 + (std**2).sum(axis=-1, keepdim=True)-self.action_dim -torch.log(std**2+1E-4).sum(axis=-1, keepdim=True))
+        K = self.bottleneck_dim
+        reg_loss = 1/2*(mean.norm(dim=-1, keepdim=True)**2 + (std**2).sum(axis=-1, keepdim=True)- K - torch.log(std**2+1E-9).sum(axis=-1, keepdim=True))
 
         if self.deterministic:
             sample=mean
             log_prob= -torch.ones_like(log_prob).cuda()
             reg_loss = torch.zeros_like(reg_loss).cuda()
         return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
+
+class TwoHeadCNN(CNN):
+    """
+    Concatenate inputs along dimension and then pass through MLP.
+    """
+    def __init__(self, action_dim, concat_size=256, output_size=1, dim=1, deterministic=False):
+        cnn_params=dict(
+            kernel_sizes=[3, 3, 3],
+            n_channels=[16, 16, 16],
+            strides=[1, 1, 1],
+            hidden_sizes=[1024], #mean/std
+            paddings=[1, 1, 1],
+            pool_type='max2d',
+            pool_sizes=[2, 2, 1],  # the one at the end means no pool
+            pool_strides=[2, 2, 1],
+            pool_paddings=[0, 0, 0],
+            image_augmentation=True,
+            image_augmentation_padding=4,
+        )
+        
+        cnn_params.update(
+            input_width=48,
+            input_height=48,
+            input_channels=3,
+            output_size=concat_size,
+            added_fc_input_size=action_dim,
+        )
+
+        self.cnn_params = cnn_params
+        self.action_dim = action_dim
+
+        super().__init__(**cnn_params)
+        self.concat_size = concat_size
+        self.deterministic=deterministic
+        self.head1 = Mlp([512,512,512],output_size,self.cnn_params['output_size'])
+        self.head2 = Mlp([512,512,512],output_size,self.cnn_params['output_size'])
+        self.dim = dim
+
+    def forward(self, *inputs, **kwargs):
+        flat_inputs = torch.cat(inputs, dim=self.dim)
+        cnn_out = super().forward(flat_inputs, **kwargs)
+        return self.head1(cnn_out), self.head2(cnn_out)
 
 class ConcatRegressCNN(RegressCNN):
     """

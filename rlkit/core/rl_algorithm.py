@@ -6,6 +6,7 @@ import gtimer as gt
 from rlkit.core import logger, eval_util
 from rlkit.data_management.replay_buffer import ReplayBuffer
 from rlkit.samplers.data_collector import DataCollector
+import wandb
 
 
 def _get_epoch_timings():
@@ -53,7 +54,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
 
     def _end_epoch(self, epoch):
         if not self.trainer.discrete:
-            snapshot = self._get_snapshot()
+            snapshot = self._get_snapshot(epoch)
             # logger.save_itr_params(epoch, snapshot)
             gt.stamp('saving')
         self._log_stats(epoch)
@@ -66,14 +67,16 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
         self.replay_buffer.end_epoch(epoch)
         self.trainer.end_epoch(epoch)
 
-    def _get_snapshot(self):
+    def _get_snapshot(self, epoch):
         snapshot = {}
         for k, v in self.trainer.get_snapshot().items():
             snapshot['trainer/' + k] = v
         for k, v in self.expl_data_collector.get_snapshot().items():
             snapshot['exploration/' + k] = v
+        eval_dict = {}
         for k, v in self.eval_data_collector.get_snapshot().items():
             snapshot['evaluation/' + k] = v
+            eval_dict['evaluation/' + k] = v
         for k, v in self.replay_buffer.get_snapshot().items():
             snapshot['replay_buffer/' + k] = v
         return snapshot
@@ -131,6 +134,9 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
                 eval_util.get_generic_path_information(eval_paths),
                 prefix="evaluation/",
             )
+
+        if hasattr(self.trainer, 'wand_b') and self.trainer.wand_b:
+            wandb.log(eval_util.get_generic_path_information(eval_paths), step=epoch)
 
         """
         Misc

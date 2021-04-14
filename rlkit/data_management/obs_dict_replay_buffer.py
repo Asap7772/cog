@@ -331,6 +331,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
         # self._terminals[i] = a terminal was received at time i
         self._terminals = np.zeros((max_size, 1), dtype='uint8')
         self._rewards = np.zeros((max_size, 1))
+        self._mcrewards = np.zeros((max_size, 1))
         # self._obs[key][i] is the value of observation[key] at time i
         self._obs = {}
         self._next_obs = {}
@@ -407,6 +408,11 @@ class ObsDictReplayBuffer(ReplayBuffer):
         rewards = path["rewards"]
         next_obs = path["next_observations"]
         terminals = path["terminals"]
+        if 'mcrewards' in path:
+            mcrewards = path['mcrewards']
+        else:
+            mcrewards = None
+
         path_len = len(rewards)
 
         actions = flatten_n(actions)
@@ -418,10 +424,10 @@ class ObsDictReplayBuffer(ReplayBuffer):
         next_obs = preprocess_obs_dict(next_obs)
 
         self.add_processed_path(path_len, actions, terminals,
-                                obs, next_obs, rewards)
+                                obs, next_obs, rewards, mcrewards=mcrewards)
 
     def add_processed_path(self, path_len, actions, terminals,
-                           obs, next_obs, rewards):
+                           obs, next_obs, rewards, mcrewards=None):
 
         if self._top + path_len >= self.max_size:
             num_pre_wrap_steps = self.max_size - self._top
@@ -440,6 +446,9 @@ class ObsDictReplayBuffer(ReplayBuffer):
                 self._actions[buffer_slice] = actions[path_slice]
                 self._terminals[buffer_slice] = terminals[path_slice]
                 self._rewards[buffer_slice] = terminals[path_slice]
+                if mcrewards is not None:
+                    self._mcrewards[buffer_slice] = mcrewards[path_slice]
+
                 for key in self.ob_keys_to_save + self.internal_keys:
                     self._obs[key][buffer_slice] = obs[key][path_slice]
                     self._next_obs[key][buffer_slice] = next_obs[key][
@@ -516,6 +525,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
         indices = self._sample_indices(batch_size)
         actions = self._actions[indices]
         rewards = self._rewards[indices]
+        mcrewards = self._mcrewards[indices]
         terminals = self._terminals[indices]
         obs = self._obs[self.observation_key][indices]
         next_obs = self._next_obs[self.observation_key][indices]
@@ -550,6 +560,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
             'observations': obs,
             'actions': actions,
             'rewards': rewards,
+            'mcrewards': mcrewards,
             'terminals': terminals,
             'next_observations': next_obs,
             'indices': np.array(indices).reshape(-1, 1),

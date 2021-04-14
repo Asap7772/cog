@@ -5,7 +5,8 @@ from rlkit.samplers.data_collector import MdpPathCollector, \
 
 from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
-from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN
+from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
+from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.launchers.launcher_util import setup_logger
@@ -31,6 +32,7 @@ def experiment(variant):
     eval_env = roboverse.make(variant['env'], transpose_image=True)
     expl_env = eval_env
     action_dim = eval_env.action_space.low.size
+    print(action_dim)
 
     cnn_params = variant['cnn_params']
     cnn_params.update(
@@ -45,6 +47,11 @@ def experiment(variant):
         qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
         target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
         target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+    elif variant['mcret']:
+        qf1 = TwoHeadCNN(action_dim)
+        qf2 = TwoHeadCNN(action_dim)
+        target_qf1 = TwoHeadCNN(action_dim)
+        target_qf2 = TwoHeadCNN(action_dim)
     else:
         qf1 = ConcatCNN(**cnn_params)
         qf2 = ConcatCNN(**cnn_params)
@@ -80,7 +87,7 @@ def experiment(variant):
             variant, expl_env, observation_key)
     else:
         replay_buffer = load_data_from_npy_chaining(
-            variant, expl_env, observation_key, duplicate=True)
+            variant, expl_env, observation_key, duplicate=variant['duplicate'])
 
     # Translate 0/1 rewards to +4/+10 rewards.
     if variant['use_positive_rew']:
@@ -90,19 +97,41 @@ def experiment(variant):
         assert set(np.unique(replay_buffer._rewards)).issubset(
             set(6.0 * np.array([0, 1]) + 4.0))
 
-    trainer = CQLTrainer(
-        env=eval_env,
-        policy=policy,
-        qf1=qf1,
-        qf2=qf2,
-        target_qf1=target_qf1,
-        target_qf2=target_qf2,
-        bottleneck=variant['bottleneck'],
-        bottleneck_const=variant['bottleneck_const'],
-        bottleneck_lagrange=variant['bottleneck_lagrange'],
-        log_dir = variant['log_dir'],
-        **variant['trainer_kwargs']
-    )
+    if variant['mcret']:
+        trainer = CQLMCTrainer(
+            env=eval_env,
+            policy=policy,
+            qf1=qf1,
+            qf2=qf2,
+            target_qf1=target_qf1,
+            target_qf2=target_qf2,
+            bottleneck=variant['bottleneck'],
+            bottleneck_const=variant['bottleneck_const'],
+            bottleneck_lagrange=variant['bottleneck_lagrange'],
+            log_dir = variant['log_dir'],
+            wand_b=not variant['debug'],
+            only_bottleneck = variant['only_bottleneck'],
+            variant_dict=variant,
+            **variant['trainer_kwargs']
+        )
+    else:
+        trainer = CQLTrainer(
+            env=eval_env,
+            policy=policy,
+            qf1=qf1,
+            qf2=qf2,
+            target_qf1=target_qf1,
+            target_qf2=target_qf2,
+            bottleneck=variant['bottleneck'],
+            bottleneck_const=variant['bottleneck_const'],
+            bottleneck_lagrange=variant['bottleneck_lagrange'],
+            log_dir = variant['log_dir'],
+            wand_b=not variant['debug'],
+            only_bottleneck = variant['only_bottleneck'],
+            variant_dict=variant,
+            **variant['trainer_kwargs']
+        )
+
     algorithm = TorchBatchRLAlgorithm(
         trainer=trainer,
         exploration_env=expl_env,
@@ -200,6 +229,8 @@ if __name__ == "__main__":
     parser.add_argument('--bottleneck_dim', type=int, default=16)
     parser.add_argument('--bottleneck_lagrange', action='store_true')
     parser.add_argument("--deterministic_bottleneck", action="store_true", default=False)
+    parser.add_argument("--only_bottleneck", action="store_true", default=False)
+    parser.add_argument("--mcret", action='store_true')
     parser.add_argument("--prior-buffer", type=str, default=DEFAULT_PRIOR_BUFFER)
     parser.add_argument("--task-buffer", type=str, default=DEFAULT_TASK_BUFFER)
     parser.add_argument("--buffer", type=str, default=DEFAULT_BUFFER)
@@ -210,6 +241,7 @@ if __name__ == "__main__":
     parser.add_argument("--lagrange-thresh", default=5.0, type=float,
                         help="Value of tau, used with --use-lagrange")
     parser.add_argument("--use-positive-rew", action="store_true", default=False)
+    parser.add_argument("--duplicate", action="store_true", default=False)
     parser.add_argument("--max-q-backup", action="store_true", default=False,
                         help="For max_{a'} backups, set this to true")
     parser.add_argument("--no-deterministic-backup", action="store_true",
@@ -241,7 +273,9 @@ if __name__ == "__main__":
     variant['bottleneck_lagrange'] = args.bottleneck_lagrange
     variant['bottleneck_dim'] = args.bottleneck_dim
     variant['deterministic_bottleneck']=args.deterministic_bottleneck
-
+    variant['only_bottleneck'] = args.only_bottleneck
+    
+    variant['debug'] = False
     if args.buffer.isnumeric():
         args.buffer = int(args.buffer)
         path = '/nfs/kun1/users/asap7772/cog_data/'
@@ -281,7 +315,78 @@ if __name__ == "__main__":
                 path = '/nfs/kun1/users/asap7772/prior_data/'
             ba('grasp_multneut_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-24T01-17-30_10000.npy', y='zero')
             ba('double_drawer_multneut_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-24T01-19-23_9750.npy', y='zero')
+        elif args.buffer == 7:
+            path = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('pick_Widow250PickTray-v0_10K_save_all_noise_0.1_2021-04-03T12-13-53_10000.npy',y='zero') #prior 
+            ba('place_Widow250PlaceTray-v0_5K_save_all_noise_0.1_2021-04-03T12-14-02_4750.npy') #task
+        elif args.buffer == 8:
+            path = '/nfs/kun1/users/asap7772/cog_data/'
+            ba('pickplace_prior.npy',y='zero') #prior 
+            path = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('place_Widow250PlaceTray-v0_5K_save_all_noise_0.1_2021-04-03T12-14-02_4750.npy') #task
+        elif args.buffer == 9:
+            path = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('pick_Widow250PickTray-v0_10K_save_all_noise_0.1_2021-04-03T12-13-53_10000.npy',y='zero') #prior 
+            path = '/nfs/kun1/users/asap7772/cog_data/'
+            ba('pickplace_task.npy') #task
+        elif args.buffer == 10:
+            path = '/nfs/kun1/users/asap7772/cog_data/'
+            ba('pickplace_prior.npy',y='zero')
+            ba('pickplace_task.npy') #task
+        elif args.buffer == 11:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('coglike_prior_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-00_10000.npy', y='zero')
+            ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy')
+        elif args.buffer == 12:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('coglike_prior_linking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-05T11-11-02_9250.npy', y='zero')
+            ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy')
+        elif args.buffer == 13:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero')
+            ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy')
+        elif args.buffer == 14:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('prior_reset5_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-08_10000.npy', y='zero')
+            ba('task_reset5_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-17_9000.npy')
+        elif args.buffer == 15:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('prior_reset10_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-23_10000.npy', y='zero')
+            ba('task_reset10_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-28_10000.npy')
+        elif args.buffer == 16:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('prior_reset100_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-35_10000.npy', y='zero')
+            ba('task_reset100_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-43_10000.npy')
+        elif args.buffer == 17:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('prior_reset2_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-56-50_8000.npy',y='zero')
+            ba('task_reset2_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-56-55_10000.npy')
+        elif args.buffer == 18:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('prior_reset3_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-01_10000.npy',y='zero')
+            ba('task_reset3_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-10_10000.npy')
+        elif args.buffer == 19:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('prior_reset1000_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-17_9000.npy',y='zero')
+            ba('task_reset1000_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-38_10000.npy')
+        elif args.buffer == 20:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('prior_reset10000_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-44_10000.npy',y='zero')
+            ba('task_reset10000_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-52_9000.npy')
+        elif args.buffer == 21:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('prior_resetinf_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-59_9000.npy',y='zero')
+            ba('task_resetinf_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-58-08_10000.npy')
+        elif args.buffer == 22:
+            ba('closed_drawer_prior.npy',p=args.old_prior_prob,y='zero')
+            ba('drawer_task.npy',p=args.old_prior_prob)
         elif args.buffer == 9000:
+            variant['debug'] = True
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('debug.npy',y='noise')
+            ba('debug.npy',y='noise')
+        elif args.buffer == 9001: #for testing wandb code
+            variant['debug'] = False 
             path  = '/nfs/kun1/users/asap7772/prior_data/'
             ba('debug.npy',y='noise')
             ba('debug.npy',y='noise')
@@ -308,6 +413,8 @@ if __name__ == "__main__":
     variant['trainer_kwargs']['policy_eval_start'] = args.policy_eval_start
     variant['trainer_kwargs']['lagrange_thresh'] = args.lagrange_thresh
     variant['trainer_kwargs']['with_lagrange'] = args.use_lagrange
+    variant['duplicate'] = args.duplicate
+    variant['mcret'] = args.mcret
 
     # Translate 0/1 rewards to +4/+10 rewards.
     variant['use_positive_rew'] = args.use_positive_rew
