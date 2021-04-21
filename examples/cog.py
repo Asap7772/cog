@@ -42,16 +42,16 @@ def experiment(variant):
         output_size=1,
         added_fc_input_size=action_dim,
     )
-    if variant['bottleneck']:
+    if variant['mcret']:
+        qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+        qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+        target_qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+        target_qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+    elif variant['bottleneck']:
         qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
         qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
         target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
         target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-    elif variant['mcret']:
-        qf1 = TwoHeadCNN(action_dim)
-        qf2 = TwoHeadCNN(action_dim)
-        target_qf1 = TwoHeadCNN(action_dim)
-        target_qf2 = TwoHeadCNN(action_dim)
     else:
         qf1 = ConcatCNN(**cnn_params)
         qf2 = ConcatCNN(**cnn_params)
@@ -112,6 +112,7 @@ def experiment(variant):
             wand_b=not variant['debug'],
             only_bottleneck = variant['only_bottleneck'],
             variant_dict=variant,
+            gamma=variant['gamma'],
             **variant['trainer_kwargs']
         )
     else:
@@ -255,7 +256,9 @@ if __name__ == "__main__":
                               "version = 2 (CQL(rho))"))
     parser.add_argument("--num-eval-per-epoch", type=int, default=5)
     parser.add_argument("--seed", default=10, type=int)
+    parser.add_argument("--prob", default=1, type=float)
     parser.add_argument("--old_prior_prob", default=0, type=float)
+    parser.add_argument('--gamma', default=1, type=float)
     parser.add_argument("--name", default='test', type=str)
 
     args = parser.parse_args()
@@ -274,13 +277,14 @@ if __name__ == "__main__":
     variant['bottleneck_dim'] = args.bottleneck_dim
     variant['deterministic_bottleneck']=args.deterministic_bottleneck
     variant['only_bottleneck'] = args.only_bottleneck
+    variant['gamma'] = args.gamma
     
     variant['debug'] = False
     if args.buffer.isnumeric():
         args.buffer = int(args.buffer)
         path = '/nfs/kun1/users/asap7772/cog_data/'
         buffers = []
-        ba = lambda x, p=1, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
+        ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
         if args.buffer == 0:
             ba('closed_drawer_prior.npy',y='zero')
             path = '/nfs/kun1/users/asap7772/prior_data/'
@@ -343,8 +347,8 @@ if __name__ == "__main__":
             ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy')
         elif args.buffer == 13:
             path  = '/nfs/kun1/users/asap7772/prior_data/'
-            ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero')
-            ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy')
+            ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero',p=args.prob)
+            ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy',p=args.prob)
         elif args.buffer == 14:
             path  = '/nfs/kun1/users/asap7772/prior_data/'
             ba('prior_reset5_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-08_10000.npy', y='zero')
@@ -378,8 +382,20 @@ if __name__ == "__main__":
             ba('prior_resetinf_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-59_9000.npy',y='zero')
             ba('task_resetinf_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-58-08_10000.npy')
         elif args.buffer == 22:
-            ba('closed_drawer_prior.npy',p=args.old_prior_prob,y='zero')
-            ba('drawer_task.npy',p=args.old_prior_prob)
+            ba('closed_drawer_prior.npy',p=args.prob,y='zero')
+            ba('drawer_task.npy',p=args.prob)
+        elif args.buffer == 23:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero')
+            ba('randobj_2_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-04-15T14-05-01_10000.npy')
+        elif args.buffer == 24:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero')
+            ba('randobj_5_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-04-15T14-05-10_10000.npy')
+        elif args.buffer == 25:
+            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero')
+            ba('randobj_10_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-04-15T14-05-18_9000.npy')
         elif args.buffer == 9000:
             variant['debug'] = True
             path  = '/nfs/kun1/users/asap7772/prior_data/'

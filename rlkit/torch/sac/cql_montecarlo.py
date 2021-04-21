@@ -41,6 +41,7 @@ class CQLMCTrainer(TorchTrainer):
             target_entropy=None,
             policy_eval_start=0,
             num_qs=2,
+            gamma=1,
 
             # CQL
             min_q_version=3,
@@ -70,6 +71,7 @@ class CQLMCTrainer(TorchTrainer):
             variant_dict=None,
     ):
         super().__init__()
+        self.gamma = gamma
         self.env = env
         self.policy = policy
         self.qf1 = qf1
@@ -273,9 +275,9 @@ class CQLMCTrainer(TorchTrainer):
         bellman_loss = self.qf_criterion(q1_pred, q_target)
         mc_loss = self.qf_criterion(q1_mc, rewards_mc)
 
-        qf1_loss = (self.qf_criterion(q1_pred, q_target) + self.qf_criterion(q1_mc, rewards_mc))/2
+        qf1_loss = self.qf_criterion(q1_pred, q_target) + self.gamma * self.qf_criterion(q1_mc, rewards_mc)
         if self.num_qs > 1:
-            qf2_loss = (self.qf_criterion(q2_pred, q_target) + self.qf_criterion(q1_mc, rewards_mc))/2
+            qf2_loss = self.qf_criterion(q2_pred, q_target) + self.gamma * self.qf_criterion(q1_mc, rewards_mc)
 
         if self.dist_diff:
             sizes = tuple(ptu.get_numpy(batch['batch_dist']).astype(int).tolist())
@@ -444,8 +446,8 @@ class CQLMCTrainer(TorchTrainer):
                     'rewards',
                     ptu.get_numpy(rewards)
                 ))
-                self.eval_statistics['Bellman Loss'] = np.mean(ptu.get_numpy(policy_loss))
-                self.eval_statistics['MC Loss'] = np.mean(ptu.get_numpy(policy_loss))
+            self.eval_statistics['Bellman Loss'] = np.mean(ptu.get_numpy(bellman_loss))
+            self.eval_statistics['MC Loss'] = np.mean(ptu.get_numpy(mc_loss))
 
             self.eval_statistics['Num Q Updates'] = self._num_q_update_steps
             self.eval_statistics['Num Policy Updates'] = self._num_policy_update_steps

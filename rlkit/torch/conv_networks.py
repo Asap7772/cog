@@ -317,7 +317,7 @@ class TwoHeadCNN(CNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, action_dim, concat_size=256, output_size=1, dim=1, deterministic=False):
+    def __init__(self, action_dim, concat_size=256, output_size=1, dim=1, deterministic=False, bottleneck_dim=16): #TODO implement bottleneck
         cnn_params=dict(
             kernel_sizes=[3, 3, 3],
             n_channels=[16, 16, 16],

@@ -203,14 +203,19 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
     if type(variant['prior_buffer']) == tuple:
         variant['prior_buffer'], p_dict = variant['prior_buffer']
         variant['task_buffer'], t_dict = variant['task_buffer'] # may change
-        print(p_dict)
     else:
         assert False
         
     with open(variant['prior_buffer'], 'rb') as f:
         data_prior = np.load(f, allow_pickle=True)
+        if p_dict['p'] != 1:
+            print('truncated to size', p_dict['p'])
+            data_prior = data_prior[:int(len(data_prior)*p_dict['p'])]
     with open(variant['task_buffer'], 'rb') as f:
         data_task = np.load(f, allow_pickle=True)
+        if t_dict['p'] != 1:
+            print('truncated to size', t_dict['p'])
+            data_task = data_task[:int(len(data_task)*t_dict['p'])]
 
     buffer_size = get_buffer_size(data_prior)
     buffer_size += get_buffer_size(data_task)
