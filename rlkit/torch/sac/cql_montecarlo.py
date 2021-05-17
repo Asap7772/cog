@@ -48,6 +48,9 @@ class CQLMCTrainer(TorchTrainer):
             temp=1.0,
             min_q_weight=1.0,
 
+            log_pickle=True,
+            pickle_log_rate=5,
+
             ## sort of backup
             max_q_backup=False,
             deterministic_backup=True,
@@ -80,6 +83,8 @@ class CQLMCTrainer(TorchTrainer):
         self.target_qf2 = target_qf2
         self.soft_target_tau = soft_target_tau
         self.log_dir = log_dir
+        self.log_pickle=log_pickle
+        self.pickle_log_rate=pickle_log_rate
 
 
         self.hinge_trans=hinge_trans
@@ -277,7 +282,7 @@ class CQLMCTrainer(TorchTrainer):
 
         qf1_loss = self.qf_criterion(q1_pred, q_target) + self.gamma * self.qf_criterion(q1_mc, rewards_mc)
         if self.num_qs > 1:
-            qf2_loss = self.qf_criterion(q2_pred, q_target) + self.gamma * self.qf_criterion(q1_mc, rewards_mc)
+            qf2_loss = self.qf_criterion(q2_pred, q_target) + self.gamma * self.qf_criterion(q2_mc, rewards_mc)
 
         if self.dist_diff:
             sizes = tuple(ptu.get_numpy(batch['batch_dist']).astype(int).tolist())
@@ -399,6 +404,19 @@ class CQLMCTrainer(TorchTrainer):
         """
         if self._need_to_update_eval_statistics:
             self._need_to_update_eval_statistics = False
+
+            if self.log_pickle and self._log_epoch % self.pickle_log_rate == 0:
+                new_path = os.path.join(self.log_dir,'model_pkl')
+                if not os.path.isdir(new_path):
+                    os.mkdir(new_path)
+                torch.save({
+                    'qf1_state_dict': self.qf1.state_dict(),
+                    'qf2_state_dict': self.qf2.state_dict(),
+                    'targetqf1_state_dict': self.target_qf1.state_dict(),
+                    'targetqf2_state_dict': self.target_qf2.state_dict(),
+                    'policy_state_dict': self.policy.state_dict(),
+                }, os.path.join(new_path, str(self._log_epoch)+'.pt'))
+
             """
             Eval should set this to None.
             This way, these statistics are only computed for one batch.

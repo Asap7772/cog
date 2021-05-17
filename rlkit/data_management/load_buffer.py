@@ -15,10 +15,13 @@ def get_buffer_size(data):
 
 
 def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1):
-
     for j in range(len(data)):
+        # import ipdb; ipdb.set_trace()
         assert (len(data[j]['actions']) == len(data[j]['observations']) == len(
             data[j]['next_observations']))
+
+        if 'next_actions' not in data[j]:
+            data[j]['next_actions'] = np.concatenate((data[j]['actions'][1:], data[j]['actions'][-1:]))
         
         rew = np.array(data[j]['rewards']) * (0.99**np.arange(len(data[j]['rewards'])))
         mcrewards = np.cumsum(rew[::-1])[::-1].tolist() 
@@ -26,10 +29,12 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1)
             rewards=[np.asarray([r]) for r in data[j]['rewards']],
             mcrewards=[np.asarray([r]) for r in mcrewards],
             actions=data[j]['actions'],
+            next_actions =data[j]['next_actions'],
             terminals=[np.asarray([t]) for t in data[j]['terminals']],
             observations=process_images(data[j]['observations']),
             next_observations=process_images(
                 data[j]['next_observations']),
+            object_position = process_obj_positions(data[j]['observations'])
         )
 
         if scale_rew:
@@ -199,21 +204,116 @@ def load_data_from_npy_mult(variant, expl_env, observation_key, extra_buffer_siz
     return CombinedReplayBuffer2(buffers=buffers, p=p)
 
 def load_data_from_npy_chaining(variant, expl_env, observation_key,
-                                extra_buffer_size=100, duplicate=False):
+                                extra_buffer_size=100, duplicate=False, num_traj=0):
     if type(variant['prior_buffer']) == tuple:
         variant['prior_buffer'], p_dict = variant['prior_buffer']
         variant['task_buffer'], t_dict = variant['task_buffer'] # may change
     else:
         assert False
-        
     with open(variant['prior_buffer'], 'rb') as f:
         data_prior = np.load(f, allow_pickle=True)
-        if p_dict['p'] != 1:
+        if num_traj > 0:
+            print('truncated to absolute size', num_traj)
+            data_prior = data_prior[:num_traj]
+        elif p_dict['p'] != 1:
             print('truncated to size', p_dict['p'])
             data_prior = data_prior[:int(len(data_prior)*p_dict['p'])]
     with open(variant['task_buffer'], 'rb') as f:
         data_task = np.load(f, allow_pickle=True)
-        if t_dict['p'] != 1:
+        if num_traj > 0:
+            print('truncated to absolute size', num_traj)
+            data_task = data_task[:num_traj]
+        elif t_dict['p'] != 1:
+            print('truncated to size', t_dict['p'])
+            data_task = data_task[:int(len(data_task)*t_dict['p'])]
+
+    buffer_size = get_buffer_size(data_prior)
+    buffer_size += get_buffer_size(data_task)
+    if duplicate:
+        buffer_size += get_buffer_size(data_task)
+    buffer_size += extra_buffer_size
+
+    # TODO Clean this up
+    if 'biased_sampling' in variant:
+        if variant['biased_sampling']:
+            bias_point = buffer_size - extra_buffer_size
+            print('Setting bias point', bias_point)
+            replay_buffer = ObsDictReplayBuffer(
+                buffer_size,
+                expl_env,
+                observation_key=observation_key,
+                biased_sampling=True,
+                bias_point=bias_point,
+                before_bias_point_probability=0.5,
+            )
+        else:
+            replay_buffer = ObsDictReplayBuffer(
+                buffer_size,
+                expl_env,
+                observation_key=observation_key,
+            )
+    else:
+        replay_buffer = ObsDictReplayBuffer(
+            buffer_size,
+            expl_env,
+            observation_key=observation_key,
+        )
+
+    add_data_to_buffer(data_prior, replay_buffer)
+    top = replay_buffer._top
+    print('Prior data loaded from npy file', top)
+    if p_dict['alter_type'] == 'zero':
+        replay_buffer._rewards[:top] = 0.0*replay_buffer._rewards[:top]
+        print('Zero-ed the rewards for prior data', top)
+    elif p_dict['alter_type'] == 'noise':
+        noise = np.random.normal(0, 1, replay_buffer._rewards[:top].shape)
+        replay_buffer._rewards[:top] = replay_buffer._rewards[:top] + noise
+        print('Noise-ed the rewards for prior data', top)
+    else:
+        assert False
+
+    top2 = replay_buffer._top
+    add_data_to_buffer(data_task, replay_buffer)
+    if t_dict['alter_type'] == 'zero':
+        replay_buffer._rewards[top:top2] = 0.0*replay_buffer._rewards[top:top2]
+        print('Zero-ed the rewards for task data', top)
+    elif t_dict['alter_type'] == 'noise':
+        noise = np.random.normal(0, 1, replay_buffer._rewards[top:top2].shape)
+        replay_buffer._rewards[top:top2] = replay_buffer._rewards[top:top2] + noise
+        print('Noise-ed the rewards for task data', top)
+    elif t_dict['alter_type'] == None:
+        pass
+    else:
+        assert False
+    print('Task data loaded from npy file', replay_buffer._top)
+    
+    if duplicate:
+        add_data_to_buffer(data_task, replay_buffer)
+        print('Duplicate data loaded from npy file', replay_buffer._top)
+    return replay_buffer
+
+
+def load_data_from_npy_chaining_val(variant, expl_env, observation_key,
+                                extra_buffer_size=100, duplicate=False, num_traj=0):
+    if type(variant['prior_buffer']) == tuple:
+        variant['prior_buffer'], p_dict = variant['prior_buffer']
+        variant['task_buffer'], t_dict = variant['task_buffer'] # may change
+    else:
+        assert False
+    with open(variant['prior_buffer'], 'rb') as f:
+        data_prior = np.load(f, allow_pickle=True)
+        if num_traj > 0:
+            print('truncated to absolute size', num_traj)
+            data_prior = data_prior[:num_traj]
+        elif p_dict['p'] != 1:
+            print('truncated to size', p_dict['p'])
+            data_prior = data_prior[:int(len(data_prior)*p_dict['p'])]
+    with open(variant['task_buffer'], 'rb') as f:
+        data_task = np.load(f, allow_pickle=True)
+        if num_traj > 0:
+            print('truncated to absolute size', num_traj)
+            data_task = data_task[:num_traj]
+        elif t_dict['p'] != 1:
             print('truncated to size', t_dict['p'])
             data_task = data_task[:int(len(data_task)*t_dict['p'])]
 
@@ -364,6 +464,13 @@ def process_images(observations):
         output.append(dict(image=image))
     return output
 
+def process_obj_positions(observations):
+    output = []
+    for i in range(len(observations)):
+        pos = observations[i]['object_position'][:2]
+        output.append(pos)
+    return output
+
 if __name__ == "__main__":
     observation_key = 'image'
     variant = dict(env = 'Widow250DoubleDrawerOpenGraspNeutral-v0')
@@ -391,6 +498,10 @@ if __name__ == "__main__":
     elif args.buffer == 4:
         ba('closed_drawer_prior.npy',y='noise')
         ba('drawer_task.npy',y='noise')
+    elif args.buffer == 5:
+        path = '/nfs/kun1/users/asap7772/cog_data/'
+        ba('pick_2obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-43_5000.npy',y='noise')
+        ba('place_2obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-49_5000.npy',y='noise')
     variant['buffer'] = buffers
     
     if variant['buffer'] is not None:

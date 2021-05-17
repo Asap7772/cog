@@ -17,7 +17,8 @@ class RegressTrainer(TorchTrainer):
             network,
             network_lr=1e-3,
             optimizer_class=optim.Adam,
-            alt_buffer=None
+            alt_buffer=None,
+            regress_key='object_positions'
     ):
         super().__init__()
         self.env = env
@@ -39,12 +40,13 @@ class RegressTrainer(TorchTrainer):
         self._num_network_update_steps = 0
         self.discrete = False
         self.alt_buffer = alt_buffer
+        self.regress_key=regress_key
 
     def train_from_torch(self, batch, online=False):
         self._current_epoch += 1
 
         obs = batch['observations']
-        orient = batch['camera_orientation']
+        orient = batch[self.regress_key]
 
         """Start with Regression"""
         pred = self.network(obs)
@@ -60,8 +62,8 @@ class RegressTrainer(TorchTrainer):
 
         if self.alt_buffer is not None:
             batch_alt = self.alt_buffer.random_batch(obs.shape[0])
-            obs_new = batch['observations']
-            orient_new = batch['camera_orientation']
+            obs_new = ptu.from_numpy(batch_alt['observations'])
+            orient_new = ptu.from_numpy(batch_alt[self.regress_key])
             pred = self.network(obs_new)
             network_val_loss = F.mse_loss(pred, orient_new)
         else:

@@ -16,7 +16,7 @@ from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 import wandb
 
-class CQLTrainer(TorchTrainer):
+class CQLBCTrainer(TorchTrainer):
     def __init__(
             self, 
             env,
@@ -41,6 +41,7 @@ class CQLTrainer(TorchTrainer):
             target_entropy=None,
             policy_eval_start=0,
             num_qs=2,
+            gamma=1,
 
             # CQL
             min_q_version=3,
@@ -53,6 +54,7 @@ class CQLTrainer(TorchTrainer):
             num_random=10,
             with_lagrange=False,
             lagrange_thresh=0.0,
+
             log_pickle=True,
             pickle_log_rate=5,
 
@@ -69,10 +71,9 @@ class CQLTrainer(TorchTrainer):
             log_dir=None,
             wand_b=True,
             variant_dict=None,
-            validation=False,
-            validation_buffer=None,
     ):
         super().__init__()
+        self.gamma = gamma
         self.env = env
         self.policy = policy
         self.qf1 = qf1
@@ -83,6 +84,7 @@ class CQLTrainer(TorchTrainer):
         self.log_dir = log_dir
         self.log_pickle=log_pickle
         self.pickle_log_rate=pickle_log_rate
+
 
         self.hinge_trans=hinge_trans
         self.dist_diff=dist_diff
@@ -165,8 +167,7 @@ class CQLTrainer(TorchTrainer):
         # For implementation on the 
         self.discrete = False
         self.tsne = True
-        self.validation = validation
-        self.validation_buffer = validation_buffer
+        
 
         self.wand_b = wand_b
         if self.wand_b:
@@ -180,7 +181,7 @@ class CQLTrainer(TorchTrainer):
         obs_shape = obs.shape[0]
         num_repeat = int (action_shape / obs_shape)
         obs_temp = obs.unsqueeze(1).repeat(1, num_repeat, 1).view(obs.shape[0] * num_repeat, obs.shape[1])
-        preds = network(obs_temp, actions)
+        preds, _ = network(obs_temp, actions)
         preds = preds.view(obs.shape[0], num_repeat, 1)
         return preds
 
@@ -197,9 +198,11 @@ class CQLTrainer(TorchTrainer):
     def train_from_torch(self, batch):
         self._current_epoch += 1
         rewards = batch['rewards']
+        rewards_mc = batch['mcrewards']
         terminals = batch['terminals']
         obs = batch['observations']
         actions = batch['actions']
+        next_actions = batch['next_actions']
         next_obs = batch['next_observations']
 
         """
@@ -223,8 +226,8 @@ class CQLTrainer(TorchTrainer):
             q_new_actions = self.qf1(obs, new_obs_actions)
         else:
             q_new_actions = torch.min(
-                self.qf1(obs, new_obs_actions),
-                self.qf2(obs, new_obs_actions),
+                self.qf1(obs, new_obs_actions)[0],
+                self.qf2(obs, new_obs_actions)[0],
             )
 
         policy_loss = (alpha*log_pi - q_new_actions).mean()
@@ -241,9 +244,9 @@ class CQLTrainer(TorchTrainer):
         """
         QF Loss
         """
-        q1_pred = self.qf1(obs, actions)
+        q1_pred, q1_bc = self.qf1(obs, actions)
         if self.num_qs > 1:
-            q2_pred = self.qf2(obs, actions)
+            q2_pred, q2_bc = self.qf2(obs, actions)
         
         new_next_actions, _, _, new_log_pi, *_ = self.policy(
             next_obs, reparameterize=True, return_log_prob=True,
@@ -257,8 +260,8 @@ class CQLTrainer(TorchTrainer):
                 target_q_values = self.target_qf1(next_obs, new_next_actions)
             else:
                 target_q_values = torch.min(
-                    self.target_qf1(next_obs, new_next_actions),
-                    self.target_qf2(next_obs, new_next_actions),
+                    self.target_qf1(next_obs, new_next_actions)[0],
+                    self.target_qf2(next_obs, new_next_actions)[0],
                 )
             
             if not self.deterministic_backup:
@@ -273,11 +276,16 @@ class CQLTrainer(TorchTrainer):
 
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
         q_target = q_target.detach()
-            
-        qf1_loss = self.qf_criterion(q1_pred, q_target)
-        if self.num_qs > 1:
-            qf2_loss = self.qf_criterion(q2_pred, q_target)
 
+        bellman_loss = self.qf_criterion(q1_pred, q_target)
+        
+        target_sarsa = torch.min(self.target_qf1(next_obs, next_actions)[1], self.target_qf2(next_obs, next_actions)[1])
+        q_target_sarsa = self.reward_scale * rewards + (1. - terminals) * self.discount * target_sarsa
+        bc_loss = self.qf_criterion(q1_bc, q_target_sarsa)
+
+        qf1_loss = self.qf_criterion(q1_pred, q_target) + self.gamma * self.qf_criterion(q1_bc, q_target_sarsa)
+        if self.num_qs > 1:
+            qf2_loss = self.qf_criterion(q2_pred, q_target) + self.gamma * self.qf_criterion(q2_bc, q_target_sarsa)
 
         if self.dist_diff:
             sizes = tuple(ptu.get_numpy(batch['batch_dist']).astype(int).tolist())
@@ -399,10 +407,7 @@ class CQLTrainer(TorchTrainer):
         """
         if self._need_to_update_eval_statistics:
             self._need_to_update_eval_statistics = False
-            """
-            Eval should set this to None.
-            This way, these statistics are only computed for one batch.
-            """
+
             if self.log_pickle and self._log_epoch % self.pickle_log_rate == 0:
                 new_path = os.path.join(self.log_dir,'model_pkl')
                 if not os.path.isdir(new_path):
@@ -415,53 +420,10 @@ class CQLTrainer(TorchTrainer):
                     'policy_state_dict': self.policy.state_dict(),
                 }, os.path.join(new_path, str(self._log_epoch)+'.pt'))
 
-            if self.validation:
-                num_val = 16
-                batch_val = self.validation_buffer.random_batch(num_val)
-                rewards_val = ptu.from_numpy(batch_val['rewards'])
-                terminals_val = ptu.from_numpy(batch_val['terminals'])
-                obs_val = ptu.from_numpy(batch_val['observations'])
-                actions_val = ptu.from_numpy(batch_val['actions'])
-                next_obs_val = ptu.from_numpy(batch_val['next_observations'])
-
-                q1_pred_val = self.qf1(obs_val, actions_val)
-                self.eval_statistics.update(create_stats_ordered_dict(
-                    'val_qf1',
-                    ptu.get_numpy(q1_pred_val)
-                ))
-
-                new_next_actions_val, _, _, new_log_pi, *_ = self.policy(
-                    next_obs_val, reparameterize=True, return_log_prob=True,
-                )
-
-                if not self.max_q_backup:
-                    if self.num_qs == 1:
-                        target_q_values_val = self.target_qf1(next_obs_val, new_next_actions_val)
-                    else:
-                        target_q_values_val = torch.min(
-                            self.target_qf1(next_obs_val, new_next_actions_val),
-                            self.target_qf2(next_obs_val, new_next_actions_val),
-                        )
-                    
-                    if not self.deterministic_backup:
-                        target_q_values_val = target_q_values_val - alpha * new_log_pi
-                
-                if self.max_q_backup:
-                    """when using max q backup"""
-                    next_actions_temp_val, _ = self._get_policy_actions(next_obs_val, num_actions=10, network=self.policy)
-                    target_qf1_values_val = self._get_tensor_values(next_obs_val, next_actions_temp_val, network=self.target_qf1).max(1)[0].view(-1, 1)
-                    target_qf2_values_val = self._get_tensor_values(next_obs_val, next_actions_temp_val, network=self.target_qf2).max(1)[0].view(-1, 1)
-                    target_q_values_val = torch.min(target_qf1_values_val, target_qf2_values_val)
-
-                q_target_val = self.reward_scale * rewards_val + (1. - terminals_val) * self.discount * target_q_values_val
-                q_target_val = q_target_val.detach()
-                self.eval_statistics.update(create_stats_ordered_dict(
-                    'val_qtarget',
-                    ptu.get_numpy(q_target_val)
-                ))
-                qf1_loss_val = self.qf_criterion(q1_pred_val, q_target_val)
-                self.eval_statistics['Val QF1 Loss'] = np.mean(ptu.get_numpy(qf1_loss_val))
-
+            """
+            Eval should set this to None.
+            This way, these statistics are only computed for one batch.
+            """
             policy_loss = (log_pi - q_new_actions).mean()
 
             self.eval_statistics['QF1 Loss'] = np.mean(ptu.get_numpy(qf1_loss))
@@ -505,6 +467,8 @@ class CQLTrainer(TorchTrainer):
                     'rewards',
                     ptu.get_numpy(rewards)
                 ))
+            self.eval_statistics['Bellman Loss'] = np.mean(ptu.get_numpy(bellman_loss))
+            self.eval_statistics['BC Loss'] = np.mean(ptu.get_numpy(bc_loss))
 
             self.eval_statistics['Num Q Updates'] = self._num_q_update_steps
             self.eval_statistics['Num Policy Updates'] = self._num_policy_update_steps
@@ -545,7 +509,6 @@ class CQLTrainer(TorchTrainer):
                 self.eval_statistics['QF2 Bottleneck Mean'] = np.mean(ptu.get_numpy(qf2_bottleneck_mean))
                 self.eval_statistics['QF1 Bottleneck LogStd'] = np.mean(ptu.get_numpy(qf1_bottleneck_logstd))
                 self.eval_statistics['QF2 Bottleneck LogStd'] = np.mean(ptu.get_numpy(qf2_bottleneck_logstd))
-
 
                 if self.tsne and self.log_dir is not None:
                     new_path = os.path.join(self.log_dir,'visualize')
