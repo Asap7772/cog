@@ -170,7 +170,7 @@ class CQLTrainer(TorchTrainer):
 
         self.wand_b = wand_b
         if self.wand_b:
-            wandb.init(project='cog_cql', reinit=True)
+            wandb.init(project='final_cog_cql', reinit=True)
             wandb.run.name=log_dir.split('/')[-1]
             if variant_dict is not None:
                 wandb.config.update(variant_dict)
