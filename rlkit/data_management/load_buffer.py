@@ -478,7 +478,7 @@ if __name__ == "__main__":
     env = roboverse.make(variant['env'], transpose_image=True)
     
     args = lambda:0 #RANDOM Object
-    args.buffer = 1
+    args.buffer = 9001
     path = '/nfs/kun1/users/asap7772/cog_data/'
     buffers = []
     ba = lambda x, p=1, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
@@ -502,6 +502,10 @@ if __name__ == "__main__":
         path = '/nfs/kun1/users/asap7772/cog_data/'
         ba('pick_2obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-43_5000.npy',y='noise')
         ba('place_2obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-49_5000.npy',y='noise')
+    elif args.buffer == 9001:
+        path  = '/nfs/kun1/users/asap7772/prior_data/'
+        ba('debug.npy',y='noise')
+        ba('debug.npy',y='noise')
     variant['buffer'] = buffers
     
     if variant['buffer'] is not None:

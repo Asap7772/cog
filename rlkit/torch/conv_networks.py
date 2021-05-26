@@ -273,7 +273,7 @@ class ConcatBottleneckCNN(CNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False):
+    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False, width=48, height=48):
         cnn_params=dict(
             kernel_sizes=[3, 3, 3],
             n_channels=[16, 16, 16],
@@ -289,8 +289,8 @@ class ConcatBottleneckCNN(CNN):
         )
         
         cnn_params.update(
-            input_width=48,
-            input_height=48,
+            input_width=width,
+            input_height=height,
             input_channels=3,
             output_size=bottleneck_dim*2,
             added_fc_input_size=action_dim,
@@ -393,7 +393,7 @@ class TwoHeadCNN(CNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, action_dim, concat_size=256, output_size=1, dim=1, deterministic=False, bottleneck_dim=16): #TODO implement bottleneck
+    def __init__(self, action_dim, concat_size=256, output_size=1, dim=1, deterministic=False, bottleneck_dim=16, width=48,height=48): #TODO implement bottleneck
         cnn_params=dict(
             kernel_sizes=[3, 3, 3],
             n_channels=[16, 16, 16],
@@ -409,8 +409,8 @@ class TwoHeadCNN(CNN):
         )
         
         cnn_params.update(
-            input_width=48,
-            input_height=48,
+            input_width=width,
+            input_height=height,
             input_channels=3,
             output_size=concat_size,
             added_fc_input_size=action_dim,

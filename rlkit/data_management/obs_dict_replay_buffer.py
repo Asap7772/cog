@@ -428,9 +428,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
                                 self.ob_keys_to_save + self.internal_keys)
         obs = preprocess_obs_dict(obs)
         next_obs = preprocess_obs_dict(next_obs)
-
-        self.add_processed_path(path_len, actions, terminals,
-                                obs, next_obs, rewards, mcrewards=mcrewards, next_actions=next_actions,object_positions=object_positions)
+        self.add_processed_path(path_len, actions, terminals, obs, next_obs, rewards, mcrewards=mcrewards, next_actions=next_actions,object_positions=object_positions if 'object_position' in path else None)
 
     def add_processed_path(self, path_len, actions, terminals,
                            obs, next_obs, rewards, mcrewards=None, next_actions=None, object_positions=None):

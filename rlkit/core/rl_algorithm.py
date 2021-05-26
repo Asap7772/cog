@@ -136,7 +136,8 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
             )
 
         if hasattr(self.trainer, 'wand_b') and self.trainer.wand_b:
-            wandb.log(eval_util.get_generic_path_information(eval_paths), step=epoch)
+            if not self.trainer.real_data:
+                wandb.log(eval_util.get_generic_path_information(eval_paths), step=epoch)
 
         """
         Misc

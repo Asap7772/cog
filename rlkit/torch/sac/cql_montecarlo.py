@@ -72,6 +72,7 @@ class CQLMCTrainer(TorchTrainer):
             log_dir=None,
             wand_b=True,
             variant_dict=None,
+            real_data=False,
     ):
         super().__init__()
         self.gamma = gamma
@@ -171,8 +172,12 @@ class CQLMCTrainer(TorchTrainer):
         
 
         self.wand_b = wand_b
+        self.real_data = real_data
         if self.wand_b:
-            wandb.init(project='cog_cql', reinit=True)
+            if self.real_data:
+                wandb.init(project='real_drawer_cql', reinit=True)
+            else:
+                wandb.init(project='cog_cql', reinit=True)
             wandb.run.name=log_dir.split('/')[-1]
             if variant_dict is not None:
                 wandb.config.update(variant_dict)

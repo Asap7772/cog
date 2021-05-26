@@ -71,6 +71,7 @@ class CQLTrainer(TorchTrainer):
             variant_dict=None,
             validation=False,
             validation_buffer=None,
+            real_data=False,
     ):
         super().__init__()
         self.env = env
@@ -169,8 +170,12 @@ class CQLTrainer(TorchTrainer):
         self.validation_buffer = validation_buffer
 
         self.wand_b = wand_b
+        self.real_data = real_data
         if self.wand_b:
-            wandb.init(project='cog_cql', reinit=True)
+            if self.real_data:
+                wandb.init(project='real_drawer_cql', reinit=True)
+            else:
+                wandb.init(project='cog_cql', reinit=True)
             wandb.run.name=log_dir.split('/')[-1]
             if variant_dict is not None:
                 wandb.config.update(variant_dict)
