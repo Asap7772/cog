@@ -87,7 +87,10 @@ def experiment(variant):
 
     observation_key = 'image'
     paths = []
-    data_path = '/nfs/kun1/users/ashvin/data/val_data'
+    if args.azure:
+        data_path = '/home/asap7772/drawer_data'
+    else:
+        data_path = '/nfs/kun1/users/ashvin/data/val_data'
     if args.buffer == 0:
         print('lid on')
         paths.append((os.path.join(data_path,'fixed_pot_demos.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
@@ -280,6 +283,7 @@ if __name__ == "__main__":
     parser.add_argument("--only_bottleneck", action="store_true", default=False)
     parser.add_argument("--mcret", action='store_true')
     parser.add_argument("--bchead", action='store_true')
+    parser.add_argument("--azure", action='store_true', default=False)
     parser.add_argument("--prior-buffer", type=str, default=DEFAULT_PRIOR_BUFFER)
     parser.add_argument("--task-buffer", type=str, default=DEFAULT_TASK_BUFFER)
     parser.add_argument("--buffer", type=str, default=DEFAULT_BUFFER)

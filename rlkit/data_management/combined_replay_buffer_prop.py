@@ -1,7 +1,7 @@
 import numpy as np
 import random
 import ipdb
-import kornia
+# import kornia
 import torch
 
 from rlkit.data_management.replay_buffer import ReplayBuffer
