@@ -102,7 +102,7 @@ def experiment(variant):
         paths.append((os.path.join(data_path,'fixed_tray_demos.npy'), os.path.join(data_path,'fixed_tray_demos_rew.pkl')))
     elif args.buffer == 3:
         print('drawer')
-        paths.append((os.path.join(data_path,'fixed_drawer_demos.pkl'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_drawer_demos.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
     else:
         assert False
     
