@@ -87,7 +87,10 @@ def experiment(variant):
 
     observation_key = 'image'
     paths = []
-    data_path = '/nfs/kun1/users/ashvin/data/val_data'
+    if args.azure:
+        data_path = '/home/asap7772/drawer_data'
+    else:
+        data_path = '/nfs/kun1/users/ashvin/data/val_data'
     if args.buffer == 0:
         print('lid on')
         paths.append((os.path.join(data_path,'fixed_pot_demos.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
@@ -99,7 +102,7 @@ def experiment(variant):
         paths.append((os.path.join(data_path,'fixed_tray_demos.npy'), os.path.join(data_path,'fixed_tray_demos_rew.pkl')))
     elif args.buffer == 3:
         print('drawer')
-        paths.append((os.path.join(data_path,'fixed_drawer_demos.pkl'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_drawer_demos.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
     elif args.buffer == 4:
         print('Stephen Tool Use')
         path = '/nfs/kun1/users/asap7772/real_data_tooluse/on_policy_longer_1_26_buffers/move_tool_obj_together_norm_fixchan5_27_train.pkl'
@@ -285,6 +288,7 @@ if __name__ == "__main__":
     parser.add_argument("--only_bottleneck", action="store_true", default=False)
     parser.add_argument("--mcret", action='store_true')
     parser.add_argument("--bchead", action='store_true')
+    parser.add_argument("--azure", action='store_true', default=False)
     parser.add_argument("--prior-buffer", type=str, default=DEFAULT_PRIOR_BUFFER)
     parser.add_argument("--task-buffer", type=str, default=DEFAULT_TASK_BUFFER)
     parser.add_argument("--buffer", type=str, default=DEFAULT_BUFFER)
