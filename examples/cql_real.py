@@ -100,12 +100,17 @@ def experiment(variant):
     elif args.buffer == 3:
         print('drawer')
         paths.append((os.path.join(data_path,'fixed_drawer_demos.pkl'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
+    elif args.buffer == 4:
+        print('Stephen Tool Use')
+        path = '/nfs/kun1/users/asap7772/real_data_tooluse/on_policy_longer_1_26_buffers/move_tool_obj_together_norm_fixchan5_27_train.pkl'
     else:
         assert False
-    
-    replay_buffer = get_buffer(observation_key=observation_key)
-    for path, rew_path in paths:
-        load_path(path, rew_path, replay_buffer)
+    if args.buffer in [4]:
+        replay_buffer = pickle.load(path)
+    else:
+        replay_buffer = get_buffer(observation_key=observation_key)
+        for path, rew_path in paths:
+            load_path(path, rew_path, replay_buffer)
 
     if variant['val']:
         #TODO change
