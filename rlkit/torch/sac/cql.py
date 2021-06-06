@@ -61,6 +61,7 @@ class CQLTrainer(TorchTrainer):
             dist_diff=False,
             dist1 = 0,
             dist2 = 1,
+            squared=False,
 
             bottleneck= False,
             bottleneck_const=0.5,
@@ -167,6 +168,7 @@ class CQLTrainer(TorchTrainer):
 
         # For implementation on the 
         self.discrete = False
+        self.squared = squared
         self.tsne = True
         self.validation = validation
         self.validation_buffer = validation_buffer
@@ -332,13 +334,17 @@ class CQLTrainer(TorchTrainer):
 
         std_q1 = torch.std(cat_q1, dim=1)
         std_q2 = torch.std(cat_q2, dim=1)
-            
-        min_qf1_loss = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
-        min_qf2_loss = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
+        
+        if self.squared:
+            min_qf1_loss = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean()**2 * self.min_q_weight * self.temp
+            min_qf2_loss = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean()**2 * self.min_q_weight * self.temp
+        else:            
+            min_qf1_loss = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
+            min_qf2_loss = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
                     
-        """Subtract the log likelihood of data"""
-        min_qf1_loss = min_qf1_loss - q1_pred.mean() * self.min_q_weight
-        min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.min_q_weight
+            """Subtract the log likelihood of data"""
+            min_qf1_loss = min_qf1_loss - q1_pred.mean() * self.min_q_weight
+            min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.min_q_weight
         
         if self.bottleneck:
             qf1_bottleneck_sample, qf1_bottleneck_sample_log_prob, qf1_bottleneck_loss, qf1_bottleneck_mean, qf1_bottleneck_logstd, qf1_sample = self.qf1.detailed_forward(obs,actions)

@@ -16,6 +16,9 @@ import argparse, os
 import roboverse
 import numpy as np
 
+import os
+from os.path import expanduser
+
 DEFAULT_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
                         '_noise_0.1_2020-10-06T19-37-26_100.npy')
@@ -38,6 +41,12 @@ def experiment(variant):
     print(action_dim)
 
     cnn_params = variant['cnn_params']
+    if variant['bigger_net']:
+        print('bigger_net')
+        cnn_params.update(
+            hidden_sizes=[1024, 512, 512, 512, 256],
+        )
+        
     cnn_params.update(
         input_width=48,
         input_height=48,
@@ -100,11 +109,11 @@ def experiment(variant):
             buffers = []
             ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
             if args.buffer == 30:
-                path = '/nfs/kun1/users/asap7772/prior_data/'
+                path = p_data_path
                 ba('val_pick_2obj_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-43_117.npy', p=args.prob,y='zero')
                 ba('val_place_2obj_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-48_108.npy', p=args.prob)
             if args.buffer == 32 or args.buffer == 9001:
-                path = '/nfs/kun1/users/asap7772/prior_data/'
+                path = p_data_path
                 ba('val_pick_2obj_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-43_117.npy', p=args.prob,y='zero')
                 ba('val_place_2obj_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-48_108.npy', p=args.prob)
             
@@ -184,6 +193,7 @@ def experiment(variant):
             variant_dict=variant,
             validation=variant['val'],
             validation_buffer=replay_buffer_val,
+            squared=variant['squared'],
             **variant['trainer_kwargs']
         )
 
@@ -275,7 +285,6 @@ if __name__ == "__main__":
             save_video_period=1,
         ),
     )
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", type=str, required=True)
     parser.add_argument("--max-path-length", type=int, required=True)
@@ -320,9 +329,17 @@ if __name__ == "__main__":
     parser.add_argument("--name", default='test', type=str)
     parser.add_argument("--discount", default=0.99, type=float)
     parser.add_argument('--only_one', action='store_true')
+    parser.add_argument("--squared", action="store_true", default=False)
+    parser.add_argument("--azure", action="store_false", default=True)
+    parser.add_argument("--bigger_net", action="store_true", default=False)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['trainer_kwargs']['discount'] = args.discount
+    variant['squared'] = args.squared
+    variant['bigger_net'] = args.bigger_net
+
+
     variant['env'] = args.env
     variant['val'] = args.val
     variant['algorithm_kwargs']['max_path_length'] = args.max_path_length
@@ -346,12 +363,16 @@ if __name__ == "__main__":
     variant['debug'] = False
     if args.buffer.isnumeric():
         args.buffer = int(args.buffer)
+        
+        home = expanduser("~")
+        p_data_path =  os.path.join(home, 'prior_data/') if args.azure else '/nfs/kun1/users/asap7772/prior_data/' 
+        
         path = '/nfs/kun1/users/asap7772/cog_data/'
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
         if args.buffer == 0:
             ba('closed_drawer_prior.npy',y='zero')
-            path = '/nfs/kun1/users/asap7772/prior_data/'
+            path = p_data_path
             ba('task_singleneut_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-25T22-52-59_9750.npy')
         elif args.buffer == 1:
             ba('closed_drawer_prior.npy',y='zero')
@@ -369,31 +390,31 @@ if __name__ == "__main__":
             ba('drawer_task.npy')
             if args.old_prior_prob > 0:
                 ba('closed_drawer_prior.npy',y='zero',p=args.old_prior_prob)
-            path = '/nfs/kun1/users/asap7772/prior_data/'
+            path = p_data_path
             ba('grasp_newenv_Widow250DoubleDrawerOpenGraspNeutral-v0_20K_save_all_noise_0.1_2021-03-18T01-36-52_20000.npy',y='zero')
             ba('pickplace_newenv_Widow250PickPlaceMultiObjectMultiContainerTrain-v0_20K_save_all_noise_0.1_2021-03-18T01-38-58_19500.npy',y='zero')
             ba('drawer_newenv_Widow250DoubleDrawerOpenGraspNeutral-v0_20K_save_all_noise_0.1_2021-03-18T01-37-08_19500.npy', y='zero')
         elif args.buffer == 6:
-            path = '/nfs/kun1/users/asap7772/prior_data/'
+            path = p_data_path
             ba('task_multneut_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-25T22-53-21_9250.npy')
             if args.old_prior_prob > 0:
                 path = '/nfs/kun1/users/asap7772/cog_data/'
                 ba('closed_drawer_prior.npy',y='zero',p=args.old_prior_prob)
                 ba('drawer_task.npy',y='noise')
-                path = '/nfs/kun1/users/asap7772/prior_data/'
+                path = p_data_path
             ba('grasp_multneut_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-24T01-17-30_10000.npy', y='zero')
             ba('double_drawer_multneut_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-03-24T01-19-23_9750.npy', y='zero')
         elif args.buffer == 7:
-            path = '/nfs/kun1/users/asap7772/prior_data/'
+            path = p_data_path
             ba('pick_Widow250PickTray-v0_10K_save_all_noise_0.1_2021-04-03T12-13-53_10000.npy',y='zero') #prior 
             ba('place_Widow250PlaceTray-v0_5K_save_all_noise_0.1_2021-04-03T12-14-02_4750.npy') #task
         elif args.buffer == 8:
             path = '/nfs/kun1/users/asap7772/cog_data/'
             ba('pickplace_prior.npy',y='zero') #prior 
-            path = '/nfs/kun1/users/asap7772/prior_data/'
+            path = p_data_path
             ba('place_Widow250PlaceTray-v0_5K_save_all_noise_0.1_2021-04-03T12-14-02_4750.npy') #task
         elif args.buffer == 9:
-            path = '/nfs/kun1/users/asap7772/prior_data/'
+            path = p_data_path
             ba('pick_Widow250PickTray-v0_10K_save_all_noise_0.1_2021-04-03T12-13-53_10000.npy',y='zero') #prior 
             path = '/nfs/kun1/users/asap7772/cog_data/'
             ba('pickplace_task.npy') #task
@@ -402,74 +423,74 @@ if __name__ == "__main__":
             ba('pickplace_prior.npy',y='zero')
             ba('pickplace_task.npy') #task
         elif args.buffer == 11:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('coglike_prior_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-00_10000.npy', y='zero')
             ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy')
         elif args.buffer == 12:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('coglike_prior_linking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-05T11-11-02_9250.npy', y='zero')
             ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy')
         elif args.buffer == 13:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero',p=args.prob)
             ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy',p=args.prob)
         elif args.buffer == 14:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('prior_reset5_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-08_10000.npy', y='zero')
             ba('task_reset5_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-17_9000.npy')
         elif args.buffer == 15:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('prior_reset10_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-23_10000.npy', y='zero')
             ba('task_reset10_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-28_10000.npy')
         elif args.buffer == 16:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('prior_reset100_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-35_10000.npy', y='zero')
             ba('task_reset100_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T13-48-43_10000.npy')
         elif args.buffer == 17:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('prior_reset2_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-56-50_8000.npy',y='zero')
             ba('task_reset2_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-56-55_10000.npy')
         elif args.buffer == 18:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('prior_reset3_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-01_10000.npy',y='zero')
             ba('task_reset3_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-10_10000.npy')
         elif args.buffer == 19:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('prior_reset1000_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-17_9000.npy',y='zero')
             ba('task_reset1000_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-38_10000.npy')
         elif args.buffer == 20:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('prior_reset10000_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-44_10000.npy',y='zero')
             ba('task_reset10000_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-52_9000.npy')
         elif args.buffer == 21:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('prior_resetinf_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-57-59_9000.npy',y='zero')
             ba('task_resetinf_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-08T10-58-08_10000.npy')
         elif args.buffer == 22:
             ba('closed_drawer_prior.npy',p=args.prob,y='zero')
             ba('drawer_task.npy',p=args.prob)
         elif args.buffer == 23:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero')
             ba('randobj_2_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-04-15T14-05-01_10000.npy')
         elif args.buffer == 24:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero')
             ba('randobj_5_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-04-15T14-05-10_10000.npy')
         elif args.buffer == 25:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy', y='zero')
             ba('randobj_10_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-04-15T14-05-18_9000.npy')
         elif args.buffer == 26:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy',p=args.prob, y='zero')
             ba('coglike_task_noise0.1_Widow250DoubleDrawerGraspNeutral-v0_5K_save_all_noise_0.1_2021-04-23T02-22-30_4750.npy',p=args.prob,)
         elif args.buffer == 27:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy',p=args.prob, y='zero')
             ba('coglike_task_noise0.15_Widow250DoubleDrawerGraspNeutral-v0_5K_save_all_noise_0.15_2021-04-23T02-22-39_4625.npy',p=args.prob,)
         elif args.buffer == 28:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('coglike_prior_manuallinking_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-06T00-36-15_10000.npy',p=args.prob, y='zero')
             ba('coglike_task_noise0.2_Widow250DoubleDrawerGraspNeutral-v0_5K_save_all_noise_0.2_2021-04-23T02-22-44_4875.npy',p=args.prob,)
         elif args.buffer == 28:
@@ -479,15 +500,15 @@ if __name__ == "__main__":
             ba('pickplace_prior.npy', p=args.prob,y='zero')
             ba('pickplace_task.npy', p=args.prob)
         elif args.buffer == 30:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('pick_10obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-26_4500.npy', p=args.prob,y='zero')
             ba('place_10obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-31_4875.npy', p=args.prob)
         elif args.buffer == 31:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('pick_5obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-36_4750.npy', p=args.prob,y='zero')
             ba('place_5obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-39_4750.npy', p=args.prob)
         elif args.buffer == 32:
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('pick_2obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-43_5000.npy', p=args.prob,y='zero')
             ba('place_2obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-49_5000.npy', p=args.prob)
         elif args.buffer == 33:
@@ -497,14 +518,18 @@ if __name__ == "__main__":
             path = ''
             ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
             ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
+        elif args.buffer == 35:    
+            path  = p_data_path
+            ba('pick_35obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-10_4375.npy', p=args.prob, y='zero')
+            ba('place_35obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-17-42_4875.npy', p=args.prob)
         elif args.buffer == 9000:
             variant['debug'] = True
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('debug.npy',y='noise')
             ba('debug.npy',y='noise')
         elif args.buffer == 9001: #for testing wandb code
             variant['debug'] = False 
-            path  = '/nfs/kun1/users/asap7772/prior_data/'
+            path  = p_data_path
             ba('debug.npy',y='noise')
             ba('debug.npy',y='noise')
 
