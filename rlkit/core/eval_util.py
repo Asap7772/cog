@@ -105,12 +105,21 @@ def create_stats_ordered_dict(
     if (isinstance(data, np.ndarray) and data.size == 1
             and not always_show_all_stats):
         return OrderedDict({name: float(data)})
-
-    stats = OrderedDict([
-        (name + ' Mean', np.mean(data)),
-        (name + ' Std', np.std(data)),
-    ])
+    try:
+        stats = OrderedDict([
+            (name + ' Mean', np.mean(data)),
+            (name + ' Std', np.std(data)),
+        ])
+    except:
+        stats = OrderedDict([
+            (name + ' Mean', -1),
+            (name + ' Std', -1),
+        ])
     if not exclude_max_min:
-        stats[name + ' Max'] = np.max(data)
-        stats[name + ' Min'] = np.min(data)
+        try:
+            stats[name + ' Max'] = np.max(data)
+            stats[name + ' Min'] = np.min(data)
+        except:
+            stats[name + ' Max'] = -1
+            stats[name + ' Min'] = -1
     return stats

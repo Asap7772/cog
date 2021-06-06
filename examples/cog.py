@@ -178,9 +178,9 @@ def experiment(variant):
             bottleneck=variant['bottleneck'],
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
+            only_bottleneck = variant['only_bottleneck'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
-            only_bottleneck = variant['only_bottleneck'],
             variant_dict=variant,
             validation=variant['val'],
             validation_buffer=replay_buffer_val,
@@ -318,6 +318,8 @@ if __name__ == "__main__":
     parser.add_argument('--num_traj', default=0, type=int)
     parser.add_argument('--eval_num', default=0, type=int)
     parser.add_argument("--name", default='test', type=str)
+    parser.add_argument("--discount", default=0.99, type=float)
+    parser.add_argument('--only_one', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -339,6 +341,7 @@ if __name__ == "__main__":
     variant['gamma'] = args.gamma
     variant['num_traj'] = args.num_traj
     variant['num_sample'] = args.eval_num
+    variant['trainer_kwargs']['discount'] = args.discount
     
     variant['debug'] = False
     if args.buffer.isnumeric():
@@ -490,6 +493,10 @@ if __name__ == "__main__":
         elif args.buffer == 33:
             ba('blocked_drawer_1_prior.npy', p=args.prob,y='zero')
             ba('drawer_task.npy', p=args.prob)
+        elif args.buffer == 34:
+            path = ''
+            ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
+            ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
         elif args.buffer == 9000:
             variant['debug'] = True
             path  = '/nfs/kun1/users/asap7772/prior_data/'

@@ -3,7 +3,7 @@ from rlkit.data_management.load_buffer_real import *
 from rlkit.samplers.data_collector import MdpPathCollector, \
     CustomMDPPathCollector
 
-from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
+from rlkit.torch.sac.policies import TanhGaussianPolicy, GaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
@@ -69,12 +69,21 @@ def experiment(variant):
     )
 
     policy_obs_processor = CNN(**cnn_params)
-    policy = TanhGaussianPolicy(
-        obs_dim=cnn_params['output_size'],
-        action_dim=action_dim,
-        hidden_sizes=[256, 256, 256],
-        obs_processor=policy_obs_processor,
-    )
+
+    if variant['guassian_policy']:
+        policy = GaussianPolicy(
+            obs_dim=cnn_params['output_size'],
+            action_dim=action_dim,
+            hidden_sizes=[256, 256, 256],
+            obs_processor=policy_obs_processor,
+        )
+    else:
+        policy = TanhGaussianPolicy(
+            obs_dim=cnn_params['output_size'],
+            action_dim=action_dim,
+            hidden_sizes=[256, 256, 256],
+            obs_processor=policy_obs_processor,
+        )
 
     eval_policy = MakeDeterministic(policy)
     eval_path_collector = MdpPathCollector(
@@ -105,11 +114,11 @@ def experiment(variant):
         paths.append((os.path.join(data_path,'fixed_drawer_demos.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
     elif args.buffer == 4:
         print('Stephen Tool Use')
-        path = '/nfs/kun1/users/asap7772/real_data_tooluse/on_policy_longer_1_26_buffers/move_tool_obj_together_norm_fixchan5_27_train.pkl'
+        path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
     else:
         assert False
     if args.buffer in [4]:
-        replay_buffer = pickle.load(path)
+        replay_buffer = pickle.load(open(path,'rb'))
     else:
         replay_buffer = get_buffer(observation_key=observation_key)
         for path, rew_path in paths:
@@ -187,6 +196,7 @@ def experiment(variant):
             validation=variant['val'],
             validation_buffer=replay_buffer_val,
             real_data=True,
+            guassian_policy=variant['guassian_policy'],
             **variant['trainer_kwargs']
         )
 
@@ -319,10 +329,12 @@ if __name__ == "__main__":
     parser.add_argument('--gamma', default=1, type=float)
     parser.add_argument('--num_traj', default=0, type=int)
     parser.add_argument('--eval_num', default=0, type=int)
+    parser.add_argument('--guassian_policy', default=False, action='store_true')
     parser.add_argument("--name", default='test', type=str)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['guassian_policy'] = args.guassian_policy
     variant['val'] = args.val
 
     variant['prior_buffer'] = args.prior_buffer

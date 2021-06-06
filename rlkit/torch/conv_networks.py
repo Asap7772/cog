@@ -304,9 +304,13 @@ class ConcatBottleneckCNN(CNN):
         self.deterministic=deterministic
         self.mlp = Mlp([512,512,512],output_size,self.cnn_params['output_size']//2)
         self.dim = dim
+        self.output_conv_channels = False
 
     def forward(self, *inputs, **kwargs):
-        return self.detailed_forward(*inputs, **kwargs)[0]
+        if self.output_conv_channels:
+            return self.detailed_forward(*inputs, **kwargs)[-1]
+        else:
+            return self.detailed_forward(*inputs, **kwargs)[0]
 
     def detailed_forward(self, *inputs, **kwargs): # used to calculate loss
         flat_inputs = torch.cat(inputs, dim=self.dim)

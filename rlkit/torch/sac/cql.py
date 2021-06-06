@@ -72,6 +72,7 @@ class CQLTrainer(TorchTrainer):
             validation=False,
             validation_buffer=None,
             real_data=False,
+            guassian_policy = False,
     ):
         super().__init__()
         self.env = env
@@ -89,6 +90,7 @@ class CQLTrainer(TorchTrainer):
         self.dist_diff=dist_diff
         self.dist1=dist1
         self.dist2=dist2
+        self.guassian_policy = guassian_policy
 
         self.use_automatic_entropy_tuning = use_automatic_entropy_tuning
         if self.use_automatic_entropy_tuning:
@@ -203,9 +205,9 @@ class CQLTrainer(TorchTrainer):
         self._current_epoch += 1
         rewards = batch['rewards']
         terminals = batch['terminals']
-        obs = batch['observations']
+        obs = batch['observations'] if 'observations' in batch else batch['observations_image']
         actions = batch['actions']
-        next_obs = batch['next_observations']
+        next_obs = batch['next_observations'] if 'next_observations' in batch else batch['next_observations_image']
 
         """
         Policy and Alpha Loss
@@ -296,7 +298,10 @@ class CQLTrainer(TorchTrainer):
             qf2_loss += (self.qf2(obs1, actions1).mean() - self.qf2(obs2,actions2).mean())**2
 
         ## add CQL
-        random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.num_random, actions.shape[-1]).uniform_(-1, 1).cuda()
+        if self.guassian_policy:
+            random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.num_random, actions.shape[-1]).uniform_(-3, 3).cuda()
+        else:
+            random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.num_random, actions.shape[-1]).uniform_(-1, 1).cuda()
         curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.policy)
         new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.policy)
         q1_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.qf1)

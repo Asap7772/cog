@@ -269,6 +269,8 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
         noise = np.random.normal(0, 1, replay_buffer._rewards[:top].shape)
         replay_buffer._rewards[:top] = replay_buffer._rewards[:top] + noise
         print('Noise-ed the rewards for prior data', top)
+    elif p_dict['alter_type'] == None:
+        pass
     else:
         assert False
 
@@ -359,6 +361,8 @@ def load_data_from_npy_chaining_val(variant, expl_env, observation_key,
         noise = np.random.normal(0, 1, replay_buffer._rewards[:top].shape)
         replay_buffer._rewards[:top] = replay_buffer._rewards[:top] + noise
         print('Noise-ed the rewards for prior data', top)
+    elif p_dict['alter_type'] == 'nochange':    
+        pass
     else:
         assert False
 
@@ -478,8 +482,9 @@ if __name__ == "__main__":
     env = roboverse.make(variant['env'], transpose_image=True)
     
     args = lambda:0 #RANDOM Object
-    args.buffer = 9001
+    args.buffer = 6
     path = '/nfs/kun1/users/asap7772/cog_data/'
+    args.prob = 1
     buffers = []
     ba = lambda x, p=1, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
 
@@ -502,6 +507,10 @@ if __name__ == "__main__":
         path = '/nfs/kun1/users/asap7772/cog_data/'
         ba('pick_2obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-43_5000.npy',y='noise')
         ba('place_2obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-49_5000.npy',y='noise')
+    elif args.buffer == 6:
+        path = '/nfs/kun1/users/asap7772/prior_data/'
+        ba('pick_35obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-10_4375.npy', p=args.prob,y='zero')
+        ba('place_10obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-16-31_4875.npy', p=args.prob)
     elif args.buffer == 9001:
         path  = '/nfs/kun1/users/asap7772/prior_data/'
         ba('debug.npy',y='noise')
