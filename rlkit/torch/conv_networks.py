@@ -3,6 +3,7 @@ import torch
 from torch import nn as nn
 from torch.distributions import Normal
 from rlkit.pythonplusplus import identity
+from rlkit.torch.vae.vq_vae import Encoder
 
 import numpy as np
 
@@ -102,7 +103,7 @@ class CNN(nn.Module):
             self.input_width,
             self.input_height,
         )
-        # find output dim of conv_layers by trial and add norm conv layers
+        #find output dim of conv_layers by trial and add norm conv layers
         for i, conv_layer in enumerate(self.conv_layers):
             test_mat = conv_layer(test_mat)
             if self.conv_normalization_type == 'batch':
@@ -112,6 +113,14 @@ class CNN(nn.Module):
             if self.pool_type != 'none' and len(self.pool_layers) > i:
                 test_mat = self.pool_layers[i](test_mat)
 
+        test_mat = torch.zeros(
+            1,
+            self.input_channels,
+            self.input_width,
+            self.input_height,
+        )
+
+        test_mat = self.apply_forward_conv(test_mat)
         self.conv_output_flat_size = int(np.prod(test_mat.shape))
         if self.output_conv_channels:
             self.last_fc = None
@@ -192,6 +201,89 @@ class CNN(nn.Module):
                 h = self.fc_norm_layers[i](h)
             h = self.hidden_activation(h)
         return h
+
+
+class VQVAEEncoderConcatCNN(ConcatCNN):
+    def __init__(self, *args, **kwargs):
+        kwargs['kernel_sizes'] = []
+        kwargs['n_channels'] = []
+        kwargs['strides'] = []
+        kwargs['paddings'] = []
+        super().__init__(*args, **kwargs)
+
+        self.encoder = Encoder(self.input_channels, 128, 3, 64)
+
+    def apply_forward_conv(self, h):
+        return self.encoder(h)
+
+
+class ConcatBottleneckVQVAECNN(VQVAEEncoderCNN):
+    """
+    Concatenate inputs along dimension and then pass through MLP.
+    """
+
+    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False, width=48, height=48):
+        cnn_params = dict(
+            kernel_sizes=[3, 3, 3],
+            n_channels=[16, 16, 16],
+            strides=[1, 1, 1],
+            hidden_sizes=[1024],  # mean/std
+            paddings=[1, 1, 1],
+            pool_type='max2d',
+            pool_sizes=[2, 2, 1],  # the one at the end means no pool
+            pool_strides=[2, 2, 1],
+            pool_paddings=[0, 0, 0],
+            image_augmentation=True,
+            image_augmentation_padding=4,
+        )
+
+        cnn_params.update(
+            input_width=width,
+            input_height=height,
+            input_channels=3,
+            output_size=bottleneck_dim * 2,
+            added_fc_input_size=action_dim,
+        )
+
+        self.cnn_params = cnn_params
+        self.action_dim = action_dim
+
+        super().__init__(**cnn_params)
+        self.bottleneck_dim = bottleneck_dim
+        self.deterministic = deterministic
+        self.mlp = Mlp([512, 512, 512], output_size, self.cnn_params['output_size'] // 2)
+        self.dim = dim
+        self.output_conv_channels = False
+
+    def forward(self, *inputs, **kwargs):
+        if self.output_conv_channels:
+            return self.detailed_forward(*inputs, **kwargs)[-1]
+        else:
+            return self.detailed_forward(*inputs, **kwargs)[0]
+
+    def detailed_forward(self, *inputs, **kwargs):  # used to calculate loss
+        flat_inputs = torch.cat(inputs, dim=self.dim)
+        cnn_out = super().forward(flat_inputs, **kwargs)
+        size = self.cnn_params['output_size'] // 2
+        mean, log_std = cnn_out[:, :size], cnn_out[:, size:]
+        assert mean.shape == log_std.shape
+        std = torch.exp(log_std)
+
+        dist = Normal(mean, std)
+        sample = dist.rsample()
+        log_prob = dist.log_prob(sample)
+        # equation is $$\frac{1}{2}[\mu^T\mu + tr(\Sigma) -k -log|\Sigma|]$$
+        K = self.bottleneck_dim
+        reg_loss = 1 / 2 * (
+                mean.norm(dim=-1, keepdim=True) ** 2 + (std ** 2).sum(axis=-1, keepdim=True) - K - torch.log(
+            std ** 2 + 1E-9).sum(axis=-1, keepdim=True))
+
+        if self.deterministic:
+            sample = mean
+            log_prob = -torch.ones_like(log_prob).cuda()
+            reg_loss = torch.zeros_like(reg_loss).cuda()
+        return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
+
 
 class RegressCNN(CNN):
     def __init__(self, *args, dim=1, **kwargs):

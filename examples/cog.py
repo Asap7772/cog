@@ -7,7 +7,7 @@ from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
-from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN
+from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, ConcatBottleneckVQVAECNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.launchers.launcher_util import setup_logger
@@ -46,6 +46,17 @@ def experiment(variant):
         cnn_params.update(
             hidden_sizes=[1024, 512, 512, 512, 256],
         )
+    if variant['deeper_net']:
+        print('deeper conv net')
+        cnn_params.update(
+            kernel_sizes=[3, 3, 3, 3, 3],
+            n_channels=[32, 32, 32, 32, 32],
+            strides=[1, 1, 1, 1, 1],
+            paddings=[1, 1, 1, 1, 1],
+            pool_sizes=[2, 2, 1, 1, 1],
+            pool_strides=[2, 2, 1, 1, 1],
+            pool_paddings=[0, 0, 0, 0, 0]
+        )
         
     cnn_params.update(
         input_width=48,
@@ -54,21 +65,38 @@ def experiment(variant):
         output_size=1,
         added_fc_input_size=action_dim,
     )
-    if variant['mcret'] or variant['bchead']:
-        qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
-        qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
-        target_qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
-        target_qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
-    elif variant['bottleneck']:
-        qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-        qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-        target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-        target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+    if variant['vqvae_enc']:
+        if variant['bottleneck']:
+            qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                      deterministic=variant['deterministic_bottleneck'])
+            qf2 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                      deterministic=variant['deterministic_bottleneck'])
+            target_qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                             deterministic=variant['deterministic_bottleneck'])
+            target_qf2 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                             deterministic=variant['deterministic_bottleneck'])
+        else:
+            qf1 = VQVAEEncoderConcatCNN(**cnn_params)
+            qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+            target_qf1 = VQVAEEncoderConcatCNN(**cnn_params)
+            target_qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+
     else:
-        qf1 = ConcatCNN(**cnn_params)
-        qf2 = ConcatCNN(**cnn_params)
-        target_qf1 = ConcatCNN(**cnn_params)
-        target_qf2 = ConcatCNN(**cnn_params)
+        if variant['mcret'] or variant['bchead']:
+            qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            target_qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            target_qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+        elif variant['bottleneck']:
+            qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+        else:
+            qf1 = ConcatCNN(**cnn_params)
+            qf2 = ConcatCNN(**cnn_params)
+            target_qf1 = ConcatCNN(**cnn_params)
+            target_qf2 = ConcatCNN(**cnn_params)
 
     cnn_params.update(
         output_size=256,
@@ -332,13 +360,16 @@ if __name__ == "__main__":
     parser.add_argument("--squared", action="store_true", default=False)
     parser.add_argument("--azure", action="store_false", default=True)
     parser.add_argument("--bigger_net", action="store_true", default=False)
+    parser.add_argument("--deeper_net", action="store_true", default=False)
+    parser.add_argument("--vqvae_enc", action="store_true", default=False)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
     variant['trainer_kwargs']['discount'] = args.discount
     variant['squared'] = args.squared
     variant['bigger_net'] = args.bigger_net
-
+    variant['deeper_net'] = args.deeper_net
+    variant['vqvae_enc'] = args.vqvae_enc
 
     variant['env'] = args.env
     variant['val'] = args.val
