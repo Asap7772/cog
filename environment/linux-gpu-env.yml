@@ -2,6 +2,7 @@ name: cql-env
 channels:
   - defaults
 dependencies:
+  - pip
   - _libgcc_mutex=0.1=main
   - alabaster=0.7.10=py36h306e16b_0
   - anaconda=5.2.0=py36_3

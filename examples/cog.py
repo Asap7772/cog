@@ -29,7 +29,7 @@ DEFAULT_PRIOR_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
 DEFAULT_TASK_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
                         '_noise_0.1_2020-10-06T19-37-26_100.npy')
-CUSTOM_LOG_DIR = '/home/asap7772/doodad-output'
+CUSTOM_LOG_DIR = '/home/stian/doodad-output'
 
 
 def experiment(variant):
@@ -397,8 +397,10 @@ if __name__ == "__main__":
         
         home = expanduser("~")
         p_data_path =  os.path.join(home, 'prior_data/') if args.azure else '/nfs/kun1/users/asap7772/prior_data/' 
+        p_data_path = '/home/stian/prior_data/'
         
-        path = '/nfs/kun1/users/asap7772/cog_data/'
+        #path = '/nfs/kun1/users/asap7772/cog_data/'
+        path = '/home/stian/cog_data/'
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
         if args.buffer == 0:

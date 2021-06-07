@@ -7,11 +7,8 @@ from torch.nn import functional as F
 from rlkit.pythonplusplus import identity
 from torch.autograd import Variable
 from rlkit.torch import pytorch_util as ptu
-from rlkit.torch.networks import ConcatMlp, TanhMlpPolicy, MlpPolicy
-from rlkit.torch.networks import CNN, TwoHeadDCNN, DCNN
 from rlkit.torch.vae.vae_base import compute_bernoulli_log_prob, \
     compute_gaussian_log_prob, GaussianLatentVAE
-from rlkit.torch.vae.conv_vae import ConvVAE
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
