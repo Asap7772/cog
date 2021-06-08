@@ -113,15 +113,8 @@ class CNN(nn.Module):
             if self.pool_type != 'none' and len(self.pool_layers) > i:
                 test_mat = self.pool_layers[i](test_mat)
 
-        test_mat = torch.zeros(
-            1,
-            self.input_channels,
-            self.input_width,
-            self.input_height,
-        )
+        self.conv_output_flat_size = self.get_conv_output_size()
 
-        test_mat = self.apply_forward_conv(test_mat)
-        self.conv_output_flat_size = int(np.prod(test_mat.shape))
         if self.output_conv_channels:
             self.last_fc = None
         else:
@@ -150,6 +143,17 @@ class CNN(nn.Module):
             self.augmentation_transform = RandomCrop(
                 input_height, self.image_augmentation_padding, device='cuda')
 
+    def get_conv_output_size(self):
+        test_mat = torch.zeros(
+            1,
+            self.input_channels,
+            self.input_width,
+            self.input_height,
+        )
+
+        test_mat = self.apply_forward_conv(test_mat)
+        return int(np.prod(test_mat.shape))
+
     def forward(self, input, return_last_activations=False):
         conv_input = input.narrow(start=0,
                                   length=self.conv_input_length,
@@ -165,7 +169,6 @@ class CNN(nn.Module):
             h = self.augmentation_transform(h)
 
         h = self.apply_forward_conv(h)
-
         if self.output_conv_channels:
             return h
 
@@ -178,6 +181,7 @@ class CNN(nn.Module):
                 dim=1,
             )
             h = torch.cat((h, extra_fc_input), dim=1)
+
         h = self.apply_forward_fc(h)
 
         if return_last_activations:
@@ -229,7 +233,6 @@ class RegressCNN(CNN):
             h = self.augmentation_transform(h)
 
         h = self.apply_forward_conv(h)
-
         if self.output_conv_channels:
             return h
 
@@ -652,11 +655,18 @@ class VQVAEEncoderConcatCNN(ConcatCNN):
         kwargs['strides'] = []
         kwargs['paddings'] = []
         super().__init__(*args, **kwargs)
-
+        
         self.encoder = Encoder(self.input_channels, 128, 3, 64)
 
     def apply_forward_conv(self, h):
-        return self.encoder(h)
+        out = self.encoder(h)
+        return out
+
+    def get_conv_output_size(self):
+        return 128 * 12 * 12
+
+    def forward(self, *inputs, **kwargs):
+        return super().forward(*inputs, **kwargs)
 
 
 class ConcatBottleneckVQVAECNN(VQVAEEncoderConcatCNN):
