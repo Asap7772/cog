@@ -19,6 +19,7 @@ class BCTrainer(TorchTrainer):
             log_dir=None,
             wand_b=True,
             variant_dict=None,
+            real_data=False,
             *args, **kwargs
     ):
         super().__init__()
@@ -37,9 +38,12 @@ class BCTrainer(TorchTrainer):
         self._need_to_update_eval_statistics = True
 
         self._current_epoch = 0
+        self._log_epoch = 0
+
         self._num_policy_update_steps = 0
         self.discrete = False
 
+        self.real_data = real_data
         self.log_dir = log_dir
         self.wand_b = wand_b
 
@@ -101,6 +105,7 @@ class BCTrainer(TorchTrainer):
             ))
             if self.wand_b:
                 wandb.log({'trainer/'+k:v for k,v in self.eval_statistics.items()}, step=self._log_epoch)
+            self._log_epoch += 1
         self._n_train_steps_total += 1
 
     def get_diagnostics(self):

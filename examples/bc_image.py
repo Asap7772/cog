@@ -61,7 +61,7 @@ def experiment(variant):
         added_fc_input_size=0,
         hidden_sizes=[1024, 512],
     )
-    if variant['vq_vae_enc']:
+    if variant['vqvae_enc']:
         policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
     else:
         policy_obs_processor = CNN(**cnn_params)
@@ -153,7 +153,7 @@ def enable_gpus(gpu_str):
 if __name__ == "__main__":
     # noinspection PyTypeChecker
     variant = dict(
-        algorithm="CQL",
+        algorithm="BC",
         version="normal",
         algorithm_kwargs=dict(
             # num_epochs=100,
@@ -235,10 +235,19 @@ if __name__ == "__main__":
     parser.add_argument("--transfer_multiview", action="store_true", default=False)
     parser.add_argument("--chaining", action="store_true", default=False)
     parser.add_argument("--p", default=0.2, type=float)
-    #parser.add_argument('--segment_type', default='fixed_other', type = str)
-    #parser.add_argument('--eval_multiview', default='single', type = str)
-    #parser.add_argument('--larger_net', action="store_true", default=False)
-    #parser.add_argument('--dist_diff', action="store_true", default=False)
+    parser.add_argument("--prob", default=1.0, type=float)
+    parser.add_argument('--segment_type', default='fixed_other', type = str)
+    parser.add_argument('--eval_multiview', default='single', type = str)
+    parser.add_argument('--dist_diff', action="store_true", default=False)
+
+    parser.add_argument('--larger_net', action="store_true", default=False)
+    
+    # Stephen added
+    parser.add_argument('--deeper_net', action="store_true", default=False)
+    parser.add_argument('--vqvae_enc', action="store_true", default=False)
+    parser.add_argument('--duplicate', action="store_true", default=False)
+    parser.add_argument('--num_traj', default=0, type=int)
+
 
     args = parser.parse_args()
     variant['transfer'] = args.transfer
@@ -247,10 +256,15 @@ if __name__ == "__main__":
     variant['p'] = args.p
     variant['bin'] = args.bin_color
     variant['segment_type'] = args.segment_type
-    
+
     variant['transfer_multiview'] = args.transfer_multiview
     variant['eval_multiview'] = args.eval_multiview
     variant['dist_diff'] = args.dist_diff
+
+    variant['deeper_net'] = args.deeper_net
+    variant['vqvae_enc'] = args.vqvae_enc
+    variant['duplicate'] = args.duplicate
+    variant['num_traj'] = args.num_traj
 
     if args.buffer.isnumeric():
         args.buffer = int(args.buffer)
