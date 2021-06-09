@@ -1,11 +1,11 @@
 import rlkit.torch.pytorch_util as ptu
-from rlkit.data_management.load_buffer import load_data_from_npy, load_data_from_npy_mult
+from rlkit.data_management.load_buffer import load_data_from_npy, load_data_from_npy_mult, load_data_from_npy_chaining
 from rlkit.samplers.data_collector import MdpPathCollector, \
     CustomMDPPathCollector, CustomMDPPathCollector_EVAL
 
 from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.bc import BCTrainer
-from rlkit.torch.conv_networks import CNN, ConcatCNN
+from rlkit.torch.conv_networks import CNN, ConcatCNN, VQVAEEncoderCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.launchers.launcher_util import setup_logger
@@ -20,7 +20,7 @@ import roboverse
 # DEFAULT_BUFFER = ('/nfs/kun1/users/albert/minibullet_datasets/11270225_10k_grasp_Widow250MultiObjectOneGraspRandomBowlPositionTrain-v0_10K_save_all_noise_0.1_2020-11-27T02-24-16_9750.npy')
 
 DEFAULT_BUFFER = ('/nfs/kun1/users/albert/minibullet_datasets/11270225_10k_grasp_Widow250MultiObjectOneGraspRandomBowlPositionTrain-v0_10K_save_all_noise_0.1_2020-11-27T02-24-16_9750.npy')
-CUSTOM_LOG_DIR = '/nfs/kun1/users/asap7772/doodad-output/'
+CUSTOM_LOG_DIR = '/home/stian/doodad-output'
 
 
 def experiment(variant):
@@ -33,6 +33,17 @@ def experiment(variant):
         expl_env.multi_tray = False
 
     cnn_params = variant['cnn_params']
+    if variant['deeper_net']:
+        print('deeper conv net')
+        cnn_params.update(
+            kernel_sizes=[3, 3, 3, 3, 3],
+            n_channels=[32, 32, 32, 32, 32],
+            strides=[1, 1, 1, 1, 1],
+            paddings=[1, 1, 1, 1, 1],
+            pool_sizes=[2, 2, 1, 1, 1],
+            pool_strides=[2, 2, 1, 1, 1],
+            pool_paddings=[0, 0, 0, 0, 0]
+        )
     cnn_params.update(
         input_width=48,
         input_height=48,
@@ -40,18 +51,21 @@ def experiment(variant):
         output_size=1,
         added_fc_input_size=action_dim,
     )
-    qf1 = ConcatCNN(**cnn_params)
-    qf2 = ConcatCNN(**cnn_params)
-    target_qf1 = ConcatCNN(**cnn_params)
-    target_qf2 = ConcatCNN(**cnn_params)
+    # qf1 = ConcatCNN(**cnn_params)
+    # qf2 = ConcatCNN(**cnn_params)
+    # target_qf1 = ConcatCNN(**cnn_params)
+    # target_qf2 = ConcatCNN(**cnn_params)
 
     cnn_params.update(
         output_size=256,
         added_fc_input_size=0,
         hidden_sizes=[1024, 512],
     )
+    if variant['vq_vae_enc']:
+        policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
+    else:
+        policy_obs_processor = CNN(**cnn_params)
 
-    policy_obs_processor = CNN(**cnn_params)
     policy = TanhGaussianPolicy(
         obs_dim=cnn_params['output_size'],
         action_dim=action_dim,
@@ -93,17 +107,22 @@ def experiment(variant):
         bin_changes = [False, variant['bin']]
         target_segments = [None, variant['segment_type']]
         replay_buffer = load_data_from_npy_mult(variant, expl_env, observation_key, bin_changes=bin_changes, target_segments=target_segments, p = p, scale_rew=variant['trainer_kwargs']['with_lagrange'])
+    elif variant['chaining']:
+        replay_buffer = load_data_from_npy_chaining(
+            variant, expl_env, observation_key, duplicate=variant['duplicate'], num_traj=variant['num_traj'])
     else:
         replay_buffer = load_data_from_npy(variant, expl_env, observation_key, bin_change=variant['bin'], target_segment=variant['segment_type'], scale_rew=variant['trainer_kwargs']['with_lagrange'])
 
     trainer = BCTrainer(
         env=eval_env,
         policy=policy,
-        qf1=qf1,
-        qf2=qf2,
-        target_qf1=target_qf1,
-        target_qf2=target_qf2,
+        #qf1=qf1,
+        #qf2=qf2,
+        #target_qf1=target_qf1,
+        #target_qf2=target_qf2,
         dist_diff=variant['dist_diff'],
+        log_dir=variant['log_dir'],
+        variant_dict=variant,
         **variant['trainer_kwargs']
     )
 
@@ -214,15 +233,17 @@ if __name__ == "__main__":
     parser.add_argument("--mixture", action="store_true", default=False)
     parser.add_argument("--transfer", action="store_true", default=False)
     parser.add_argument("--transfer_multiview", action="store_true", default=False)
+    parser.add_argument("--chaining", action="store_true", default=False)
     parser.add_argument("--p", default=0.2, type=float)
-    parser.add_argument('--segment_type', default='fixed_other', type = str)
-    parser.add_argument('--eval_multiview', default='single', type = str)
-    parser.add_argument('--larger_net', action="store_true", default=False)
-    parser.add_argument('--dist_diff', action="store_true", default=False)
+    #parser.add_argument('--segment_type', default='fixed_other', type = str)
+    #parser.add_argument('--eval_multiview', default='single', type = str)
+    #parser.add_argument('--larger_net', action="store_true", default=False)
+    #parser.add_argument('--dist_diff', action="store_true", default=False)
 
     args = parser.parse_args()
     variant['transfer'] = args.transfer
     variant['mixture'] = args.mixture
+    variant['chaining'] = args.chaining
     variant['p'] = args.p
     variant['bin'] = args.bin_color
     variant['segment_type'] = args.segment_type
@@ -273,8 +294,15 @@ if __name__ == "__main__":
         rand = '/nfs/kun1/users/avi/imitation_datasets/scripted_Widow250MultiObjectGraspTrain-v0_2020-12-26T22-49-57.npy'
         grasp = '/nfs/kun1/users/avi/imitation_datasets/scripted_Widow250MultiObjectGraspTrain-v0_2020-12-19T23-15-41.npy'
         args.buffer = [grasp, rand]
-    
-
+    elif args.buffer == 35:
+        path = '/home/stian/prior_data/'
+        buffers = []
+        ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
+        ba('pick_35obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-10_4375.npy', p=args.prob,
+           y='zero')
+        ba('place_35obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-17-42_4875.npy', p=args.prob)
+        variant['prior_buffer'] = buffers[0]
+        variant['task_buffer'] = buffers[1]
 
     enable_gpus(args.gpu)
     variant['env'] = args.env
@@ -333,6 +361,7 @@ if __name__ == "__main__":
     else:
         base_log_dir = None
 
-    setup_logger(args.name, variant=variant, base_log_dir=base_log_dir,
+    log_dir = setup_logger(args.name, variant=variant, base_log_dir=base_log_dir,
                  snapshot_mode='gap_and_last', snapshot_gap=10,)
+    variant['log_dir'] = log_dir
     experiment(variant)

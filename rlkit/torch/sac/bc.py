@@ -7,7 +7,7 @@ import torch.optim as optim
 import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
-
+import wandb
 
 class BCTrainer(TorchTrainer):
     def __init__(
@@ -16,6 +16,9 @@ class BCTrainer(TorchTrainer):
             policy,
             policy_lr=1e-3,
             optimizer_class=optim.Adam,
+            log_dir=None,
+            wand_b=True,
+            variant_dict=None,
             *args, **kwargs
     ):
         super().__init__()
@@ -36,6 +39,15 @@ class BCTrainer(TorchTrainer):
         self._current_epoch = 0
         self._num_policy_update_steps = 0
         self.discrete = False
+
+        self.log_dir = log_dir
+        self.wand_b = wand_b
+
+        if self.wand_b:
+            wandb.init(project='cog_cql', reinit=True)
+            wandb.run.name=log_dir.split('/')[-1]
+            if variant_dict is not None:
+                wandb.config.update(variant_dict)
 
     def train_from_torch(self, batch, online=False):
         self._current_epoch += 1
@@ -87,6 +99,8 @@ class BCTrainer(TorchTrainer):
                 'Policy log std',
                 ptu.get_numpy(policy_log_std),
             ))
+            if self.wand_b:
+                wandb.log({'trainer/'+k:v for k,v in self.eval_statistics.items()}, step=self._log_epoch)
         self._n_train_steps_total += 1
 
     def get_diagnostics(self):
