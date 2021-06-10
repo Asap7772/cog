@@ -31,6 +31,7 @@ class Mlp(nn.Module):
             b_init_value=0.1,
             layer_norm=False,
             layer_norm_kwargs=None,
+            spectral_norm=False,
     ):
         super().__init__()
 
@@ -48,6 +49,8 @@ class Mlp(nn.Module):
 
         for i, next_size in enumerate(hidden_sizes):
             fc = nn.Linear(in_size, next_size)
+            if spectral_norm:
+                fc = nn.utils.spectral_norm(fc)
             in_size = next_size
             hidden_init(fc.weight)
             fc.bias.data.fill_(b_init_value)

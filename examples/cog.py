@@ -77,13 +77,21 @@ def experiment(variant):
     if variant['vqvae_enc']:
         if variant['bottleneck']:
             qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
-                                      deterministic=variant['deterministic_bottleneck'])
+                                      deterministic=variant['deterministic_bottleneck'],
+                                      spectral_norm_conv=cnn_params['spectral_norm_conv'],
+                                      spectral_norm_fc=cnn_params['spectral_norm_fc'])
             qf2 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
-                                      deterministic=variant['deterministic_bottleneck'])
+                                      deterministic=variant['deterministic_bottleneck'],
+                                      spectral_norm_conv = cnn_params['spectral_norm_conv'],
+                                      spectral_norm_fc = cnn_params['spectral_norm_fc'])
             target_qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
-                                             deterministic=variant['deterministic_bottleneck'])
+                                             deterministic=variant['deterministic_bottleneck'],
+                                             spectral_norm_conv=cnn_params['spectral_norm_conv'],
+                                             spectral_norm_fc=cnn_params['spectral_norm_fc'])
             target_qf2 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
-                                             deterministic=variant['deterministic_bottleneck'])
+                                             deterministic=variant['deterministic_bottleneck'],
+                                             spectral_norm_conv=cnn_params['spectral_norm_conv'],
+                                             spectral_norm_fc=cnn_params['spectral_norm_fc'])
         else:
             qf1 = VQVAEEncoderConcatCNN(**cnn_params)
             qf2 = VQVAEEncoderConcatCNN(**cnn_params)
@@ -316,6 +324,8 @@ if __name__ == "__main__":
             pool_paddings=[0, 0, 0],
             image_augmentation=True,
             image_augmentation_padding=4,
+            spectral_norm_conv=False,
+            spectral_norm_fc=False,
         ),
         dump_video_kwargs=dict(
             imsize=48,

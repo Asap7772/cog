@@ -297,7 +297,8 @@ class ConcatBottleneckCNN(CNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False, width=48, height=48):
+    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False, width=48, height=48,
+                 spectral_norm_conv=False,spectral_norm_fc=False):
         cnn_params=dict(
             kernel_sizes=[3, 3, 3],
             n_channels=[16, 16, 16],
@@ -318,6 +319,8 @@ class ConcatBottleneckCNN(CNN):
             input_channels=3,
             output_size=bottleneck_dim*2,
             added_fc_input_size=action_dim,
+            spectral_norm_fc=spectral_norm_fc,
+            spectral_norm_conv=spectral_norm_conv
         )
 
         self.cnn_params = cnn_params
@@ -326,7 +329,7 @@ class ConcatBottleneckCNN(CNN):
         super().__init__(**cnn_params)
         self.bottleneck_dim = bottleneck_dim
         self.deterministic=deterministic
-        self.mlp = Mlp([512,512,512],output_size,self.cnn_params['output_size']//2)
+        self.mlp = Mlp([512,512,512],output_size,self.cnn_params['output_size']//2, spectral_norm=spectral_norm_fc)
         self.dim = dim
         self.output_conv_channels = False
 
@@ -666,7 +669,7 @@ class VQVAEEncoderConcatCNN(ConcatCNN):
         kwargs['paddings'] = []
         super().__init__(*args, **kwargs)
         
-        self.encoder = Encoder(self.input_channels, 128, 3, 64)
+        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'])
 
     def apply_forward_conv(self, h):
         out = self.encoder(h)
@@ -687,7 +690,7 @@ class VQVAEEncoderCNN(CNN):
         kwargs['paddings'] = []
         super().__init__(*args, **kwargs)
 
-        self.encoder = Encoder(self.input_channels, 128, 3, 64)
+        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'])
 
     def apply_forward_conv(self, h):
         out = self.encoder(h)
@@ -705,7 +708,8 @@ class ConcatBottleneckVQVAECNN(VQVAEEncoderConcatCNN):
     Concatenate inputs along dimension and then pass through MLP.
     """
 
-    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False, width=48, height=48):
+    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False, width=48, height=48,
+                 spectral_norm_conv=False, spectral_norm_fc=False):
         cnn_params = dict(
             kernel_sizes=[3, 3, 3],
             n_channels=[16, 16, 16],
@@ -726,6 +730,8 @@ class ConcatBottleneckVQVAECNN(VQVAEEncoderConcatCNN):
             input_channels=3,
             output_size=bottleneck_dim * 2,
             added_fc_input_size=action_dim,
+            spectral_norm_fc=spectral_norm_fc,
+            spectral_norm_conv=spectral_norm_conv
         )
 
         self.cnn_params = cnn_params
@@ -734,7 +740,7 @@ class ConcatBottleneckVQVAECNN(VQVAEEncoderConcatCNN):
         super().__init__(**cnn_params)
         self.bottleneck_dim = bottleneck_dim
         self.deterministic = deterministic
-        self.mlp = Mlp([512, 512, 512], output_size, self.cnn_params['output_size'] // 2)
+        self.mlp = Mlp([512, 512, 512], output_size, self.cnn_params['output_size'] // 2, spectral_norm=cnn_params['spectral_norm_fc'])
         self.dim = dim
         self.output_conv_channels = False
 

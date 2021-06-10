@@ -16,19 +16,30 @@ from torch.distributions import kl_divergence
 
 
 class Residual(nn.Module):
-    def __init__(self, in_channels, num_hiddens, num_residual_hiddens):
+    def __init__(self, in_channels, num_hiddens, num_residual_hiddens, spectral_norm=False):
         super(Residual, self).__init__()
-        self._block = nn.Sequential(
-
-            nn.ReLU(True),
-            nn.Conv2d(in_channels=in_channels,
-                out_channels=num_residual_hiddens,
-                kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(True),
-            nn.Conv2d(in_channels=num_residual_hiddens,
-                out_channels=num_hiddens,
-                kernel_size=1, stride=1, bias=False)
-        )
+        if spectral_norm:
+            self._block = nn.Sequential(
+                nn.ReLU(True),
+                nn.utils.spectral_norm(nn.Conv2d(in_channels=in_channels,
+                          out_channels=num_residual_hiddens,
+                          kernel_size=3, stride=1, padding=1, bias=False)),
+                nn.ReLU(True),
+                nn.utils.spectral_norm(nn.Conv2d(in_channels=num_residual_hiddens,
+                          out_channels=num_hiddens,
+                          kernel_size=1, stride=1, bias=False)),
+            )
+        else:
+            self._block = nn.Sequential(
+                nn.ReLU(True),
+                nn.Conv2d(in_channels=in_channels,
+                    out_channels=num_residual_hiddens,
+                    kernel_size=3, stride=1, padding=1, bias=False),
+                nn.ReLU(True),
+                nn.Conv2d(in_channels=num_residual_hiddens,
+                    out_channels=num_hiddens,
+                    kernel_size=1, stride=1, bias=False)
+            )
 
     def forward(self, x):
         return x + self._block(x)
@@ -36,11 +47,11 @@ class Residual(nn.Module):
 
 class ResidualStack(nn.Module):
     def __init__(self, in_channels, num_hiddens, num_residual_layers,
-            num_residual_hiddens):
+            num_residual_hiddens, spectral_norm=False):
         super(ResidualStack, self).__init__()
         self._num_residual_layers = num_residual_layers
         self._layers = nn.ModuleList(
-            [Residual(in_channels, num_hiddens, num_residual_hiddens)
+            [Residual(in_channels, num_hiddens, num_residual_hiddens, spectral_norm)
              for _ in range(self._num_residual_layers)])
 
     def forward(self, x):
@@ -51,7 +62,7 @@ class ResidualStack(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(self, in_channels, num_hiddens, num_residual_layers,
-            num_residual_hiddens):
+            num_residual_hiddens, spectral_norm=False):
         super(Encoder, self).__init__()
 
         self._conv_1 = nn.Conv2d(in_channels=in_channels,
@@ -66,10 +77,17 @@ class Encoder(nn.Module):
             out_channels=num_hiddens,
             kernel_size=3,
             stride=1, padding=1)
+        if spectral_norm:
+            print('Building encoder with spectral norm')
+            self._conv_1 = nn.utils.spectral_norm(self._conv_1)
+            self._conv_2 = nn.utils.spectral_norm(self._conv_2)
+            self._conv_3 = nn.utils.spectral_norm(self._conv_3)
+
         self._residual_stack = ResidualStack(in_channels=num_hiddens,
             num_hiddens=num_hiddens,
             num_residual_layers=num_residual_layers,
-            num_residual_hiddens=num_residual_hiddens)
+            num_residual_hiddens=num_residual_hiddens,
+            spectral_norm=spectral_norm)
 
     def forward(self, inputs, ):
         x = self._conv_1(inputs)
