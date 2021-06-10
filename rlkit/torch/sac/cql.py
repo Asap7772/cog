@@ -383,30 +383,30 @@ class CQLTrainer(TorchTrainer):
             self.alpha_prime_optimizer.step()
 
         if self.dr3:
-            q1_next_pred = self.qf1(next_obs, next_new_actions)
-            q2_next_pred = self.qf2(next_obs, next_new_actions)
-            q1_pred_grad = torch.autograd.grad(q1_pred,
+            q1_next_pred = self.qf1(next_obs, new_next_actions)
+            q2_next_pred = self.qf2(next_obs, new_next_actions)
+            q1_pred_grad = torch.autograd.grad(q1_pred.mean(),
                                                    inputs=[p for p in
                                                            self.qf1.parameters()],
                                                    create_graph=True,
                                                    retain_graph=True,
                                                    only_inputs=True
                                                    )
-            q2_pred_grad = torch.autograd.grad(q2_pred,
+            q2_pred_grad = torch.autograd.grad(q2_pred.mean(),
                                                    inputs=[p for p in
                                                            self.qf2.parameters()],
                                                    create_graph=True,
                                                    retain_graph=True,
                                                    only_inputs=True
                                                    )
-            q1_next_grad = torch.autograd.grad(q1_next_pred,
+            q1_next_grad = torch.autograd.grad(q1_next_pred.mean(),
                                                    inputs=[p for p in
                                                            self.qf1.parameters()],
                                                    create_graph=True,
                                                    retain_graph=True,
                                                    only_inputs=True
                                                    )
-            q2_next_grad = torch.autograd.grad(q2_next_pred,
+            q2_next_grad = torch.autograd.grad(q2_next_pred.mean(),
                                                inputs=[p for p in
                                                        self.qf2.parameters()],
                                                create_graph=True,
