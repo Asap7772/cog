@@ -35,6 +35,8 @@ class CNN(nn.Module):
             pool_paddings=None,
             image_augmentation=False,
             image_augmentation_padding=4,
+            spectral_norm_conv=False,
+            spectral_norm_fc=False,
     ):
         if hidden_sizes is None:
             hidden_sizes = []
@@ -65,6 +67,9 @@ class CNN(nn.Module):
         self.image_augmentation = image_augmentation
         self.image_augmentation_padding = image_augmentation_padding
 
+        self.spectral_norm_conv = spectral_norm_conv
+        self.spectral_norm_fc = spectral_norm_fc
+
         self.conv_layers = nn.ModuleList()
         self.conv_norm_layers = nn.ModuleList()
         self.pool_layers = nn.ModuleList()
@@ -79,6 +84,9 @@ class CNN(nn.Module):
                              kernel_size,
                              stride=stride,
                              padding=padding)
+            if self.spectral_norm_conv:
+                conv = nn.utils.spectral_norm(conv)
+
             hidden_init(conv.weight)
             conv.bias.data.fill_(0)
 
@@ -123,6 +131,8 @@ class CNN(nn.Module):
             fc_input_size += added_fc_input_size
             for idx, hidden_size in enumerate(hidden_sizes):
                 fc_layer = nn.Linear(fc_input_size, hidden_size)
+                if self.spectral_norm_fc:
+                    fc_layer = nn.utils.spectral_norm(fc_layer)
                 fc_input_size = hidden_size
 
                 fc_layer.weight.data.uniform_(-init_w, init_w)

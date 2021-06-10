@@ -57,7 +57,16 @@ def experiment(variant):
             pool_strides=[2, 2, 1, 1, 1],
             pool_paddings=[0, 0, 0, 0, 0]
         )
-        
+
+    if variant['spectral_norm_conv']:
+        cnn_params.update(
+            spectral_norm_conv=True,
+        )
+    if variant['spectral_norm_fc']:
+        cnn_params.update(
+            spectral_norm_fc=True,
+        )
+
     cnn_params.update(
         input_width=48,
         input_height=48,
@@ -362,6 +371,8 @@ if __name__ == "__main__":
     parser.add_argument("--bigger_net", action="store_true", default=False)
     parser.add_argument("--deeper_net", action="store_true", default=False)
     parser.add_argument("--vqvae_enc", action="store_true", default=False)
+    parser.add_argument("--spectral_norm_conv", action="store_true", default=False)
+    parser.add_argument("--spectral_norm_fc", action="store_true", default=False)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -370,6 +381,9 @@ if __name__ == "__main__":
     variant['bigger_net'] = args.bigger_net
     variant['deeper_net'] = args.deeper_net
     variant['vqvae_enc'] = args.vqvae_enc
+
+    variant['spectral_norm_conv'] = args.spectral_norm_conv
+    variant['spectral_norm_fc'] = args.spectral_norm_fc
 
     variant['env'] = args.env
     variant['val'] = args.val
