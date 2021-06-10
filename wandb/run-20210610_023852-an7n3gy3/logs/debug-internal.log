@@ -1,0 +1,39 @@
+2021-06-10 02:38:53,914 INFO    MainThread:50473 [internal.py:wandb_internal():91] W&B internal server running at pid: 50473, started at: 2021-06-10 02:38:53.913344
+2021-06-10 02:38:53,916 DEBUG   HandlerThread:50473 [handler.py:handle_request():101] handle_request: check_version
+2021-06-10 02:38:53,916 INFO    WriterThread:50473 [datastore.py:open_for_write():77] open: /nfs/kun1/users/asap7772/cog/wandb/run-20210610_023852-an7n3gy3/run-an7n3gy3.wandb
+2021-06-10 02:38:53,919 DEBUG   SenderThread:50473 [sender.py:send():161] send: header
+2021-06-10 02:38:53,919 DEBUG   SenderThread:50473 [sender.py:send():161] send: request
+2021-06-10 02:38:53,919 DEBUG   SenderThread:50473 [sender.py:send_request():170] send_request: check_version
+2021-06-10 02:38:53,951 DEBUG   SenderThread:50473 [sender.py:send():161] send: run
+2021-06-10 02:38:54,215 INFO    SenderThread:50473 [sender.py:_start_run_threads():638] run started: an7n3gy3 with start time 1623317932
+2021-06-10 02:38:54,215 DEBUG   SenderThread:50473 [sender.py:send():161] send: summary
+2021-06-10 02:38:54,216 DEBUG   HandlerThread:50473 [handler.py:handle_request():101] handle_request: run_start
+2021-06-10 02:38:54,231 INFO    SenderThread:50473 [sender.py:_save_file():769] saving file wandb-summary.json with policy end
+2021-06-10 02:38:55,455 DEBUG   HandlerThread:50473 [meta.py:__init__():34] meta init
+2021-06-10 02:38:55,455 DEBUG   HandlerThread:50473 [meta.py:__init__():48] meta init done
+2021-06-10 02:38:55,455 DEBUG   HandlerThread:50473 [meta.py:probe():190] probe
+2021-06-10 02:38:55,464 DEBUG   HandlerThread:50473 [meta.py:_setup_git():180] setup git
+2021-06-10 02:38:55,526 DEBUG   HandlerThread:50473 [meta.py:_setup_git():187] setup git done
+2021-06-10 02:38:55,527 DEBUG   HandlerThread:50473 [meta.py:_save_code():69] save code
+2021-06-10 02:38:55,527 WARNING HandlerThread:50473 [meta.py:_save_code():71] unable to save code -- program entry not found
+2021-06-10 02:38:55,527 DEBUG   HandlerThread:50473 [meta.py:_save_patches():107] save patches
+2021-06-10 02:38:55,689 DEBUG   HandlerThread:50473 [meta.py:_save_patches():149] save patches done
+2021-06-10 02:38:55,689 DEBUG   HandlerThread:50473 [meta.py:_save_pip():52] save pip
+2021-06-10 02:38:55,707 DEBUG   HandlerThread:50473 [meta.py:_save_pip():66] save pip done
+2021-06-10 02:38:55,707 DEBUG   HandlerThread:50473 [meta.py:probe():231] probe done
+2021-06-10 02:38:55,858 DEBUG   SenderThread:50473 [sender.py:send():161] send: files
+2021-06-10 02:38:55,858 INFO    SenderThread:50473 [sender.py:_save_file():769] saving file wandb-metadata.json with policy now
+2021-06-10 02:38:55,859 INFO    SenderThread:50473 [sender.py:_save_file():769] saving file diff.patch with policy now
+2021-06-10 02:38:55,867 DEBUG   HandlerThread:50473 [handler.py:handle_request():101] handle_request: status
+2021-06-10 02:38:55,867 DEBUG   SenderThread:50473 [sender.py:send():161] send: request
+2021-06-10 02:38:55,867 DEBUG   SenderThread:50473 [sender.py:send_request():170] send_request: status
+2021-06-10 02:38:55,996 DEBUG   SenderThread:50473 [sender.py:send():161] send: run
+2021-06-10 02:38:56,270 INFO    SenderThread:50473 [sender.py:send_run():541] updated run: an7n3gy3
+2021-06-10 02:38:56,272 DEBUG   SenderThread:50473 [sender.py:send():161] send: config
+2021-06-10 02:39:11,003 DEBUG   HandlerThread:50473 [handler.py:handle_request():101] handle_request: status
+2021-06-10 02:39:11,004 DEBUG   SenderThread:50473 [sender.py:send():161] send: request
+2021-06-10 02:39:11,004 DEBUG   SenderThread:50473 [sender.py:send_request():170] send_request: status
+2021-06-10 02:39:26,088 DEBUG   HandlerThread:50473 [handler.py:handle_request():101] handle_request: status
+2021-06-10 02:39:26,089 DEBUG   SenderThread:50473 [sender.py:send():161] send: request
+2021-06-10 02:39:26,089 DEBUG   SenderThread:50473 [sender.py:send_request():170] send_request: status
+2021-06-10 02:39:29,657 DEBUG   SenderThread:50473 [sender.py:send():161] send: stats

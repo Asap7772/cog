@@ -134,11 +134,8 @@ def experiment(variant):
 
     # Translate 0/1 rewards to +4/+10 rewards.
     if variant['use_positive_rew']:
-        if set(np.unique(replay_buffer._rewards)).issubset({0, 1}):
-            replay_buffer._rewards = replay_buffer._rewards * 6.0
-            replay_buffer._rewards = replay_buffer._rewards + 4.0
-        assert set(np.unique(replay_buffer._rewards)).issubset(
-            set(6.0 * np.array([0, 1]) + 4.0))
+        replay_buffer._rewards *= 4
+        replay_buffer._rewards -= 2
 
     if variant['mcret']:
         trainer = CQLMCTrainer(

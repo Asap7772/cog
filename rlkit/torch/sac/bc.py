@@ -8,6 +8,7 @@ import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
 import wandb
+import os
 
 class BCTrainer(TorchTrainer):
     def __init__(
@@ -20,11 +21,17 @@ class BCTrainer(TorchTrainer):
             wand_b=True,
             variant_dict=None,
             real_data=False,
+            log_pickle=True,
+            pickle_log_rate=5,
             *args, **kwargs
     ):
         super().__init__()
         self.env = env
         self.policy = policy
+        self.log_dir = log_dir
+
+        self.log_pickle=log_pickle
+        self.pickle_log_rate=pickle_log_rate
 
         self.policy_optimizer = optimizer_class(
             self.policy.parameters(),
@@ -81,6 +88,14 @@ class BCTrainer(TorchTrainer):
         Save some statistics for eval
         """
         if self._need_to_update_eval_statistics:
+            if self.log_pickle and self._log_epoch % self.pickle_log_rate == 0:
+                new_path = os.path.join(self.log_dir,'model_pkl')
+                if not os.path.isdir(new_path):
+                    os.mkdir(new_path)
+                torch.save({
+                    'policy_state_dict': self.policy.state_dict(),
+                }, os.path.join(new_path, str(self._log_epoch)+'.pt'))
+
             self._need_to_update_eval_statistics = False
             """
             Eval should set this to None.

@@ -9,8 +9,8 @@ import pickle
 
 # TODO Clean up this file
 MAX_SIZE = int(1E5)
-def get_buffer(observation_key='image', buffer_size=MAX_SIZE):
-    expl_env = DummyEnv()
+def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64,3)):
+    expl_env = DummyEnv(image_shape=image_shape)
     replay_buffer = ObsDictReplayBuffer(
         buffer_size,
         expl_env,
@@ -19,15 +19,49 @@ def get_buffer(observation_key='image', buffer_size=MAX_SIZE):
     )
     return replay_buffer
 
+import torch
+import matplotlib.pyplot as plt
+from torchvision import transforms
+from skimage.transform import rescale, resize, downscale_local_mean
 
-def load_path(path, rew_path, replay_buffer):
+def plot_img(obs_img):
+    plt.figure()
+    if type(obs_img) == torch.Tensor:
+        im_new = transforms.ToPILImage()(obs_img)
+    else:
+        im_new = obs_img
+    plt.imshow(im_new)
+    plt.savefig('/nfs/kun1/users/asap7772/cog/a.png')
+    plt.show()
+
+def resize_small(img):
+    if img.shape[0] == 6912 or img.flatten().shape[0] == 921600:
+        return img
+    img = img.reshape(3,64,64)
+    img = img.transpose(1,2,0)
+    img = resize(img, (48, 48), anti_aliasing=True)
+    img = img.transpose(2,0,1).flatten()
+    return img
+
+def load_path(path, rew_path, replay_buffer, small_img=False, bc=False):
     data = np.load(path,allow_pickle=True)
+
     if rew_path is not None:
         rew = pickle.load(open(rew_path, 'rb'))
         assert len(data) == len(rew)
         for i in range(len(data)):
             data[i]['rewards'] = np.array(rew[i]).tolist()
-    add_data_to_buffer(data, replay_buffer)
+
+    if bc:
+        data = [data[i] for i in range(len(data)) if sum(data[i]['rewards']) > 0]
+        print('kept', len(data), 'traj')
+
+    if small_img:
+        for i in range(len(data)):
+            for j in range(len(data[i]['observations'])):
+                data[i]['observations'][j]['image_observation'] = resize_small(data[i]['observations'][j]['image_observation'])
+                data[i]['next_observations'][j]['image_observation'] = resize_small(data[i]['next_observations'][j]['image_observation'])
+    add_data_to_buffer(data, replay_buffer, small_img=small_img)
 
 def get_buffer_size(data):
     num_transitions = 0
@@ -36,7 +70,7 @@ def get_buffer_size(data):
             num_transitions += 1
     return num_transitions
 
-def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1, drop_last=True):
+def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1, drop_last=True, small_img=False):
     for j in range(len(data)):
         # import ipdb; ipdb.set_trace()
         assert (len(data[j]['actions']) == len(data[j]['observations']) == len(
@@ -53,8 +87,8 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
             actions=data[j]['actions'],
             next_actions =data[j]['next_actions'],
             terminals=[np.asarray([t]) for t in data[j]['terminals']],
-            observations=process_images(data[j]['observations']),
-            next_observations=process_images(data[j]['next_observations'])
+            observations=process_images(data[j]['observations'], small_img=small_img),
+            next_observations=process_images(data[j]['next_observations'], small_img=small_img)
         )
 
         if drop_last:
@@ -67,13 +101,19 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
             
         replay_buffer.add_path(path)
 
-def process_images(observations):
+def process_images(observations, small_img=False):
     output = []
     for i in range(len(observations)):
         try:
-            image = observations[i]['image_observation'].reshape(3,64,64)
+            if small_img:
+                image = observations[i]['image_observation'].reshape(3,48,48)
+            else:
+                image = observations[i]['image_observation'].reshape(3,64,64)
         except:
-            image = observations[i-1]['image_observation'].reshape(3,64,64)
+            if small_img:
+                image = observations[i-1]['image_observation'].reshape(3,48,48)
+            else:
+                image = observations[i-1]['image_observation'].reshape(3,64,64)
         if len(image.shape) == 3:
             image = image.flatten()
         else:
