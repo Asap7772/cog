@@ -119,6 +119,8 @@ def experiment(variant):
         output_size=256,
         added_fc_input_size=0,
         hidden_sizes=[1024, 512],
+        spectral_norm_fc=False,
+        spectral_norm_conv=False,
     )
 
     policy_obs_processor = CNN(**cnn_params)

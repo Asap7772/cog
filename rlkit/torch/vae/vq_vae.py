@@ -79,7 +79,7 @@ class Encoder(nn.Module):
             stride=1, padding=1)
         if spectral_norm:
             print('Building encoder with spectral norm')
-            self._conv_1 = nn.utils.spectral_norm(self._conv_1)
+            # Don't use spectral norm on the first layer
             self._conv_2 = nn.utils.spectral_norm(self._conv_2)
             self._conv_3 = nn.utils.spectral_norm(self._conv_3)
 

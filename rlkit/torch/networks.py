@@ -49,7 +49,7 @@ class Mlp(nn.Module):
 
         for i, next_size in enumerate(hidden_sizes):
             fc = nn.Linear(in_size, next_size)
-            if spectral_norm:
+            if spectral_norm and 0 < i < len(hidden_sizes)-1:
                 fc = nn.utils.spectral_norm(fc)
             in_size = next_size
             hidden_init(fc.weight)

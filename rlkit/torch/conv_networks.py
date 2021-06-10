@@ -84,7 +84,7 @@ class CNN(nn.Module):
                              kernel_size,
                              stride=stride,
                              padding=padding)
-            if self.spectral_norm_conv:
+            if self.spectral_norm_conv and 0 < i < len(n_channels)-1:
                 conv = nn.utils.spectral_norm(conv)
 
             hidden_init(conv.weight)
@@ -131,7 +131,7 @@ class CNN(nn.Module):
             fc_input_size += added_fc_input_size
             for idx, hidden_size in enumerate(hidden_sizes):
                 fc_layer = nn.Linear(fc_input_size, hidden_size)
-                if self.spectral_norm_fc:
+                if self.spectral_norm_fc and 0 < idx < len(hidden_sizes)-1:
                     fc_layer = nn.utils.spectral_norm(fc_layer)
                 fc_input_size = hidden_size
 
