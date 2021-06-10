@@ -198,6 +198,8 @@ def experiment(variant):
             bottleneck=variant['bottleneck'],
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_weight=variant['dr3_weight'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
             only_bottleneck = variant['only_bottleneck'],
@@ -216,6 +218,8 @@ def experiment(variant):
             bottleneck=variant['bottleneck'],
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_weight=variant['dr3_weight'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
             only_bottleneck = variant['only_bottleneck'],
@@ -234,6 +238,8 @@ def experiment(variant):
             bottleneck=variant['bottleneck'],
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_weight=variant['dr3_weight'],
             only_bottleneck = variant['only_bottleneck'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
@@ -385,6 +391,8 @@ if __name__ == "__main__":
     parser.add_argument("--vqvae_enc", action="store_true", default=False)
     parser.add_argument("--spectral_norm_conv", action="store_true", default=False)
     parser.add_argument("--spectral_norm_fc", action="store_true", default=False)
+    parser.add_argument("--dr3", action="store_true", default=False)
+    parser.add_argument("--dr3_weight", default=0.001, type=float)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -408,6 +416,10 @@ if __name__ == "__main__":
     
     variant['bottleneck'] = args.bottleneck
     variant['bottleneck_const'] = args.bottleneck_const
+
+    variant['dr3'] = args.dr3
+    variant['dr3_weight'] = args.dr3_weight
+
     variant['bottleneck_lagrange'] = args.bottleneck_lagrange
     variant['bottleneck_dim'] = args.bottleneck_dim
     variant['deterministic_bottleneck']=args.deterministic_bottleneck
