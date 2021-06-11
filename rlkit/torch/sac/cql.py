@@ -97,6 +97,7 @@ class CQLTrainer(TorchTrainer):
         self.guassian_policy = guassian_policy
 
         self.dr3 = dr3
+        self.dr3_feat = dr3_feat
         self.dr3_weight = dr3_weight
 
         self.use_automatic_entropy_tuning = use_automatic_entropy_tuning
@@ -605,7 +606,7 @@ class CQLTrainer(TorchTrainer):
                     ptu.get_numpy(policy_log_std),
                 ))
 
-            if self.dr3:
+            if self.dr3 or self.dr3_feat:
                 self.eval_statistics['QF1 DR3 Loss'] = np.mean(ptu.get_numpy(qf1_dr3_loss))
                 self.eval_statistics['QF2 DR3 Loss'] = np.mean(ptu.get_numpy(qf2_dr3_loss))
 

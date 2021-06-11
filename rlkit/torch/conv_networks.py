@@ -122,6 +122,9 @@ class CNN(nn.Module):
                 test_mat = self.pool_layers[i](test_mat)
 
         self.conv_output_flat_size = self.get_conv_output_size()
+        
+        if self.spectral_norm_fc:
+            print('Building FC layers with spectral norm')
 
         if self.output_conv_channels:
             self.last_fc = None
@@ -343,6 +346,9 @@ class ConcatBottleneckCNN(CNN):
         if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
             outs = forward_outs[0]
             conv_outs = forward_outs[1]
+        else:
+            outs = forward_outs
+
         if self.output_conv_channels:
             ret_val = outs[-1]
         else:
@@ -771,6 +777,8 @@ class ConcatBottleneckVQVAECNN(VQVAEEncoderConcatCNN):
         if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
             outs = forward_outs[0]
             conv_outs = forward_outs[1]
+        else:
+            outs = forward_outs
         if self.output_conv_channels:
             ret_val = outs[-1]
         else:
