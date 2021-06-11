@@ -704,7 +704,12 @@ class VQVAEEncoderConcatCNN(ConcatCNN):
         return out
 
     def get_conv_output_size(self):
-        return 128 * 12 * 12
+        if self.input_width == self.input_height == 48:
+            return 128 * 12 * 12
+        elif self.input_width == self.input_height == 64:
+            return 128 * 16 * 16
+        else:
+            raise ValueError
 
     def forward(self, *inputs, **kwargs):
         return super().forward(*inputs, **kwargs)
@@ -725,11 +730,15 @@ class VQVAEEncoderCNN(CNN):
         return out
 
     def get_conv_output_size(self):
-        return 128 * 12 * 12
+        if self.input_width == self.input_height == 48:
+            return 128 * 12 * 12
+        elif self.input_width == self.input_height == 64:
+            return 128 * 16 * 16
+        else:
+            raise ValueError
 
     def forward(self, *inputs, **kwargs):
         return super().forward(*inputs, **kwargs)
-
 
 class ConcatBottleneckVQVAECNN(VQVAEEncoderConcatCNN):
     """
