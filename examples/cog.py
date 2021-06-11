@@ -199,6 +199,7 @@ def experiment(variant):
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
             dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
             dr3_weight=variant['dr3_weight'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
@@ -219,6 +220,7 @@ def experiment(variant):
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
             dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
             dr3_weight=variant['dr3_weight'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
@@ -239,6 +241,7 @@ def experiment(variant):
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
             dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
             dr3_weight=variant['dr3_weight'],
             only_bottleneck = variant['only_bottleneck'],
             log_dir = variant['log_dir'],
@@ -392,6 +395,7 @@ if __name__ == "__main__":
     parser.add_argument("--spectral_norm_conv", action="store_true", default=False)
     parser.add_argument("--spectral_norm_fc", action="store_true", default=False)
     parser.add_argument("--dr3", action="store_true", default=False)
+    parser.add_argument("--dr3_feat", action="store_true", default=False)
     parser.add_argument("--dr3_weight", default=0.001, type=float)
 
     args = parser.parse_args()
@@ -418,6 +422,7 @@ if __name__ == "__main__":
     variant['bottleneck_const'] = args.bottleneck_const
 
     variant['dr3'] = args.dr3
+    variant['dr3_feat'] = args.dr3_feat
     variant['dr3_weight'] = args.dr3_weight
 
     variant['bottleneck_lagrange'] = args.bottleneck_lagrange

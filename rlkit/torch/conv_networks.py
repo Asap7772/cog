@@ -164,7 +164,7 @@ class CNN(nn.Module):
         test_mat = self.apply_forward_conv(test_mat)
         return int(np.prod(test_mat.shape))
 
-    def forward(self, input, return_last_activations=False):
+    def forward(self, input, return_last_activations=False, return_conv_outputs=False):
         conv_input = input.narrow(start=0,
                                   length=self.conv_input_length,
                                   dim=1).contiguous()
@@ -184,6 +184,7 @@ class CNN(nn.Module):
 
         # flatten channels for fc layers
         h = h.view(h.size(0), -1)
+        conv_outputs_flat = h
         if self.added_fc_input_size != 0:
             extra_fc_input = input.narrow(
                 start=self.conv_input_length,
@@ -196,7 +197,11 @@ class CNN(nn.Module):
 
         if return_last_activations:
             return h
-        return self.output_activation(self.last_fc(h))
+
+        if return_conv_outputs:
+            return self.output_activation(self.last_fc(h)), conv_outputs_flat
+        else:
+            return self.output_activation(self.last_fc(h))
 
     def apply_forward_conv(self, h):
         for i, layer in enumerate(self.conv_layers):
@@ -334,14 +339,26 @@ class ConcatBottleneckCNN(CNN):
         self.output_conv_channels = False
 
     def forward(self, *inputs, **kwargs):
+        forward_outs = self.detailed_forward(*inputs, **kwargs)
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            outs = forward_outs[0]
+            conv_outs = forward_outs[1]
         if self.output_conv_channels:
-            return self.detailed_forward(*inputs, **kwargs)[-1]
+            ret_val = outs[-1]
         else:
-            return self.detailed_forward(*inputs, **kwargs)[0]
+            ret_val = outs[0]
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            return ret_val, conv_outs
+        return ret_val
 
     def detailed_forward(self, *inputs, **kwargs): # used to calculate loss
         flat_inputs = torch.cat(inputs, dim=self.dim)
-        cnn_out = super().forward(flat_inputs, **kwargs)
+        ret_conv = False
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            ret_conv = True
+            cnn_out, conv_outputs = super().forward(flat_inputs, **kwargs)
+        else:
+            cnn_out = super().forward(flat_inputs, **kwargs)
         size = self.cnn_params['output_size']//2
         mean, log_std = cnn_out[:,:size], cnn_out[:,size:]
         assert mean.shape == log_std.shape
@@ -358,7 +375,12 @@ class ConcatBottleneckCNN(CNN):
             sample=mean
             log_prob= -torch.ones_like(log_prob).cuda()
             reg_loss = torch.zeros_like(reg_loss).cuda()
-        return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
+
+        if ret_conv:
+            return (self.mlp(sample), log_prob, reg_loss, mean, log_std, sample), conv_outputs
+        else:
+            return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
+
 
 class ConcatBottleneckActionCNN(CNN):
     """
@@ -745,14 +767,26 @@ class ConcatBottleneckVQVAECNN(VQVAEEncoderConcatCNN):
         self.output_conv_channels = False
 
     def forward(self, *inputs, **kwargs):
+        forward_outs = self.detailed_forward(*inputs, **kwargs)
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            outs = forward_outs[0]
+            conv_outs = forward_outs[1]
         if self.output_conv_channels:
-            return self.detailed_forward(*inputs, **kwargs)[-1]
+            ret_val = outs[-1]
         else:
-            return self.detailed_forward(*inputs, **kwargs)[0]
+            ret_val = outs[0]
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            return ret_val, conv_outs
+        return ret_val
 
     def detailed_forward(self, *inputs, **kwargs):  # used to calculate loss
         flat_inputs = torch.cat(inputs, dim=self.dim)
-        cnn_out = super().forward(flat_inputs, **kwargs)
+        ret_conv = False
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            ret_conv = True
+            cnn_out, conv_outputs = super().forward(flat_inputs, **kwargs)
+        else:
+            cnn_out = super().forward(flat_inputs, **kwargs)
         size = self.cnn_params['output_size'] // 2
         mean, log_std = cnn_out[:, :size], cnn_out[:, size:]
         assert mean.shape == log_std.shape
@@ -764,13 +798,17 @@ class ConcatBottleneckVQVAECNN(VQVAEEncoderConcatCNN):
         # equation is $$\frac{1}{2}[\mu^T\mu + tr(\Sigma) -k -log|\Sigma|]$$
         K = self.bottleneck_dim
         reg_loss = 1 / 2 * (
-                mean.norm(dim=-1, keepdim=True) ** 2 + (std ** 2).sum(axis=-1, keepdim=True) - K - torch.log(
-            std ** 2 + 1E-9).sum(axis=-1, keepdim=True))
+                    mean.norm(dim=-1, keepdim=True) ** 2 + (std ** 2).sum(axis=-1, keepdim=True) - K - torch.log(
+                std ** 2 + 1E-9).sum(axis=-1, keepdim=True))
 
         if self.deterministic:
             sample = mean
             log_prob = -torch.ones_like(log_prob).cuda()
             reg_loss = torch.zeros_like(reg_loss).cuda()
-        return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
+
+        if ret_conv:
+            return (self.mlp(sample), log_prob, reg_loss, mean, log_std, sample), conv_outputs
+        else:
+            return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
 
 
