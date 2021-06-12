@@ -88,7 +88,6 @@ def experiment(variant):
 
             if variant['share_encoder']:
                 print('sharing encoder weights between QF1 and QF2!')
-                del qf2.encoder
                 qf2.encoder = qf1.encoder
 
             target_qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
