@@ -697,11 +697,10 @@ class VQVAEEncoderConcatCNN(ConcatCNN):
         kwargs['paddings'] = []
         super().__init__(*args, **kwargs)
         
-        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False)
+        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
 
     def apply_forward_conv(self, h):
         out = self.encoder(h)
-        out = out.view(out.shape[0], -1)
         return out
 
     def get_conv_output_size(self):
@@ -724,7 +723,7 @@ class VQVAEEncoderCNN(CNN):
         kwargs['paddings'] = []
         super().__init__(*args, **kwargs)
 
-        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False)
+        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
 
     def apply_forward_conv(self, h):
         out = self.encoder(h)

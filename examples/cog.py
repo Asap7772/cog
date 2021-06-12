@@ -144,6 +144,14 @@ def experiment(variant):
                 output_size=qf1.get_conv_output_size(),
             )
         else:
+            cnn_params.update(
+                output_size=256,
+                added_fc_input_size=0,
+                hidden_sizes=[1024, 512],
+                spectral_norm_fc=False,
+                spectral_norm_conv=False,
+            )
+
             policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
     else:
         cnn_params.update(
@@ -440,6 +448,7 @@ if __name__ == "__main__":
     variant['deeper_net'] = args.deeper_net
     variant['vqvae_enc'] = args.vqvae_enc
     variant['vqvae_policy'] = args.vqvae_policy
+    variant['share_encoder'] = args.share_encoder
 
     variant['spectral_norm_conv'] = args.spectral_norm_conv
     variant['spectral_norm_fc'] = args.spectral_norm_fc
@@ -475,7 +484,7 @@ if __name__ == "__main__":
         
         home = expanduser("~")
         p_data_path =  os.path.join(home, 'prior_data/') if args.azure else '/nfs/kun1/users/asap7772/prior_data/' 
-        p_data_path = '/home/stian/prior_data/'
+        p_data_path = '/home/stephentian/prior_data/'
         
         #path = '/nfs/kun1/users/asap7772/cog_data/'
         path = '/home/stian/cog_data/'

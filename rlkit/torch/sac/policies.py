@@ -134,7 +134,7 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
             h = self.obs_processor(h)
             if self.shared_encoder:
                 h = h.detach()
-
+                        
         for i, fc in enumerate(self.fcs):
             h = self.hidden_activation(fc(h))
         mean = self.last_fc(h)
