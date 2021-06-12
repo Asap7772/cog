@@ -192,6 +192,7 @@ class CNN(nn.Module):
             )
             h = torch.cat((h, extra_fc_input), dim=1)
 
+
         h = self.apply_forward_fc(h)
 
         if return_last_activations:

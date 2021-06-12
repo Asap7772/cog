@@ -9,13 +9,13 @@ import pickle
 
 # TODO Clean up this file
 MAX_SIZE = int(1E5)
-def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64,3)):
+def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64,3), imgstate=False):
     expl_env = DummyEnv(image_shape=image_shape)
     replay_buffer = ObsDictReplayBuffer(
         buffer_size,
         expl_env,
         observation_key=observation_key,
-        internal_keys=None
+        internal_keys=None,
     )
     return replay_buffer
 
@@ -43,9 +43,8 @@ def resize_small(img):
     img = img.transpose(2,0,1).flatten()
     return img
 
-def load_path(path, rew_path, replay_buffer, small_img=False, bc=False):
+def load_path(path, rew_path, replay_buffer, small_img=False, bc=False, imgstate=False):
     data = np.load(path,allow_pickle=True)
-
     if rew_path is not None:
         rew = pickle.load(open(rew_path, 'rb'))
         assert len(data) == len(rew)
@@ -61,7 +60,7 @@ def load_path(path, rew_path, replay_buffer, small_img=False, bc=False):
             for j in range(len(data[i]['observations'])):
                 data[i]['observations'][j]['image_observation'] = resize_small(data[i]['observations'][j]['image_observation'])
                 data[i]['next_observations'][j]['image_observation'] = resize_small(data[i]['next_observations'][j]['image_observation'])
-    add_data_to_buffer(data, replay_buffer, small_img=small_img)
+    add_data_to_buffer(data, replay_buffer, small_img=small_img, imgstate=imgstate)
 
 def get_buffer_size(data):
     num_transitions = 0
@@ -70,7 +69,7 @@ def get_buffer_size(data):
             num_transitions += 1
     return num_transitions
 
-def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1, drop_last=True, small_img=False):
+def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1, drop_last=True, small_img=False, imgstate=False):
     for j in range(len(data)):
         # import ipdb; ipdb.set_trace()
         assert (len(data[j]['actions']) == len(data[j]['observations']) == len(
@@ -87,8 +86,8 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
             actions=data[j]['actions'],
             next_actions =data[j]['next_actions'],
             terminals=[np.asarray([t]) for t in data[j]['terminals']],
-            observations=process_images(data[j]['observations'], small_img=small_img),
-            next_observations=process_images(data[j]['next_observations'], small_img=small_img)
+            observations=process_images(data[j]['observations'], small_img=small_img, imgstate=imgstate),
+            next_observations=process_images(data[j]['next_observations'], small_img=small_img, imgstate=imgstate)
         )
 
         if drop_last:
@@ -98,10 +97,9 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
 
         if scale_rew:
             path['rewards'] = [np.asarray([r*scale + shift]) for r in data[j]['rewards']]
-            
         replay_buffer.add_path(path)
 
-def process_images(observations, small_img=False):
+def process_images(observations, small_img=False, imgstate=False):
     output = []
     for i in range(len(observations)):
         try:
@@ -109,17 +107,19 @@ def process_images(observations, small_img=False):
                 image = observations[i]['image_observation'].reshape(3,48,48)
             else:
                 image = observations[i]['image_observation'].reshape(3,64,64)
+            state = observations[i]['state_observation']
         except:
             if small_img:
                 image = observations[i-1]['image_observation'].reshape(3,48,48)
             else:
                 image = observations[i-1]['image_observation'].reshape(3,64,64)
+            state = observations[i-1]['state_observation']
         if len(image.shape) == 3:
             image = image.flatten()
         else:
             print('image shape: {}'.format(image.shape))
             raise ValueError
-        output.append(dict(image=image))     
+        output.append(dict(state=state, image=image) if imgstate else dict(image=image))     
     return output
 
 if __name__ == "__main__":

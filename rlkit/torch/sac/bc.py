@@ -23,10 +23,12 @@ class BCTrainer(TorchTrainer):
             real_data=False,
             log_pickle=True,
             pickle_log_rate=5,
+            imgstate = False,
             *args, **kwargs
     ):
         super().__init__()
         self.env = env
+        self.imgstate = imgstate
         self.policy = policy
         self.log_dir = log_dir
 
@@ -63,18 +65,21 @@ class BCTrainer(TorchTrainer):
     def train_from_torch(self, batch, online=False):
         self._current_epoch += 1
 
-        obs = batch['observations']
+        if self.imgstate:
+            obs = batch['observations']
+            state = batch['state']
+        else:
+            obs = batch['observations']
         actions = batch['actions']
-
         """
         Policy and Alpha Loss
         """
         """Start with BC"""
         new_obs_actions, policy_mean, policy_log_std, log_pi, *_ = self.policy(
-            obs, reparameterize=True, return_log_prob=True,
+            obs, reparameterize=True, return_log_prob=True, extra_fc_input = state if self.imgstate else None,
         )
         alpha = 0.0
-        policy_log_prob = self.policy.log_prob(obs, actions)
+        policy_log_prob = self.policy.log_prob(obs, actions, extra_fc_input = state if self.imgstate else None)
         policy_loss = (alpha * log_pi - policy_log_prob).mean()
         """
         Update networks

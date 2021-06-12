@@ -3,11 +3,11 @@ import gym.spaces
 import numpy as np
 
 class DummyEnv(Env):
-    def __init__(self, image_shape = (64, 64, 3)) -> None:
+    def __init__(self, image_shape = (64, 64, 3), state_shape=(3,)) -> None:
         super().__init__()
 
         self.image_shape = image_shape
-        self.state_shape = (5,)
+        self.state_shape = state_shape
         self.action_shape = (4,)
 
         self.observation_space = gym.spaces.Dict({

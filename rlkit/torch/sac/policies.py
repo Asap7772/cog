@@ -69,15 +69,15 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
             self.log_std = np.log(std)
             assert LOG_SIG_MIN <= self.log_std <= LOG_SIG_MAX
 
-    def get_action(self, obs_np, deterministic=False, context_key='camera_orientation'):
+    def get_action(self, obs_np, state=None, deterministic=False, context_key='camera_orientation'):
         if type(obs_np) == dict:
             obs_np, context = obs_np['image'], np.array(list(obs_np[context_key].values()))[None]
         else: 
             context = None
-        actions = self.get_actions(obs_np[None], deterministic=deterministic, fc_input=context)
+        actions = self.get_actions(obs_np[None], deterministic=deterministic, fc_input=state[None] if state is not None else context)
         return actions[0, :], {}
 
-    def get_actions(self, obs_np, deterministic=False, fc_input=None):
+    def get_actions(self, obs_np, state=None, deterministic=False, fc_input=None):
         return eval_np(self, obs_np, deterministic=deterministic, extra_fc_input=fc_input)[0]
 
     def log_prob(self, obs, actions, extra_fc_input=None,):
@@ -282,6 +282,7 @@ class GaussianPolicy(Mlp, ExplorationPolicy):
             h = obs
             if extra_fc_input is not None:
                 h = torch.cat((h, extra_fc_input), dim=1)
+            import ipdb; ipdb.set_trace()
             h = self.obs_processor(h)
 
         for i, fc in enumerate(self.fcs):
@@ -325,6 +326,10 @@ class MakeDeterministic(nn.Module, Policy):
         super().__init__()
         self.stochastic_policy = stochastic_policy
 
-    def get_action(self, observation):
-        return self.stochastic_policy.get_action(observation,
+    def get_action(self, observation, state = None):
+        if state is not None:
+            return self.stochastic_policy.get_action(observation,state,
+                                                 deterministic=True)
+        else:
+            return self.stochastic_policy.get_action(observation,
                                                  deterministic=True)

@@ -70,6 +70,7 @@ class ObsDictRelabelingBuffer(ReplayBuffer):
         self._obs = {}
         self._next_obs = {}
         self.ob_spaces = self.env.observation_space.spaces
+        print(self.env.observation_space.spaces)
         for key in self.ob_keys_to_save + internal_keys:
             assert key in self.ob_spaces, \
                 "Key not found in the observation space: %s" % key
@@ -293,6 +294,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
             before_bias_point_probability=0.5,
             color_segment = False,
             target_segment = 'fixed_other',
+            state_dim=3,
     ):
         """
 
@@ -305,7 +307,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
         else:  # in case it's a tuple
             ob_keys_to_save = list(ob_keys_to_save)
         if internal_keys is None:
-            internal_keys = [observation_key]
+            internal_keys = list(observation_key) if isinstance(observation_key, tuple) else [observation_key]
         else:
             internal_keys.append(observation_key)
         self.internal_keys = internal_keys
@@ -337,12 +339,12 @@ class ObsDictReplayBuffer(ReplayBuffer):
         # self._obs[key][i] is the value of observation[key] at time i
         self._obs = {}
         self._next_obs = {}
+        print(self.env.observation_space.spaces, self.ob_keys_to_save,internal_keys)
         self.ob_spaces = self.env.observation_space.spaces
 
         self.target_segment = target_segment
         
         for key in self.ob_keys_to_save + internal_keys:
-            type = np.float64
             if key == 'camera_orientation':
                 self._obs[key] = np.zeros(
                     (max_size, 3), dtype=type)
@@ -413,10 +415,11 @@ class ObsDictReplayBuffer(ReplayBuffer):
         terminals = path["terminals"]
         if 'mcrewards' in path:
             mcrewards = path['mcrewards']
-        if 'object_position' in path:
-            object_positions = path['object_position']
         else:
             mcrewards = None
+
+        if 'object_position' in path:
+            object_positions = path['object_position']
 
         path_len = len(rewards)
 
@@ -458,6 +461,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
                     self._object_positions[buffer_slice] = object_positions[path_slice]
 
                 for key in self.ob_keys_to_save + self.internal_keys:
+                    import ipdb; ipdb.set_trace()
                     self._obs[key][buffer_slice] = obs[key][path_slice]
                     self._next_obs[key][buffer_slice] = next_obs[key][
                         path_slice]
@@ -544,8 +548,15 @@ class ObsDictReplayBuffer(ReplayBuffer):
         mcrewards = self._mcrewards[indices]
         object_positions=self._object_positions[indices]
         terminals = self._terminals[indices]
-        obs = self._obs[self.observation_key][indices]
-        next_obs = self._next_obs[self.observation_key][indices]
+        if isinstance(self.observation_key, tuple):
+            obs = self._obs['image'][indices]
+            next_obs = self._next_obs['image'][indices]
+            state = self._obs['state'][indices]
+            next_state = self._next_obs['state'][indices]
+        else:
+            obs = self._obs[self.observation_key][indices]
+            next_obs = self._next_obs[self.observation_key][indices]
+            state=next_state=None
 
 
         if self.color_segment:
@@ -572,7 +583,6 @@ class ObsDictReplayBuffer(ReplayBuffer):
         #         'camera_orientation' : np.array(list(data.values())),
         #         'next_camera_orientation' : np.array(list(next_data.values()))
         #     })
-
         batch.update({
             'observations': obs,
             'actions': actions,
@@ -584,6 +594,12 @@ class ObsDictReplayBuffer(ReplayBuffer):
             'next_observations': next_obs,
             'indices': np.array(indices).reshape(-1, 1),
         })
+
+        if state is not None:
+            batch.update({
+                'state' : state,
+                'next_state': next_state
+            })
         return batch
 
     def get_snapshot(self):

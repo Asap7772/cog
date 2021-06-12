@@ -52,18 +52,19 @@ def experiment(variant):
         input_height=48,
         input_channels=3,
         output_size=1,
-        added_fc_input_size=action_dim,
+        added_fc_input_size= action_dim,
     )
     # qf1 = ConcatCNN(**cnn_params)
     # qf2 = ConcatCNN(**cnn_params)
     # target_qf1 = ConcatCNN(**cnn_params)
     # target_qf2 = ConcatCNN(**cnn_params)
-
+    
     cnn_params.update(
         output_size=256,
-        added_fc_input_size=0,
+        added_fc_input_size=variant['state_dim'] if variant['imgstate'] else 0,
         hidden_sizes=[1024, 512],
     )
+
     if variant['vqvae_enc']:
         policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
     else:
@@ -75,7 +76,7 @@ def experiment(variant):
         hidden_sizes=[256, 256, 256],
         obs_processor=policy_obs_processor,
     )
-
+    
     eval_policy = MakeDeterministic(policy)
     eval_path_collector = MdpPathCollector(
         eval_env,
@@ -86,7 +87,7 @@ def experiment(variant):
         eval_policy,
     )
 
-    observation_key = 'image'
+    observation_key = ('image', 'state') if variant['imgstate'] else 'image'
     paths = []
     if args.azure:
         data_path = '/home/asap7772/drawer_data'
@@ -109,12 +110,13 @@ def experiment(variant):
         path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
     else:
         assert False
+    
     if args.buffer in [4]:
         replay_buffer = pickle.load(open(path,'rb'))
     else:
         replay_buffer = get_buffer(observation_key=observation_key, image_shape=variant['image_shape'])
         for path, rew_path in paths:
-            load_path(path, rew_path, replay_buffer, small_img=variant['small_image'], bc=True)
+            load_path(path, rew_path, replay_buffer, small_img=variant['small_image'], bc=True, imgstate = variant['imgstate'])
     
     trainer = BCTrainer(
         env=eval_env,
@@ -125,6 +127,7 @@ def experiment(variant):
         #target_qf2=target_qf2,
         dist_diff=variant['dist_diff'],
         log_dir=variant['log_dir'],
+        imgstate=variant['imgstate'],
         variant_dict=variant,
         **variant['trainer_kwargs']
     )
@@ -251,8 +254,12 @@ if __name__ == "__main__":
     parser.add_argument('--duplicate', action="store_true", default=False)
     parser.add_argument('--num_traj', default=0, type=int)
     parser.add_argument('--smimg', default=True, action='store_false')
+    parser.add_argument('--imgstate', default=False, action='store_true') # both image and state
+    parser.add_argument('--state_dim', default=3, type=int)
 
     args = parser.parse_args()
+    variant['state_dim'] = args.state_dim
+    variant['imgstate'] = args.imgstate
     variant['transfer'] = args.transfer
     variant['mixture'] = args.mixture
     variant['chaining'] = args.chaining

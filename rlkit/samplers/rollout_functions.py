@@ -111,7 +111,10 @@ def rollout(
     while path_length < max_path_length:
         # a, agent_info = agent.get_action(o)
         # TODO Remove hardcoding in the following line
-        a, agent_info = agent.get_action(o['image'])
+        try:
+            a, agent_info = agent.get_action(o['image'])
+        except:
+            a, agent_info = agent.get_action(o['image'], o['state'])
 
         next_o, r, d, env_info = env.step(a)
         observations.append(o)
