@@ -20,7 +20,9 @@ def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64
     return replay_buffer
 
 import torch
-import matplotlib.pyplot as plt
+
+#Stephen commented on 6-10 because it was preventing headless rendering in bottleneck setup.
+#import matplotlib.pyplot as plt
 from torchvision import transforms
 from skimage.transform import rescale, resize, downscale_local_mean
 

@@ -45,6 +45,7 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
             std=None,
             init_w=1e-3,
             obs_processor=None,
+            shared_encoder=False,
             **kwargs
     ):
         super().__init__(
@@ -57,6 +58,7 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
         self.log_std = None
         self.std = std
         self.obs_processor = obs_processor
+        self.shared_encoder = shared_encoder # If shared encoder, don't backprop gradients through obs_processor
 
         if std is None:
             last_hidden_size = obs_dim
@@ -90,6 +92,8 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
             if extra_fc_input is not None:
                 h = torch.cat((h, extra_fc_input), dim=1)
             h = self.obs_processor(h)
+            if self.shared_encoder:
+                h = h.detach()
 
         for i, fc in enumerate(self.fcs):
             h = self.hidden_activation(fc(h))
@@ -128,7 +132,9 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
             if extra_fc_input is not None:
                 h = torch.cat((h, extra_fc_input), dim=1)
             h = self.obs_processor(h)
-
+            if self.shared_encoder:
+                h = h.detach()
+                        
         for i, fc in enumerate(self.fcs):
             h = self.hidden_activation(fc(h))
         mean = self.last_fc(h)

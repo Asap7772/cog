@@ -55,8 +55,8 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
     def _end_epoch(self, epoch):
         if not self.trainer.discrete:
             snapshot = self._get_snapshot(epoch)
-            # logger.save_itr_params(epoch, snapshot)
-            gt.stamp('saving')
+            logger.save_itr_params(epoch, snapshot)
+            #gt.stamp('saving')
         self._log_stats(epoch)
 
         for post_epoch_func in self.post_epoch_funcs:
