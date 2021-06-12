@@ -122,8 +122,11 @@ def experiment(variant):
         spectral_norm_fc=False,
         spectral_norm_conv=False,
     )
+    if variant['vqvae_policy']:
+        policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
+    else:
+        policy_obs_processor = CNN(**cnn_params)
 
-    policy_obs_processor = CNN(**cnn_params)
     policy = TanhGaussianPolicy(
         obs_dim=cnn_params['output_size'],
         action_dim=action_dim,
@@ -392,6 +395,7 @@ if __name__ == "__main__":
     parser.add_argument("--bigger_net", action="store_true", default=False)
     parser.add_argument("--deeper_net", action="store_true", default=False)
     parser.add_argument("--vqvae_enc", action="store_true", default=False)
+    parser.add_argument("--vqvae_policy", action="store_true", default=False)
     parser.add_argument("--spectral_norm_conv", action="store_true", default=False)
     parser.add_argument("--spectral_norm_fc", action="store_true", default=False)
     parser.add_argument("--dr3", action="store_true", default=False)
@@ -405,6 +409,7 @@ if __name__ == "__main__":
     variant['bigger_net'] = args.bigger_net
     variant['deeper_net'] = args.deeper_net
     variant['vqvae_enc'] = args.vqvae_enc
+    variant['vqvae_policy'] = args.vqvae_policy
 
     variant['spectral_norm_conv'] = args.spectral_norm_conv
     variant['spectral_norm_fc'] = args.spectral_norm_fc
