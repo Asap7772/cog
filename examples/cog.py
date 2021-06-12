@@ -7,7 +7,8 @@ from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
-from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, ConcatBottleneckVQVAECNN
+from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, \
+    ConcatBottleneckVQVAECNN, VQVAEEncoderCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.launchers.launcher_util import setup_logger
@@ -84,6 +85,12 @@ def experiment(variant):
                                       deterministic=variant['deterministic_bottleneck'],
                                       spectral_norm_conv = cnn_params['spectral_norm_conv'],
                                       spectral_norm_fc = cnn_params['spectral_norm_fc'])
+
+            if variant['share_encoder']:
+                print('sharing encoder weights between QF1 and QF2!')
+                del qf2.encoder
+                qf2.encoder = qf1.encoder
+
             target_qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
                                              deterministic=variant['deterministic_bottleneck'],
                                              spectral_norm_conv=cnn_params['spectral_norm_conv'],
@@ -95,6 +102,10 @@ def experiment(variant):
         else:
             qf1 = VQVAEEncoderConcatCNN(**cnn_params)
             qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+            if variant['share_encoder']:
+                print('sharing encoder weights between QF1 and QF2!')
+                del qf2.encoder
+                qf2.encoder = qf1.encoder
             target_qf1 = VQVAEEncoderConcatCNN(**cnn_params)
             target_qf2 = VQVAEEncoderConcatCNN(**cnn_params)
 
@@ -104,27 +115,44 @@ def experiment(variant):
             qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
             target_qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
             target_qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            if variant['share_encoder']:
+                raise NotImplementedError
+
         elif variant['bottleneck']:
             qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
             qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            if variant['share_encoder']:
+                raise NotImplementedError
             target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
             target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
         else:
             qf1 = ConcatCNN(**cnn_params)
             qf2 = ConcatCNN(**cnn_params)
+            if variant['share_encoder']:
+                raise NotImplementedError
             target_qf1 = ConcatCNN(**cnn_params)
             target_qf2 = ConcatCNN(**cnn_params)
 
-    cnn_params.update(
-        output_size=256,
-        added_fc_input_size=0,
-        hidden_sizes=[1024, 512],
-        spectral_norm_fc=False,
-        spectral_norm_conv=False,
-    )
+    target_qf1.load_state_dict(qf1.state_dict())
+    target_qf2.load_state_dict(qf2.state_dict())
+
     if variant['vqvae_policy']:
-        policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
+        if variant['share_encoder']:
+            print('sharing encoder weights between QF and Policy with VQVAE Encoder')
+            policy_obs_processor = qf1.encoder
+            cnn_params.update(
+                output_size=qf1.get_conv_output_size(),
+            )
+        else:
+            policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
     else:
+        cnn_params.update(
+            output_size=256,
+            added_fc_input_size=0,
+            hidden_sizes=[1024, 512],
+            spectral_norm_fc=False,
+            spectral_norm_conv=False,
+        )
         policy_obs_processor = CNN(**cnn_params)
 
     policy = TanhGaussianPolicy(
@@ -132,6 +160,7 @@ def experiment(variant):
         action_dim=action_dim,
         hidden_sizes=[256, 256, 256],
         obs_processor=policy_obs_processor,
+        shared_encoder=variant['share_encoder'],
     )
 
     eval_policy = MakeDeterministic(policy)
@@ -396,6 +425,7 @@ if __name__ == "__main__":
     parser.add_argument("--deeper_net", action="store_true", default=False)
     parser.add_argument("--vqvae_enc", action="store_true", default=False)
     parser.add_argument("--vqvae_policy", action="store_true", default=False)
+    parser.add_argument("--share_encoder", action="store_true", default=False)
     parser.add_argument("--spectral_norm_conv", action="store_true", default=False)
     parser.add_argument("--spectral_norm_fc", action="store_true", default=False)
     parser.add_argument("--dr3", action="store_true", default=False)

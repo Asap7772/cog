@@ -701,6 +701,7 @@ class VQVAEEncoderConcatCNN(ConcatCNN):
 
     def apply_forward_conv(self, h):
         out = self.encoder(h)
+        out = out.view(out.shape[0], -1)
         return out
 
     def get_conv_output_size(self):
