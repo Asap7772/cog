@@ -3,6 +3,7 @@ from gym.spaces import Dict, Discrete
 
 from rlkit.data_management.replay_buffer import ReplayBuffer
 import typing
+from rlkit.data_management.augmentation import crop, batch_crop
 
 
 class ObsDictRelabelingBuffer(ReplayBuffer):
@@ -295,6 +296,8 @@ class ObsDictReplayBuffer(ReplayBuffer):
             color_segment = False,
             target_segment = 'fixed_other',
             state_dim=3,
+            color_jitter=False,
+            jit_percent = 0.1,
     ):
         """
 
@@ -310,6 +313,9 @@ class ObsDictReplayBuffer(ReplayBuffer):
             internal_keys = list(observation_key) if isinstance(observation_key, tuple) else [observation_key]
         else:
             internal_keys.append(observation_key)
+
+        self.color_jitter = color_jitter
+        self.jit_percent = jit_percent
         self.internal_keys = internal_keys
         # assert isinstance(observation_keys, typing.Iterable)
         assert isinstance(env.observation_space, Dict)
@@ -461,7 +467,6 @@ class ObsDictReplayBuffer(ReplayBuffer):
                     self._object_positions[buffer_slice] = object_positions[path_slice]
 
                 for key in self.ob_keys_to_save + self.internal_keys:
-                    import ipdb; ipdb.set_trace()
                     self._obs[key][buffer_slice] = obs[key][path_slice]
                     self._next_obs[key][buffer_slice] = next_obs[key][
                         path_slice]
@@ -562,10 +567,14 @@ class ObsDictReplayBuffer(ReplayBuffer):
         if self.color_segment:
             self.color_segment_img(obs, target=self.target_segment)
             self.color_segment_img(next_obs, target=self.target_segment)
+
         if self.observation_key == 'image':
             obs = normalize_image(obs)
             next_obs = normalize_image(next_obs)
-
+        
+        if self.color_jitter and np.random.rand() < self.jit_percent:
+            obs = batch_crop(obs)
+            next_obs = batch_crop(next_obs)
 
         batch = {}
 

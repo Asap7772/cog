@@ -9,32 +9,34 @@ import pickle
 
 # TODO Clean up this file
 MAX_SIZE = int(1E5)
-def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64,3), imgstate=False):
+def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64,3), imgstate=False, color_jitter=False):
     expl_env = DummyEnv(image_shape=image_shape)
     replay_buffer = ObsDictReplayBuffer(
         buffer_size,
         expl_env,
         observation_key=observation_key,
         internal_keys=None,
+        color_jitter=color_jitter,
+        jit_percent=0.1, #TODO Change
     )
     return replay_buffer
 
 import torch
 
 #Stephen commented on 6-10 because it was preventing headless rendering in bottleneck setup.
-#import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+# def plot_img(obs_img):
+#     plt.figure()
+#     if type(obs_img) == torch.Tensor:
+#         im_new = transforms.ToPILImage()(obs_img)
+#     else:
+#         im_new = obs_img
+#     plt.imshow(im_new)
+#     plt.savefig('/nfs/kun1/users/asap7772/cog/a.png')
+#     plt.show()
+
 from torchvision import transforms
 from skimage.transform import rescale, resize, downscale_local_mean
-
-def plot_img(obs_img):
-    plt.figure()
-    if type(obs_img) == torch.Tensor:
-        im_new = transforms.ToPILImage()(obs_img)
-    else:
-        im_new = obs_img
-    plt.imshow(im_new)
-    plt.savefig('/nfs/kun1/users/asap7772/cog/a.png')
-    plt.show()
 
 def resize_small(img):
     if img.shape[0] == 6912 or img.flatten().shape[0] == 921600:
