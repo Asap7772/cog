@@ -97,7 +97,9 @@ def experiment(variant):
     observation_key = 'image'
     paths = []
     if args.azure:
-        data_path = '/home/asap7772/drawer_data'
+        from os.path import expanduser
+        home = expanduser("~")
+        data_path = os.path.join(home, 'drawer_data/') 
     else:
         data_path = '/nfs/kun1/users/ashvin/data/val_data'
     if args.buffer == 0:
@@ -132,13 +134,10 @@ def experiment(variant):
         print('no validation')
         replay_buffer_val = None
 
-    # Translate 0/1 rewards to +4/+10 rewards.
+    # Translate 0/1 rewards to +2/-2 rewards.
     if variant['use_positive_rew']:
-        if set(np.unique(replay_buffer._rewards)).issubset({0, 1}):
-            replay_buffer._rewards = replay_buffer._rewards * 6.0
-            replay_buffer._rewards = replay_buffer._rewards + 4.0
-        assert set(np.unique(replay_buffer._rewards)).issubset(
-            set(6.0 * np.array([0, 1]) + 4.0))
+        replay_buffer._rewards = replay_buffer._rewards * 4.0
+        replay_buffer._rewards = replay_buffer._rewards - 2.0
 
     if variant['mcret']:
         trainer = CQLMCTrainer(
@@ -308,7 +307,7 @@ if __name__ == "__main__":
     parser.add_argument("--use-lagrange", action="store_true", default=False)
     parser.add_argument("--lagrange-thresh", default=5.0, type=float,
                         help="Value of tau, used with --use-lagrange")
-    parser.add_argument("--use-positive-rew", action="store_true", default=False)
+    parser.add_argument("--use_positive_rew", action="store_true", default=False)
     parser.add_argument("--duplicate", action="store_true", default=False)
     parser.add_argument("--val", action="store_true", default=False)
     parser.add_argument("--max-q-backup", action="store_true", default=False,
