@@ -81,7 +81,6 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
 
         if 'next_actions' not in data[j]:
             data[j]['next_actions'] = np.concatenate((data[j]['actions'][1:], data[j]['actions'][-1:]))
-        
         rew = np.array(data[j]['rewards']) * (0.99**np.arange(len(data[j]['rewards'])))
         mcrewards = np.cumsum(rew[::-1])[::-1].tolist() 
         path = dict(
@@ -91,7 +90,9 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
             next_actions =data[j]['next_actions'],
             terminals=[np.asarray([t]) for t in data[j]['terminals']],
             observations=process_images(data[j]['observations'], small_img=small_img, imgstate=imgstate),
-            next_observations=process_images(data[j]['next_observations'], small_img=small_img, imgstate=imgstate)
+            next_observations=process_images(data[j]['next_observations'], small_img=small_img, imgstate=imgstate),
+            latents = data[j]['latents'],
+            next_latents = data[j]['next_latents'],
         )
 
         if drop_last:
