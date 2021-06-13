@@ -17,6 +17,7 @@ from rlkit.launchers.launcher_util import setup_logger
 import argparse, os
 import roboverse
 import numpy as np
+from os.path import expanduser
 
 DEFAULT_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
@@ -186,7 +187,8 @@ def experiment(variant):
     observation_key = 'image'
     paths = []
     if args.azure:
-        data_path = '/home/asap7772/drawer_data'
+        home = expanduser("~")
+        data_path = os.path.join(home, 'drawer_data/')
     else:
         data_path = '/nfs/kun1/users/ashvin/data/val_data'
     if args.buffer == 0:
