@@ -188,21 +188,21 @@ def experiment(variant):
     paths = []
     if args.azure:
         home = expanduser("~")
-        data_path = os.path.join(home, 'drawer_data/')
+        data_path = os.path.join(expanduser("~"),'val_data_relabeled')
     else:
         data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
     if args.buffer == 0:
         print('lid on')
-        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_lidon_rew_handlabel_06_13.pkl')))
     elif args.buffer == 1:
         print('lid off')
-        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_takeofflid_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_lidoff_rew_handlabel_06_13.pkl')))
     elif args.buffer == 2:
         print('tray')
         paths.append((os.path.join(data_path,'fixed_tray_demos_latent.npy'), os.path.join(data_path,'fixed_tray_demos_rew.pkl')))
     elif args.buffer == 3:
         print('drawer')
-        paths.append((os.path.join(data_path,'fixed_drawer_demos_latent.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_drawer_demos_latent.npy'), os.path.join(data_path,'fixed_drawer_demos_draweropen_rew_handlabel_06_13.pkl')))
     elif args.buffer == 4:
         print('Stephen Tool Use')
         path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
