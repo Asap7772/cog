@@ -418,11 +418,15 @@ class CQLTrainer(TorchTrainer):
             qf1_dr3_loss = self.dot_grads(q1_pred_grad, q1_next_grad)
             qf2_dr3_loss = self.dot_grads(q2_pred_grad, q2_next_grad)
 
-        elif self.dr3_feat:
-            q1_next_pred, q1_next_pred_conv_feats = self.qf1(next_obs, new_next_actions, return_conv_outputs=True)
-            q2_next_pred, q2_next_pred_conv_feats = self.qf2(next_obs, new_next_actions, return_conv_outputs=True)
-            qf1_dr3_loss = (q1_pred_conv_feats * q1_next_pred_conv_feats).sum(dim=1).mean(dim=0)
-            qf2_dr3_loss = (q2_pred_conv_feats * q2_next_pred_conv_feats).sum(dim=1).mean(dim=0)
+
+        # DR3 Feat version computation
+        q1_next_pred, q1_next_pred_conv_feats = self.qf1(next_obs, new_next_actions, return_conv_outputs=True)
+        q2_next_pred, q2_next_pred_conv_feats = self.qf2(next_obs, new_next_actions, return_conv_outputs=True)
+
+        qf1_dr3_loss = (q1_pred_conv_feats * q1_next_pred_conv_feats).sum(dim=1).mean(dim=0)
+        qf2_dr3_loss = (q2_pred_conv_feats * q2_next_pred_conv_feats).sum(dim=1).mean(dim=0)
+
+        # =====
 
         qf1_loss = qf1_loss + min_qf1_loss
         if self.num_qs > 1:
@@ -606,9 +610,8 @@ class CQLTrainer(TorchTrainer):
                     ptu.get_numpy(policy_log_std),
                 ))
 
-            if self.dr3 or self.dr3_feat:
-                self.eval_statistics['QF1 DR3 Loss'] = np.mean(ptu.get_numpy(qf1_dr3_loss))
-                self.eval_statistics['QF2 DR3 Loss'] = np.mean(ptu.get_numpy(qf2_dr3_loss))
+            self.eval_statistics['QF1 DR3 Loss'] = np.mean(ptu.get_numpy(qf1_dr3_loss))
+            self.eval_statistics['QF2 DR3 Loss'] = np.mean(ptu.get_numpy(qf2_dr3_loss))
 
             if self.bottleneck:
                 self.eval_statistics['QF1 Bottleneck Loss'] = np.mean(ptu.get_numpy(qf1_bottleneck_loss))

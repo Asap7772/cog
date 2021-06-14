@@ -317,6 +317,22 @@ if __name__ == "__main__":
         ba('place_35obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-17-42_4875.npy', p=args.prob)
         variant['prior_buffer'] = buffers[0]
         variant['task_buffer'] = buffers[1]
+    elif args.buffer == 36:
+        path = '/global/scratch/stephentian/offline_rl/cog_data/'
+        buffers = []
+        ba = lambda x, p=args.prob, y=None: buffers.append((path + x, dict(p=p, alter_type=y, )))
+        ba('pickplace_prior.npy', y ='zero')
+        ba('pickplace_task.npy')  # task
+        variant['prior_buffer'] = buffers[0]
+        variant['task_buffer'] = buffers[1]
+    elif args.buffer == 37:
+        path = '/global/scratch/stephentian/offline_rl/cog_data/'
+        buffers = []
+        ba = lambda x, p=args.prob, y=None: buffers.append((path + x, dict(p=p, alter_type=y, )))
+        ba('closed_drawer_prior.npy', y ='noise')
+        ba('drawer_task.npy', y ='noise')
+        variant['prior_buffer'] = buffers[0]
+        variant['task_buffer'] = buffers[1]
 
     enable_gpus(args.gpu)
     variant['env'] = args.env

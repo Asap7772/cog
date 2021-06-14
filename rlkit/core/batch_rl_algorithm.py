@@ -56,6 +56,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             num_eval_steps_per_epoch,
             num_expl_steps_per_train_loop,
             num_trains_per_train_loop,
+            eval_every_n_epochs=1,
             num_train_loops_per_epoch=1,
             min_num_steps_before_training=0,
             q_learning_alg=False,
@@ -78,6 +79,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
         self.num_train_loops_per_epoch = num_train_loops_per_epoch
         self.num_expl_steps_per_train_loop = num_expl_steps_per_train_loop
         self.min_num_steps_before_training = min_num_steps_before_training
+        self.eval_every_n_epochs = eval_every_n_epochs
         self.batch_rl = batch_rl
         self.q_learning_alg = q_learning_alg
         self.eval_both = eval_both
@@ -127,12 +129,13 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
                 policy_fn = self.policy_fn
                 if self.trainer.discrete:
                     policy_fn = self.policy_fn_discrete
-                self.eval_data_collector.collect_new_paths(
-                    policy_fn,
-                    self.max_path_length,
-                    self.num_eval_steps_per_epoch,
-                    discard_incomplete_paths=True
-                )
+                if epoch % self.eval_every_n_epochs == 0:
+                    self.eval_data_collector.collect_new_paths(
+                        policy_fn,
+                        self.max_path_length,
+                        self.num_eval_steps_per_epoch,
+                        discard_incomplete_paths=True
+                    )
             else:
                 self.eval_data_collector.collect_new_paths(
                     self.max_path_length,

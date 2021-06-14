@@ -438,6 +438,7 @@ if __name__ == "__main__":
     parser.add_argument("--dr3", action="store_true", default=False)
     parser.add_argument("--dr3_feat", action="store_true", default=False)
     parser.add_argument("--dr3_weight", default=0.001, type=float)
+    parser.add_argument("--eval_every_n", default=1, type=int)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -457,6 +458,8 @@ if __name__ == "__main__":
     variant['algorithm_kwargs']['max_path_length'] = args.max_path_length
     variant['algorithm_kwargs']['num_eval_steps_per_epoch'] = \
         args.num_eval_per_epoch*args.max_path_length
+    variant['algorithm_kwargs']['eval_every_n_epochs'] = args.eval_every_n
+
 
     variant['prior_buffer'] = args.prior_buffer
     variant['task_buffer'] = args.task_buffer
