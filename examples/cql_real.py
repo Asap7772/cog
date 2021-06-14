@@ -495,6 +495,9 @@ if __name__ == "__main__":
     variant['mcret'] = args.mcret
     variant['bchead'] = args.bchead
 
+    variant['algorithm_kwargs']['max_path_length'] = 0
+    variant['algorithm_kwargs']['num_eval_steps_per_epoch'] = 0
+
     # Translate 0/1 rewards to +4/+10 rewards.
     variant['use_positive_rew'] = args.use_positive_rew
     variant['seed'] = args.seed
