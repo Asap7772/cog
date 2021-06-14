@@ -190,19 +190,19 @@ def experiment(variant):
         home = expanduser("~")
         data_path = os.path.join(home, 'drawer_data/')
     else:
-        data_path = '/nfs/kun1/users/ashvin/data/val_data'
+        data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
     if args.buffer == 0:
         print('lid on')
-        paths.append((os.path.join(data_path,'fixed_pot_demos.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
     elif args.buffer == 1:
         print('lid off')
-        paths.append((os.path.join(data_path,'fixed_pot_demos.npy'), os.path.join(data_path,'fixed_pot_demos_takeofflid_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_takeofflid_rew.pkl')))
     elif args.buffer == 2:
         print('tray')
-        paths.append((os.path.join(data_path,'fixed_tray_demos.npy'), os.path.join(data_path,'fixed_tray_demos_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_tray_demos_latent.npy'), os.path.join(data_path,'fixed_tray_demos_rew.pkl')))
     elif args.buffer == 3:
         print('drawer')
-        paths.append((os.path.join(data_path,'fixed_drawer_demos.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_drawer_demos_latent.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
     elif args.buffer == 4:
         print('Stephen Tool Use')
         path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
@@ -213,7 +213,7 @@ def experiment(variant):
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
-            load_path(path, rew_path, replay_buffer)
+            load_path(path, rew_path, replay_buffer, bc=variant['filter'])
 
     if variant['val']:
         #TODO change
@@ -389,6 +389,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--bottleneck", action='store_true')
+    parser.add_argument('--filter', action='store_true', default=False)
     parser.add_argument('--bottleneck_const', type=float, default=0.5)
     parser.add_argument('--bottleneck_dim', type=int, default=16)
     parser.add_argument('--bottleneck_lagrange', action='store_true')
@@ -444,6 +445,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['filter'] = args.filter
     variant['guassian_policy'] = args.guassian_policy
     variant['color_jitter'] = args.color_jitter
     variant['val'] = args.val

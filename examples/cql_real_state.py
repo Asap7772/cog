@@ -14,6 +14,7 @@ from rlkit.data_management.load_buffer_real import *
 import argparse, os
 import roboverse
 import numpy as np
+from os.path import expanduser
 
 DEFAULT_PRIOR_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
@@ -59,19 +60,19 @@ def experiment(variant):
     
     paths = []
     observation_key = 'image'
-    data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
+    data_path = os.path.join(expanduser("~"),'val_data_relabeled') if args.azure else '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
     if args.buffer == 0:
         print('lid on')
-        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_lidon_rew_handlabel_06_13.pkl')))
     elif args.buffer == 1:
         print('lid off')
-        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_takeofflid_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_lidoff_rew_handlabel_06_13.pkl')))
     elif args.buffer == 2:
         print('tray')
         paths.append((os.path.join(data_path,'fixed_tray_demos_latent.npy'), os.path.join(data_path,'fixed_tray_demos_rew.pkl')))
     elif args.buffer == 3:
         print('drawer')
-        paths.append((os.path.join(data_path,'fixed_drawer_demos_latent.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_drawer_demos_latent.npy'), os.path.join(data_path,'fixed_drawer_demos_draweropen_rew_handlabel_06_13.pkl')))
     elif args.buffer == 4:
         print('Stephen Tool Use')
         path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
@@ -83,7 +84,7 @@ def experiment(variant):
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
-            load_path(path, rew_path, replay_buffer)
+            load_path(path, rew_path, replay_buffer,bc=variant['filter'])
 
     # Translate 0/1 rewards to +0/+10 rewards.
     replay_buffer._rewards = replay_buffer._rewards * 10.0
@@ -192,6 +193,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpu", default='0', type=str)
+    parser.add_argument('--filter', action='store_true', default=False)
     parser.add_argument("--min-q-weight", default=1.0, type=float,
                         help="Value of alpha in CQL")
     parser.add_argument("--use-lagrange", action="store_true", default=False)
@@ -214,11 +216,13 @@ if __name__ == "__main__":
     parser.add_argument('--name', type=str, default='test')
     parser.add_argument('--obs_dim', type=int, default=720)
     parser.add_argument('--color_jitter', action='store_true')
+    parser.add_argument('--azure', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
     
     variant['buffer'] = args.buffer = int(args.buffer)
+    variant['filter'] = args.filter
     variant['color_jitter'] = args.color_jitter
     variant['obs_dim'] = args.obs_dim
     variant['algorithm_kwargs']['max_path_length'] = 0
