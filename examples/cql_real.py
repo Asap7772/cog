@@ -187,8 +187,9 @@ def experiment(variant):
     observation_key = 'image'
     paths = []
     if args.azure:
+        from os.path import expanduser
         home = expanduser("~")
-        data_path = os.path.join(home, 'drawer_data/')
+        data_path = os.path.join(home, 'drawer_data/') 
     else:
         data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
     if args.buffer == 0:
@@ -222,8 +223,7 @@ def experiment(variant):
     else:
         print('no validation')
         replay_buffer_val = None
-
-    # Translate 0/1 rewards to +0/+10 rewards.
+        
     if variant['use_positive_rew']:
         replay_buffer._rewards *= 10
 
