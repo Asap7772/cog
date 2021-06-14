@@ -3,6 +3,7 @@ from gym.spaces import Dict, Discrete
 
 from rlkit.data_management.replay_buffer import ReplayBuffer
 import typing
+from rlkit.data_management.augmentation import crop, batch_crop
 
 
 class ObsDictRelabelingBuffer(ReplayBuffer):
@@ -70,6 +71,7 @@ class ObsDictRelabelingBuffer(ReplayBuffer):
         self._obs = {}
         self._next_obs = {}
         self.ob_spaces = self.env.observation_space.spaces
+        print(self.env.observation_space.spaces)
         for key in self.ob_keys_to_save + internal_keys:
             assert key in self.ob_spaces, \
                 "Key not found in the observation space: %s" % key
@@ -293,6 +295,10 @@ class ObsDictReplayBuffer(ReplayBuffer):
             before_bias_point_probability=0.5,
             color_segment = False,
             target_segment = 'fixed_other',
+            store_latent=True,
+            latent_dim=720,
+            color_jitter=False,
+            jit_percent = 0.1,
     ):
         """
 
@@ -305,9 +311,12 @@ class ObsDictReplayBuffer(ReplayBuffer):
         else:  # in case it's a tuple
             ob_keys_to_save = list(ob_keys_to_save)
         if internal_keys is None:
-            internal_keys = [observation_key]
+            internal_keys = list(observation_key) if isinstance(observation_key, tuple) else [observation_key]
         else:
             internal_keys.append(observation_key)
+
+        self.color_jitter = color_jitter
+        self.jit_percent = jit_percent
         self.internal_keys = internal_keys
         # assert isinstance(observation_keys, typing.Iterable)
         assert isinstance(env.observation_space, Dict)
@@ -337,12 +346,12 @@ class ObsDictReplayBuffer(ReplayBuffer):
         # self._obs[key][i] is the value of observation[key] at time i
         self._obs = {}
         self._next_obs = {}
+        print(self.env.observation_space.spaces, self.ob_keys_to_save,internal_keys)
         self.ob_spaces = self.env.observation_space.spaces
 
         self.target_segment = target_segment
         
         for key in self.ob_keys_to_save + internal_keys:
-            type = np.float64
             if key == 'camera_orientation':
                 self._obs[key] = np.zeros(
                     (max_size, 3), dtype=type)
@@ -357,7 +366,12 @@ class ObsDictReplayBuffer(ReplayBuffer):
                     (max_size, self.ob_spaces[key].low.size), dtype=type)
                 self._next_obs[key] = np.zeros(
                     (max_size, self.ob_spaces[key].low.size), dtype=type)
-
+        
+        self.store_latent = store_latent
+        self.latent_dim = latent_dim
+        if self.store_latent:
+            self._latents = np.zeros((max_size, latent_dim), dtype=np.float32)
+            self._next_latents = np.zeros((max_size, latent_dim), dtype=np.float32)
         self._top = 0
         self._size = 0
 
@@ -411,12 +425,20 @@ class ObsDictReplayBuffer(ReplayBuffer):
         rewards = path["rewards"]
         next_obs = path["next_observations"]
         terminals = path["terminals"]
+
         if 'mcrewards' in path:
             mcrewards = path['mcrewards']
-        if 'object_position' in path:
-            object_positions = path['object_position']
         else:
             mcrewards = None
+
+        if 'object_position' in path:
+            object_positions = path['object_position']
+
+        if 'latents' in path:
+            latents = path['latents']
+            next_latents = path['next_latents']
+        else:
+            latents=next_latents=None
 
         path_len = len(rewards)
 
@@ -428,10 +450,15 @@ class ObsDictReplayBuffer(ReplayBuffer):
                                 self.ob_keys_to_save + self.internal_keys)
         obs = preprocess_obs_dict(obs)
         next_obs = preprocess_obs_dict(next_obs)
-        self.add_processed_path(path_len, actions, terminals, obs, next_obs, rewards, mcrewards=mcrewards, next_actions=next_actions,object_positions=object_positions if 'object_position' in path else None)
+        self.add_processed_path(path_len, actions, terminals, obs, 
+        next_obs, rewards, mcrewards=mcrewards, next_actions=next_actions,
+        object_positions=object_positions if 'object_position' in path else None,
+        latents=latents, next_latents=next_latents)
 
     def add_processed_path(self, path_len, actions, terminals,
-                           obs, next_obs, rewards, mcrewards=None, next_actions=None, object_positions=None):
+                           obs, next_obs, rewards, mcrewards=None, 
+                           next_actions=None, object_positions=None,
+                           latents=None, next_latents=None):
 
         if self._top + path_len >= self.max_size:
             num_pre_wrap_steps = self.max_size - self._top
@@ -456,6 +483,9 @@ class ObsDictReplayBuffer(ReplayBuffer):
                     self._mcrewards[buffer_slice] = mcrewards[path_slice]
                 if object_positions is not None:
                     self._object_positions[buffer_slice] = object_positions[path_slice]
+                if latents is not None:
+                    self._latents[buffer_slice] = latents[path_slice]
+                    self._next_latents[buffer_slice] = next_latents[path_slice]
 
                 for key in self.ob_keys_to_save + self.internal_keys:
                     self._obs[key][buffer_slice] = obs[key][path_slice]
@@ -487,6 +517,9 @@ class ObsDictReplayBuffer(ReplayBuffer):
                 self._mcrewards[slc] = mcrewards
             if object_positions is not None:
                 self._object_positions[slc] = object_positions
+            if latents is not None:
+                self._latents[slc] = latents
+                self._next_latents[slc] = next_latents
 
             for key in self.ob_keys_to_save + self.internal_keys:
                 self._obs[key][slc] = obs[key]
@@ -544,17 +577,28 @@ class ObsDictReplayBuffer(ReplayBuffer):
         mcrewards = self._mcrewards[indices]
         object_positions=self._object_positions[indices]
         terminals = self._terminals[indices]
-        obs = self._obs[self.observation_key][indices]
-        next_obs = self._next_obs[self.observation_key][indices]
+        if isinstance(self.observation_key, tuple):
+            obs = self._obs['image'][indices]
+            next_obs = self._next_obs['image'][indices]
+            state = self._obs['state'][indices]
+            next_state = self._next_obs['state'][indices]
+        else:
+            obs = self._obs[self.observation_key][indices]
+            next_obs = self._next_obs[self.observation_key][indices]
+            state=next_state=None
 
 
         if self.color_segment:
             self.color_segment_img(obs, target=self.target_segment)
             self.color_segment_img(next_obs, target=self.target_segment)
+
         if self.observation_key == 'image':
             obs = normalize_image(obs)
             next_obs = normalize_image(next_obs)
-
+        
+        if self.color_jitter and np.random.rand() < self.jit_percent:
+            obs = batch_crop(obs)
+            next_obs = batch_crop(next_obs)
 
         batch = {}
 
@@ -572,7 +616,6 @@ class ObsDictReplayBuffer(ReplayBuffer):
         #         'camera_orientation' : np.array(list(data.values())),
         #         'next_camera_orientation' : np.array(list(next_data.values()))
         #     })
-
         batch.update({
             'observations': obs,
             'actions': actions,
@@ -584,6 +627,17 @@ class ObsDictReplayBuffer(ReplayBuffer):
             'next_observations': next_obs,
             'indices': np.array(indices).reshape(-1, 1),
         })
+
+        if state is not None:
+            batch.update({
+                'state' : state,
+                'next_state': next_state
+            })
+        if hasattr(self, '_latents'):
+            batch.update({
+                'latents': self._latents[indices],
+                'next_latents': self._next_latents[indices]
+            })
         return batch
 
     def get_snapshot(self):

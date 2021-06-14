@@ -7,7 +7,8 @@ from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
-from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN
+from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, \
+    ConcatBottleneckVQVAECNN, VQVAEEncoderCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.launchers.launcher_util import setup_logger
@@ -29,7 +30,7 @@ DEFAULT_PRIOR_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
 DEFAULT_TASK_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
                         '_noise_0.1_2020-10-06T19-37-26_100.npy')
-CUSTOM_LOG_DIR = '/home/asap7772/doodad-output'
+CUSTOM_LOG_DIR = '/home/stian/doodad-output'
 
 
 def experiment(variant):
@@ -46,7 +47,27 @@ def experiment(variant):
         cnn_params.update(
             hidden_sizes=[1024, 512, 512, 512, 256],
         )
-        
+    if variant['deeper_net']:
+        print('deeper conv net')
+        cnn_params.update(
+            kernel_sizes=[3, 3, 3, 3, 3],
+            n_channels=[32, 32, 32, 32, 32],
+            strides=[1, 1, 1, 1, 1],
+            paddings=[1, 1, 1, 1, 1],
+            pool_sizes=[2, 2, 1, 1, 1],
+            pool_strides=[2, 2, 1, 1, 1],
+            pool_paddings=[0, 0, 0, 0, 0]
+        )
+
+    if variant['spectral_norm_conv']:
+        cnn_params.update(
+            spectral_norm_conv=True,
+        )
+    if variant['spectral_norm_fc']:
+        cnn_params.update(
+            spectral_norm_fc=True,
+        )
+
     cnn_params.update(
         input_width=48,
         input_height=48,
@@ -54,34 +75,99 @@ def experiment(variant):
         output_size=1,
         added_fc_input_size=action_dim,
     )
-    if variant['mcret'] or variant['bchead']:
-        qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
-        qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
-        target_qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
-        target_qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
-    elif variant['bottleneck']:
-        qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-        qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-        target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-        target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+    if variant['vqvae_enc']:
+        if variant['bottleneck']:
+            qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                      deterministic=variant['deterministic_bottleneck'],
+                                      spectral_norm_conv=cnn_params['spectral_norm_conv'],
+                                      spectral_norm_fc=cnn_params['spectral_norm_fc'])
+            qf2 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                      deterministic=variant['deterministic_bottleneck'],
+                                      spectral_norm_conv = cnn_params['spectral_norm_conv'],
+                                      spectral_norm_fc = cnn_params['spectral_norm_fc'])
+
+            if variant['share_encoder']:
+                print('sharing encoder weights between QF1 and QF2!')
+                qf2.encoder = qf1.encoder
+
+            target_qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                             deterministic=variant['deterministic_bottleneck'],
+                                             spectral_norm_conv=cnn_params['spectral_norm_conv'],
+                                             spectral_norm_fc=cnn_params['spectral_norm_fc'])
+            target_qf2 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                             deterministic=variant['deterministic_bottleneck'],
+                                             spectral_norm_conv=cnn_params['spectral_norm_conv'],
+                                             spectral_norm_fc=cnn_params['spectral_norm_fc'])
+        else:
+            qf1 = VQVAEEncoderConcatCNN(**cnn_params)
+            qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+            if variant['share_encoder']:
+                print('sharing encoder weights between QF1 and QF2!')
+                del qf2.encoder
+                qf2.encoder = qf1.encoder
+            target_qf1 = VQVAEEncoderConcatCNN(**cnn_params)
+            target_qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+
     else:
-        qf1 = ConcatCNN(**cnn_params)
-        qf2 = ConcatCNN(**cnn_params)
-        target_qf1 = ConcatCNN(**cnn_params)
-        target_qf2 = ConcatCNN(**cnn_params)
+        if variant['mcret'] or variant['bchead']:
+            qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            target_qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            target_qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            if variant['share_encoder']:
+                raise NotImplementedError
 
-    cnn_params.update(
-        output_size=256,
-        added_fc_input_size=0,
-        hidden_sizes=[1024, 512],
-    )
+        elif variant['bottleneck']:
+            qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            if variant['share_encoder']:
+                raise NotImplementedError
+            target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+        else:
+            qf1 = ConcatCNN(**cnn_params)
+            qf2 = ConcatCNN(**cnn_params)
+            if variant['share_encoder']:
+                raise NotImplementedError
+            target_qf1 = ConcatCNN(**cnn_params)
+            target_qf2 = ConcatCNN(**cnn_params)
 
-    policy_obs_processor = CNN(**cnn_params)
+    target_qf1.load_state_dict(qf1.state_dict())
+    target_qf2.load_state_dict(qf2.state_dict())
+
+    if variant['vqvae_policy']:
+        if variant['share_encoder']:
+            print('sharing encoder weights between QF and Policy with VQVAE Encoder')
+            policy_obs_processor = qf1.encoder
+            cnn_params.update(
+                output_size=qf1.get_conv_output_size(),
+            )
+        else:
+            cnn_params.update(
+                output_size=256,
+                added_fc_input_size=0,
+                hidden_sizes=[1024, 512],
+                spectral_norm_fc=False,
+                spectral_norm_conv=False,
+            )
+
+            policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
+    else:
+        cnn_params.update(
+            output_size=256,
+            added_fc_input_size=0,
+            hidden_sizes=[1024, 512],
+            spectral_norm_fc=False,
+            spectral_norm_conv=False,
+        )
+        policy_obs_processor = CNN(**cnn_params)
+
     policy = TanhGaussianPolicy(
         obs_dim=cnn_params['output_size'],
         action_dim=action_dim,
         hidden_sizes=[256, 256, 256],
         obs_processor=policy_obs_processor,
+        shared_encoder=variant['share_encoder'],
     )
 
     eval_policy = MakeDeterministic(policy)
@@ -151,6 +237,9 @@ def experiment(variant):
             bottleneck=variant['bottleneck'],
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
             only_bottleneck = variant['only_bottleneck'],
@@ -169,6 +258,9 @@ def experiment(variant):
             bottleneck=variant['bottleneck'],
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
             only_bottleneck = variant['only_bottleneck'],
@@ -187,6 +279,9 @@ def experiment(variant):
             bottleneck=variant['bottleneck'],
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
             only_bottleneck = variant['only_bottleneck'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
@@ -279,6 +374,8 @@ if __name__ == "__main__":
             pool_paddings=[0, 0, 0],
             image_augmentation=True,
             image_augmentation_padding=4,
+            spectral_norm_conv=False,
+            spectral_norm_fc=False,
         ),
         dump_video_kwargs=dict(
             imsize=48,
@@ -332,25 +429,48 @@ if __name__ == "__main__":
     parser.add_argument("--squared", action="store_true", default=False)
     parser.add_argument("--azure", action="store_false", default=True)
     parser.add_argument("--bigger_net", action="store_true", default=False)
+    parser.add_argument("--deeper_net", action="store_true", default=False)
+    parser.add_argument("--vqvae_enc", action="store_true", default=False)
+    parser.add_argument("--vqvae_policy", action="store_true", default=False)
+    parser.add_argument("--share_encoder", action="store_true", default=False)
+    parser.add_argument("--spectral_norm_conv", action="store_true", default=False)
+    parser.add_argument("--spectral_norm_fc", action="store_true", default=False)
+    parser.add_argument("--dr3", action="store_true", default=False)
+    parser.add_argument("--dr3_feat", action="store_true", default=False)
+    parser.add_argument("--dr3_weight", default=0.001, type=float)
+    parser.add_argument("--eval_every_n", default=1, type=int)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
     variant['trainer_kwargs']['discount'] = args.discount
     variant['squared'] = args.squared
     variant['bigger_net'] = args.bigger_net
+    variant['deeper_net'] = args.deeper_net
+    variant['vqvae_enc'] = args.vqvae_enc
+    variant['vqvae_policy'] = args.vqvae_policy
+    variant['share_encoder'] = args.share_encoder
 
+    variant['spectral_norm_conv'] = args.spectral_norm_conv
+    variant['spectral_norm_fc'] = args.spectral_norm_fc
 
     variant['env'] = args.env
     variant['val'] = args.val
     variant['algorithm_kwargs']['max_path_length'] = args.max_path_length
     variant['algorithm_kwargs']['num_eval_steps_per_epoch'] = \
         args.num_eval_per_epoch*args.max_path_length
+    variant['algorithm_kwargs']['eval_every_n_epochs'] = args.eval_every_n
+
 
     variant['prior_buffer'] = args.prior_buffer
     variant['task_buffer'] = args.task_buffer
     
     variant['bottleneck'] = args.bottleneck
     variant['bottleneck_const'] = args.bottleneck_const
+
+    variant['dr3'] = args.dr3
+    variant['dr3_feat'] = args.dr3_feat
+    variant['dr3_weight'] = args.dr3_weight
+
     variant['bottleneck_lagrange'] = args.bottleneck_lagrange
     variant['bottleneck_dim'] = args.bottleneck_dim
     variant['deterministic_bottleneck']=args.deterministic_bottleneck
@@ -366,8 +486,10 @@ if __name__ == "__main__":
         
         home = expanduser("~")
         p_data_path =  os.path.join(home, 'prior_data/') if args.azure else '/nfs/kun1/users/asap7772/prior_data/' 
+        p_data_path = '/home/stephentian/prior_data/'
         
-        path = '/nfs/kun1/users/asap7772/cog_data/'
+        #path = '/nfs/kun1/users/asap7772/cog_data/'
+        path = '/home/stian/cog_data/'
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
         if args.buffer == 0:

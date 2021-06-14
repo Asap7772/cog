@@ -7,7 +7,8 @@ from rlkit.torch.sac.policies import TanhGaussianPolicy, GaussianPolicy, MakeDet
 from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
-from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN
+from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN,  VQVAEEncoderConcatCNN, \
+    ConcatBottleneckVQVAECNN, VQVAEEncoderCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.envs.dummy_env import DummyEnv
@@ -16,6 +17,7 @@ from rlkit.launchers.launcher_util import setup_logger
 import argparse, os
 import roboverse
 import numpy as np
+from os.path import expanduser
 
 DEFAULT_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
@@ -39,6 +41,33 @@ def experiment(variant):
     print(action_dim)
 
     cnn_params = variant['cnn_params']
+
+    if variant['bigger_net']:
+        print('bigger_net')
+        cnn_params.update(
+            hidden_sizes=[1024, 512, 512, 512, 256],
+        )
+    if variant['deeper_net']:
+        print('deeper conv net')
+        cnn_params.update(
+            kernel_sizes=[3, 3, 3, 3, 3],
+            n_channels=[32, 32, 32, 32, 32],
+            strides=[1, 1, 1, 1, 1],
+            paddings=[1, 1, 1, 1, 1],
+            pool_sizes=[2, 2, 1, 1, 1],
+            pool_strides=[2, 2, 1, 1, 1],
+            pool_paddings=[0, 0, 0, 0, 0]
+        )
+
+    if variant['spectral_norm_conv']:
+        cnn_params.update(
+            spectral_norm_conv=True,
+        )
+    if variant['spectral_norm_fc']:
+        cnn_params.update(
+            spectral_norm_fc=True,
+        )
+
     cnn_params.update(
         input_width=64,
         input_height=64,
@@ -46,29 +75,90 @@ def experiment(variant):
         output_size=1,
         added_fc_input_size=action_dim,
     )
-    if variant['mcret'] or variant['bchead']:
-        qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'], width=64, height=64)
-        qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'], width=64, height=64)
-        target_qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'], width=64, height=64)
-        target_qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'], width=64, height=64)
-    elif variant['bottleneck']:
-        qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'], width=64, height=64)
-        qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'], width=64, height=64)
-        target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'], width=64, height=64)
-        target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'], width=64, height=64)
+
+    if variant['vqvae_enc']:
+        if variant['bottleneck']:
+            qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                      deterministic=variant['deterministic_bottleneck'],
+                                      spectral_norm_conv=cnn_params['spectral_norm_conv'],
+                                      spectral_norm_fc=cnn_params['spectral_norm_fc'])
+            qf2 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                      deterministic=variant['deterministic_bottleneck'],
+                                      spectral_norm_conv = cnn_params['spectral_norm_conv'],
+                                      spectral_norm_fc = cnn_params['spectral_norm_fc'])
+            if variant['share_encoder']:
+                print('sharing encoder weights between QF1 and QF2!')
+                qf2.encoder = qf1.encoder
+            target_qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                             deterministic=variant['deterministic_bottleneck'],
+                                             spectral_norm_conv=cnn_params['spectral_norm_conv'],
+                                             spectral_norm_fc=cnn_params['spectral_norm_fc'])
+            target_qf2 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
+                                             deterministic=variant['deterministic_bottleneck'],
+                                             spectral_norm_conv=cnn_params['spectral_norm_conv'],
+                                             spectral_norm_fc=cnn_params['spectral_norm_fc'])
+        else:
+            qf1 = VQVAEEncoderConcatCNN(**cnn_params)
+            qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+            if variant['share_encoder']:
+                print('sharing encoder weights between QF1 and QF2!')
+                del qf2.encoder
+                qf2.encoder = qf1.encoder
+            target_qf1 = VQVAEEncoderConcatCNN(**cnn_params)
+            target_qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+
     else:
-        qf1 = ConcatCNN(**cnn_params)
-        qf2 = ConcatCNN(**cnn_params)
-        target_qf1 = ConcatCNN(**cnn_params)
-        target_qf2 = ConcatCNN(**cnn_params)
+        if variant['mcret'] or variant['bchead']:
+            qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            target_qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+            target_qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
+        elif variant['bottleneck']:
+            qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+        else:
+            qf1 = ConcatCNN(**cnn_params)
+            qf2 = ConcatCNN(**cnn_params)
+            target_qf1 = ConcatCNN(**cnn_params)
+            target_qf2 = ConcatCNN(**cnn_params)
 
     cnn_params.update(
         output_size=256,
         added_fc_input_size=0,
         hidden_sizes=[1024, 512],
+        spectral_norm_fc=False,
+        spectral_norm_conv=False,
     )
 
     policy_obs_processor = CNN(**cnn_params)
+
+    if variant['vqvae_policy']:
+        if variant['share_encoder']:
+            print('sharing encoder weights between QF and Policy with VQVAE Encoder')
+            policy_obs_processor = qf1.encoder
+            cnn_params.update(
+                output_size=qf1.get_conv_output_size(),
+            )
+        else:
+            cnn_params.update(
+                output_size=256,
+                added_fc_input_size=0,
+                hidden_sizes=[1024, 512],
+                spectral_norm_fc=False,
+                spectral_norm_conv=False,
+            )
+            policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
+    else:
+        cnn_params.update(
+            output_size=256,
+            added_fc_input_size=0,
+            hidden_sizes=[1024, 512],
+            spectral_norm_fc=False,
+            spectral_norm_conv=False,
+        )
+        policy_obs_processor = CNN(**cnn_params)
 
     if variant['guassian_policy']:
         policy = GaussianPolicy(
@@ -101,19 +191,19 @@ def experiment(variant):
         home = expanduser("~")
         data_path = os.path.join(home, 'drawer_data/') 
     else:
-        data_path = '/nfs/kun1/users/ashvin/data/val_data'
+        data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
     if args.buffer == 0:
         print('lid on')
-        paths.append((os.path.join(data_path,'fixed_pot_demos.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
     elif args.buffer == 1:
         print('lid off')
-        paths.append((os.path.join(data_path,'fixed_pot_demos.npy'), os.path.join(data_path,'fixed_pot_demos_takeofflid_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_takeofflid_rew.pkl')))
     elif args.buffer == 2:
         print('tray')
-        paths.append((os.path.join(data_path,'fixed_tray_demos.npy'), os.path.join(data_path,'fixed_tray_demos_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_tray_demos_latent.npy'), os.path.join(data_path,'fixed_tray_demos_rew.pkl')))
     elif args.buffer == 3:
         print('drawer')
-        paths.append((os.path.join(data_path,'fixed_drawer_demos.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_drawer_demos_latent.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
     elif args.buffer == 4:
         print('Stephen Tool Use')
         path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
@@ -122,9 +212,9 @@ def experiment(variant):
     if args.buffer in [4]:
         replay_buffer = pickle.load(open(path,'rb'))
     else:
-        replay_buffer = get_buffer(observation_key=observation_key)
+        replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
-            load_path(path, rew_path, replay_buffer)
+            load_path(path, rew_path, replay_buffer, bc=variant['filter'])
 
     if variant['val']:
         #TODO change
@@ -133,11 +223,9 @@ def experiment(variant):
     else:
         print('no validation')
         replay_buffer_val = None
-
-    # Translate 0/1 rewards to +2/-2 rewards.
+        
     if variant['use_positive_rew']:
-        replay_buffer._rewards = replay_buffer._rewards * 4.0
-        replay_buffer._rewards = replay_buffer._rewards - 2.0
+        replay_buffer._rewards *= 10
 
     if variant['mcret']:
         trainer = CQLMCTrainer(
@@ -152,6 +240,9 @@ def experiment(variant):
             bottleneck_lagrange=variant['bottleneck_lagrange'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
             only_bottleneck = variant['only_bottleneck'],
             variant_dict=variant,
             gamma=variant['gamma'],
@@ -169,6 +260,9 @@ def experiment(variant):
             bottleneck=variant['bottleneck'],
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
             only_bottleneck = variant['only_bottleneck'],
@@ -188,6 +282,9 @@ def experiment(variant):
             bottleneck=variant['bottleneck'],
             bottleneck_const=variant['bottleneck_const'],
             bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
             log_dir = variant['log_dir'],
             wand_b=not variant['debug'],
             only_bottleneck = variant['only_bottleneck'],
@@ -281,6 +378,8 @@ if __name__ == "__main__":
             pool_paddings=[0, 0, 0],
             image_augmentation=True,
             image_augmentation_padding=4,
+            spectral_norm_conv=False,
+            spectral_norm_fc=False,
         ),
         dump_video_kwargs=dict(
             imsize=48,
@@ -290,6 +389,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--bottleneck", action='store_true')
+    parser.add_argument('--filter', action='store_true', default=False)
     parser.add_argument('--bottleneck_const', type=float, default=0.5)
     parser.add_argument('--bottleneck_dim', type=int, default=16)
     parser.add_argument('--bottleneck_lagrange', action='store_true')
@@ -307,7 +407,7 @@ if __name__ == "__main__":
     parser.add_argument("--use-lagrange", action="store_true", default=False)
     parser.add_argument("--lagrange-thresh", default=5.0, type=float,
                         help="Value of tau, used with --use-lagrange")
-    parser.add_argument("--use_positive_rew", action="store_true", default=False)
+    parser.add_argument("--use-positive-rew", action="store_false", default=True)
     parser.add_argument("--duplicate", action="store_true", default=False)
     parser.add_argument("--val", action="store_true", default=False)
     parser.add_argument("--max-q-backup", action="store_true", default=False,
@@ -330,17 +430,46 @@ if __name__ == "__main__":
     parser.add_argument('--eval_num', default=0, type=int)
     parser.add_argument('--guassian_policy', default=False, action='store_true')
     parser.add_argument("--name", default='test', type=str)
+    parser.add_argument("--vqvae_policy", action="store_true", default=False)
+    parser.add_argument("--share_encoder", action="store_true", default=False)
+    parser.add_argument("--discount", default=0.99, type=float)
+    parser.add_argument("--bigger_net", action="store_true", default=False)
+    parser.add_argument("--deeper_net", action="store_true", default=False)
+    parser.add_argument("--vqvae_enc", action="store_true", default=False)
+    parser.add_argument("--spectral_norm_conv", action="store_true", default=False)
+    parser.add_argument("--spectral_norm_fc", action="store_true", default=False)
+    parser.add_argument("--dr3", action="store_true", default=False)
+    parser.add_argument("--dr3_feat", action="store_true", default=False)
+    parser.add_argument("--dr3_weight", default=0.001, type=float)
+    parser.add_argument("--color_jitter", action="store_true", default=False)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['filter'] = args.filter
     variant['guassian_policy'] = args.guassian_policy
+    variant['color_jitter'] = args.color_jitter
     variant['val'] = args.val
+    variant['vqvae_policy'] = args.vqvae_policy
+    variant['share_encoder'] = args.share_encoder
+
+    variant['trainer_kwargs']['discount'] = args.discount
+    variant['bigger_net'] = args.bigger_net
+    variant['deeper_net'] = args.deeper_net
+    variant['vqvae_enc'] = args.vqvae_enc
+
+    variant['spectral_norm_conv'] = args.spectral_norm_conv
+    variant['spectral_norm_fc'] = args.spectral_norm_fc
 
     variant['prior_buffer'] = args.prior_buffer
     variant['task_buffer'] = args.task_buffer
     
     variant['bottleneck'] = args.bottleneck
     variant['bottleneck_const'] = args.bottleneck_const
+
+    variant['dr3'] = args.dr3
+    variant['dr3_feat'] = args.dr3_feat
+    variant['dr3_weight'] = args.dr3_weight
+
     variant['bottleneck_lagrange'] = args.bottleneck_lagrange
     variant['bottleneck_dim'] = args.bottleneck_dim
     variant['deterministic_bottleneck']=args.deterministic_bottleneck
@@ -365,6 +494,9 @@ if __name__ == "__main__":
     variant['duplicate'] = args.duplicate
     variant['mcret'] = args.mcret
     variant['bchead'] = args.bchead
+
+    variant['algorithm_kwargs']['max_path_length'] = 0
+    variant['algorithm_kwargs']['num_eval_steps_per_epoch'] = 0
 
     # Translate 0/1 rewards to +4/+10 rewards.
     variant['use_positive_rew'] = args.use_positive_rew

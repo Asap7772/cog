@@ -74,6 +74,9 @@ class CQLTrainer(TorchTrainer):
             validation_buffer=None,
             real_data=False,
             guassian_policy = False,
+            dr3=False,
+            dr3_feat=False,
+            dr3_weight=0.0,
     ):
         super().__init__()
         self.env = env
@@ -92,6 +95,10 @@ class CQLTrainer(TorchTrainer):
         self.dist1=dist1
         self.dist2=dist2
         self.guassian_policy = guassian_policy
+
+        self.dr3 = dr3
+        self.dr3_feat = dr3_feat
+        self.dr3_weight = dr3_weight
 
         self.use_automatic_entropy_tuning = use_automatic_entropy_tuning
         if self.use_automatic_entropy_tuning:
@@ -250,9 +257,9 @@ class CQLTrainer(TorchTrainer):
         """
         QF Loss
         """
-        q1_pred = self.qf1(obs, actions)
+        q1_pred, q1_pred_conv_feats = self.qf1(obs, actions, return_conv_outputs=True)
         if self.num_qs > 1:
-            q2_pred = self.qf2(obs, actions)
+            q2_pred, q2_pred_conv_feats = self.qf2(obs, actions, return_conv_outputs=True)
         
         new_next_actions, _, _, new_log_pi, *_ = self.policy(
             next_obs, reparameterize=True, return_log_prob=True,
@@ -377,9 +384,58 @@ class CQLTrainer(TorchTrainer):
             alpha_prime_loss.backward(retain_graph=True)
             self.alpha_prime_optimizer.step()
 
+        if self.dr3:
+            q1_next_pred = self.qf1(next_obs, new_next_actions)
+            q2_next_pred = self.qf2(next_obs, new_next_actions)
+            q1_pred_grad = torch.autograd.grad(q1_pred.mean(),
+                                                   inputs=[p for p in
+                                                           self.qf1.parameters()],
+                                                   create_graph=True,
+                                                   retain_graph=True,
+                                                   only_inputs=True
+                                                   )
+            q2_pred_grad = torch.autograd.grad(q2_pred.mean(),
+                                                   inputs=[p for p in
+                                                           self.qf2.parameters()],
+                                                   create_graph=True,
+                                                   retain_graph=True,
+                                                   only_inputs=True
+                                                   )
+            q1_next_grad = torch.autograd.grad(q1_next_pred.mean(),
+                                                   inputs=[p for p in
+                                                           self.qf1.parameters()],
+                                                   create_graph=True,
+                                                   retain_graph=True,
+                                                   only_inputs=True
+                                                   )
+            q2_next_grad = torch.autograd.grad(q2_next_pred.mean(),
+                                               inputs=[p for p in
+                                                       self.qf2.parameters()],
+                                               create_graph=True,
+                                               retain_graph=True,
+                                               only_inputs=True
+                                               )
+            qf1_dr3_loss = self.dot_grads(q1_pred_grad, q1_next_grad)
+            qf2_dr3_loss = self.dot_grads(q2_pred_grad, q2_next_grad)
+
+
+        # DR3 Feat version computation
+        q1_next_pred, q1_next_pred_conv_feats = self.qf1(next_obs, new_next_actions, return_conv_outputs=True)
+        q2_next_pred, q2_next_pred_conv_feats = self.qf2(next_obs, new_next_actions, return_conv_outputs=True)
+
+        qf1_dr3_loss = (q1_pred_conv_feats * q1_next_pred_conv_feats).sum(dim=1).mean(dim=0)
+        qf2_dr3_loss = (q2_pred_conv_feats * q2_next_pred_conv_feats).sum(dim=1).mean(dim=0)
+
+        # =====
+
         qf1_loss = qf1_loss + min_qf1_loss
         if self.num_qs > 1:
             qf2_loss = qf2_loss + min_qf2_loss
+
+        if self.dr3 or self.dr3_feat:
+            qf1_loss = qf1_loss + self.dr3_weight * qf1_dr3_loss
+            if self.num_qs > 1:
+                qf2_loss = qf2_loss + self.dr3_weight * qf2_dr3_loss
 
         """
         Update networks
@@ -554,6 +610,9 @@ class CQLTrainer(TorchTrainer):
                     ptu.get_numpy(policy_log_std),
                 ))
 
+            self.eval_statistics['QF1 DR3 Loss'] = np.mean(ptu.get_numpy(qf1_dr3_loss))
+            self.eval_statistics['QF2 DR3 Loss'] = np.mean(ptu.get_numpy(qf2_dr3_loss))
+
             if self.bottleneck:
                 self.eval_statistics['QF1 Bottleneck Loss'] = np.mean(ptu.get_numpy(qf1_bottleneck_loss))
                 self.eval_statistics['QF2 Bottleneck Loss'] = np.mean(ptu.get_numpy(qf2_bottleneck_loss))
@@ -634,6 +693,12 @@ class CQLTrainer(TorchTrainer):
 
     def end_epoch(self, epoch):
         self._need_to_update_eval_statistics = True
+
+    def dot_grads(self, grad1, grad2):
+        total = 0
+        for (grad1i, grad2i) in zip(grad1, grad2):
+            total += (grad1i * grad2i).sum()
+        return total
 
     @property
     def networks(self):

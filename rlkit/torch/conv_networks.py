@@ -3,6 +3,7 @@ import torch
 from torch import nn as nn
 from torch.distributions import Normal
 from rlkit.pythonplusplus import identity
+from rlkit.torch.vae.vq_vae import Encoder
 
 import numpy as np
 
@@ -34,6 +35,8 @@ class CNN(nn.Module):
             pool_paddings=None,
             image_augmentation=False,
             image_augmentation_padding=4,
+            spectral_norm_conv=False,
+            spectral_norm_fc=False,
     ):
         if hidden_sizes is None:
             hidden_sizes = []
@@ -64,6 +67,9 @@ class CNN(nn.Module):
         self.image_augmentation = image_augmentation
         self.image_augmentation_padding = image_augmentation_padding
 
+        self.spectral_norm_conv = spectral_norm_conv
+        self.spectral_norm_fc = spectral_norm_fc
+
         self.conv_layers = nn.ModuleList()
         self.conv_norm_layers = nn.ModuleList()
         self.pool_layers = nn.ModuleList()
@@ -78,6 +84,9 @@ class CNN(nn.Module):
                              kernel_size,
                              stride=stride,
                              padding=padding)
+            if self.spectral_norm_conv and 0 < i < len(n_channels)-1:
+                conv = nn.utils.spectral_norm(conv)
+
             hidden_init(conv.weight)
             conv.bias.data.fill_(0)
 
@@ -102,7 +111,7 @@ class CNN(nn.Module):
             self.input_width,
             self.input_height,
         )
-        # find output dim of conv_layers by trial and add norm conv layers
+        #find output dim of conv_layers by trial and add norm conv layers
         for i, conv_layer in enumerate(self.conv_layers):
             test_mat = conv_layer(test_mat)
             if self.conv_normalization_type == 'batch':
@@ -112,7 +121,11 @@ class CNN(nn.Module):
             if self.pool_type != 'none' and len(self.pool_layers) > i:
                 test_mat = self.pool_layers[i](test_mat)
 
-        self.conv_output_flat_size = int(np.prod(test_mat.shape))
+        self.conv_output_flat_size = self.get_conv_output_size()
+        
+        if self.spectral_norm_fc:
+            print('Building FC layers with spectral norm')
+
         if self.output_conv_channels:
             self.last_fc = None
         else:
@@ -121,6 +134,8 @@ class CNN(nn.Module):
             fc_input_size += added_fc_input_size
             for idx, hidden_size in enumerate(hidden_sizes):
                 fc_layer = nn.Linear(fc_input_size, hidden_size)
+                if self.spectral_norm_fc and 0 < idx < len(hidden_sizes)-1:
+                    fc_layer = nn.utils.spectral_norm(fc_layer)
                 fc_input_size = hidden_size
 
                 fc_layer.weight.data.uniform_(-init_w, init_w)
@@ -141,7 +156,18 @@ class CNN(nn.Module):
             self.augmentation_transform = RandomCrop(
                 input_height, self.image_augmentation_padding, device='cuda')
 
-    def forward(self, input, return_last_activations=False):
+    def get_conv_output_size(self):
+        test_mat = torch.zeros(
+            1,
+            self.input_channels,
+            self.input_width,
+            self.input_height,
+        )
+
+        test_mat = self.apply_forward_conv(test_mat)
+        return int(np.prod(test_mat.shape))
+
+    def forward(self, input, return_last_activations=False, return_conv_outputs=False):
         conv_input = input.narrow(start=0,
                                   length=self.conv_input_length,
                                   dim=1).contiguous()
@@ -156,12 +182,12 @@ class CNN(nn.Module):
             h = self.augmentation_transform(h)
 
         h = self.apply_forward_conv(h)
-
         if self.output_conv_channels:
             return h
 
         # flatten channels for fc layers
         h = h.view(h.size(0), -1)
+        conv_outputs_flat = h
         if self.added_fc_input_size != 0:
             extra_fc_input = input.narrow(
                 start=self.conv_input_length,
@@ -169,11 +195,17 @@ class CNN(nn.Module):
                 dim=1,
             )
             h = torch.cat((h, extra_fc_input), dim=1)
+
+
         h = self.apply_forward_fc(h)
 
         if return_last_activations:
             return h
-        return self.output_activation(self.last_fc(h))
+
+        if return_conv_outputs:
+            return self.output_activation(self.last_fc(h)), conv_outputs_flat
+        else:
+            return self.output_activation(self.last_fc(h))
 
     def apply_forward_conv(self, h):
         for i, layer in enumerate(self.conv_layers):
@@ -192,6 +224,8 @@ class CNN(nn.Module):
                 h = self.fc_norm_layers[i](h)
             h = self.hidden_activation(h)
         return h
+
+
 
 class RegressCNN(CNN):
     def __init__(self, *args, dim=1, **kwargs):
@@ -218,7 +252,6 @@ class RegressCNN(CNN):
             h = self.augmentation_transform(h)
 
         h = self.apply_forward_conv(h)
-
         if self.output_conv_channels:
             return h
 
@@ -240,6 +273,18 @@ class RegressCNN(CNN):
             return h
         return self.output_activation(self.last_fc(h)), regress_out
 
+class ConcatMlp(Mlp):
+    """
+    Concatenate inputs along dimension and then pass through MLP.
+    """
+    def __init__(self, *args, dim=1, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dim = dim
+
+    def forward(self, *inputs, **kwargs):
+        flat_inputs = torch.cat(inputs, dim=self.dim)
+        return super().forward(flat_inputs, **kwargs)
+        
 class ConcatCNN(CNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
@@ -273,7 +318,8 @@ class ConcatBottleneckCNN(CNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False, width=48, height=48):
+    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False, width=48, height=48,
+                 spectral_norm_conv=False,spectral_norm_fc=False):
         cnn_params=dict(
             kernel_sizes=[3, 3, 3],
             n_channels=[16, 16, 16],
@@ -294,6 +340,8 @@ class ConcatBottleneckCNN(CNN):
             input_channels=3,
             output_size=bottleneck_dim*2,
             added_fc_input_size=action_dim,
+            spectral_norm_fc=spectral_norm_fc,
+            spectral_norm_conv=spectral_norm_conv
         )
 
         self.cnn_params = cnn_params
@@ -302,19 +350,34 @@ class ConcatBottleneckCNN(CNN):
         super().__init__(**cnn_params)
         self.bottleneck_dim = bottleneck_dim
         self.deterministic=deterministic
-        self.mlp = Mlp([512,512,512],output_size,self.cnn_params['output_size']//2)
+        self.mlp = Mlp([512,512,512],output_size,self.cnn_params['output_size']//2, spectral_norm=spectral_norm_fc)
         self.dim = dim
         self.output_conv_channels = False
 
     def forward(self, *inputs, **kwargs):
-        if self.output_conv_channels:
-            return self.detailed_forward(*inputs, **kwargs)[-1]
+        forward_outs = self.detailed_forward(*inputs, **kwargs)
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            outs = forward_outs[0]
+            conv_outs = forward_outs[1]
         else:
-            return self.detailed_forward(*inputs, **kwargs)[0]
+            outs = forward_outs
+
+        if self.output_conv_channels:
+            ret_val = outs[-1]
+        else:
+            ret_val = outs[0]
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            return ret_val, conv_outs
+        return ret_val
 
     def detailed_forward(self, *inputs, **kwargs): # used to calculate loss
         flat_inputs = torch.cat(inputs, dim=self.dim)
-        cnn_out = super().forward(flat_inputs, **kwargs)
+        ret_conv = False
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            ret_conv = True
+            cnn_out, conv_outputs = super().forward(flat_inputs, **kwargs)
+        else:
+            cnn_out = super().forward(flat_inputs, **kwargs)
         size = self.cnn_params['output_size']//2
         mean, log_std = cnn_out[:,:size], cnn_out[:,size:]
         assert mean.shape == log_std.shape
@@ -331,7 +394,12 @@ class ConcatBottleneckCNN(CNN):
             sample=mean
             log_prob= -torch.ones_like(log_prob).cuda()
             reg_loss = torch.zeros_like(reg_loss).cuda()
-        return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
+
+        if ret_conv:
+            return (self.mlp(sample), log_prob, reg_loss, mean, log_std, sample), conv_outputs
+        else:
+            return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
+
 
 class ConcatBottleneckActionCNN(CNN):
     """
@@ -632,3 +700,145 @@ class RandomCrop:
         padded = padded[:, torch.arange(tensor.size(0))[:, None, None],
                  rows[:, torch.arange(th)[:, None]], columns[:, None]]
         return padded.permute(1, 0, 2, 3)
+
+
+class VQVAEEncoderConcatCNN(ConcatCNN):
+    def __init__(self, *args, **kwargs):
+        kwargs['kernel_sizes'] = []
+        kwargs['n_channels'] = []
+        kwargs['strides'] = []
+        kwargs['paddings'] = []
+        super().__init__(*args, **kwargs)
+        
+        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
+
+    def apply_forward_conv(self, h):
+        out = self.encoder(h)
+        return out
+
+    def get_conv_output_size(self):
+        if self.input_width == self.input_height == 48:
+            return 128 * 12 * 12
+        elif self.input_width == self.input_height == 64:
+            return 128 * 16 * 16
+        else:
+            raise ValueError
+
+    def forward(self, *inputs, **kwargs):
+        return super().forward(*inputs, **kwargs)
+
+
+class VQVAEEncoderCNN(CNN):
+    def __init__(self, *args, **kwargs):
+        kwargs['kernel_sizes'] = []
+        kwargs['n_channels'] = []
+        kwargs['strides'] = []
+        kwargs['paddings'] = []
+        super().__init__(*args, **kwargs)
+
+        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
+
+    def apply_forward_conv(self, h):
+        out = self.encoder(h)
+        return out
+
+    def get_conv_output_size(self):
+        if self.input_width == self.input_height == 48:
+            return 128 * 12 * 12
+        elif self.input_width == self.input_height == 64:
+            return 128 * 16 * 16
+        else:
+            raise ValueError
+
+    def forward(self, *inputs, **kwargs):
+        return super().forward(*inputs, **kwargs)
+
+class ConcatBottleneckVQVAECNN(VQVAEEncoderConcatCNN):
+    """
+    Concatenate inputs along dimension and then pass through MLP.
+    """
+
+    def __init__(self, action_dim, bottleneck_dim=16, output_size=1, dim=1, deterministic=False, width=48, height=48,
+                 spectral_norm_conv=False, spectral_norm_fc=False):
+        cnn_params = dict(
+            kernel_sizes=[3, 3, 3],
+            n_channels=[16, 16, 16],
+            strides=[1, 1, 1],
+            hidden_sizes=[1024],  # mean/std
+            paddings=[1, 1, 1],
+            pool_type='max2d',
+            pool_sizes=[2, 2, 1],  # the one at the end means no pool
+            pool_strides=[2, 2, 1],
+            pool_paddings=[0, 0, 0],
+            image_augmentation=True,
+            image_augmentation_padding=4,
+        )
+
+        cnn_params.update(
+            input_width=width,
+            input_height=height,
+            input_channels=3,
+            output_size=bottleneck_dim * 2,
+            added_fc_input_size=action_dim,
+            spectral_norm_fc=spectral_norm_fc,
+            spectral_norm_conv=spectral_norm_conv
+        )
+
+        self.cnn_params = cnn_params
+        self.action_dim = action_dim
+
+        super().__init__(**cnn_params)
+        self.bottleneck_dim = bottleneck_dim
+        self.deterministic = deterministic
+        self.mlp = Mlp([512, 512, 512], output_size, self.cnn_params['output_size'] // 2, spectral_norm=cnn_params['spectral_norm_fc'])
+        self.dim = dim
+        self.output_conv_channels = False
+
+    def forward(self, *inputs, **kwargs):
+        forward_outs = self.detailed_forward(*inputs, **kwargs)
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            outs = forward_outs[0]
+            conv_outs = forward_outs[1]
+        else:
+            outs = forward_outs
+        if self.output_conv_channels:
+            ret_val = outs[-1]
+        else:
+            ret_val = outs[0]
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            return ret_val, conv_outs
+        return ret_val
+
+    def detailed_forward(self, *inputs, **kwargs):  # used to calculate loss
+        flat_inputs = torch.cat(inputs, dim=self.dim)
+        ret_conv = False
+        if 'return_conv_outputs' in kwargs and kwargs['return_conv_outputs']:
+            ret_conv = True
+            cnn_out, conv_outputs = super().forward(flat_inputs, **kwargs)
+        else:
+            cnn_out = super().forward(flat_inputs, **kwargs)
+        size = self.cnn_params['output_size'] // 2
+        mean, log_std = cnn_out[:, :size], cnn_out[:, size:]
+        assert mean.shape == log_std.shape
+        std = torch.exp(log_std)
+
+        dist = Normal(mean, std)
+        sample = dist.rsample()
+        log_prob = dist.log_prob(sample)
+        # equation is $$\frac{1}{2}[\mu^T\mu + tr(\Sigma) -k -log|\Sigma|]$$
+        K = self.bottleneck_dim
+        reg_loss = 1 / 2 * (
+                    mean.norm(dim=-1, keepdim=True) ** 2 + (std ** 2).sum(axis=-1, keepdim=True) - K - torch.log(
+                std ** 2 + 1E-9).sum(axis=-1, keepdim=True))
+
+        if self.deterministic:
+            sample = mean
+            log_prob = -torch.ones_like(log_prob).cuda()
+            reg_loss = torch.zeros_like(reg_loss).cuda()
+
+        if ret_conv:
+            return (self.mlp(sample), log_prob, reg_loss, mean, log_std, sample), conv_outputs
+        else:
+            return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
+
+

@@ -7,7 +7,8 @@ import torch.optim as optim
 import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
-
+import wandb
+import os
 
 class BCTrainer(TorchTrainer):
     def __init__(
@@ -16,11 +17,23 @@ class BCTrainer(TorchTrainer):
             policy,
             policy_lr=1e-3,
             optimizer_class=optim.Adam,
+            log_dir=None,
+            wand_b=True,
+            variant_dict=None,
+            real_data=False,
+            log_pickle=True,
+            pickle_log_rate=5,
+            imgstate = False,
             *args, **kwargs
     ):
         super().__init__()
         self.env = env
+        self.imgstate = imgstate
         self.policy = policy
+        self.log_dir = log_dir
+
+        self.log_pickle=log_pickle
+        self.pickle_log_rate=pickle_log_rate
 
         self.policy_optimizer = optimizer_class(
             self.policy.parameters(),
@@ -34,24 +47,39 @@ class BCTrainer(TorchTrainer):
         self._need_to_update_eval_statistics = True
 
         self._current_epoch = 0
+        self._log_epoch = 0
+
         self._num_policy_update_steps = 0
         self.discrete = False
+
+        self.real_data = real_data
+        self.log_dir = log_dir
+        self.wand_b = wand_b
+
+        if self.wand_b:
+            wandb.init(project='cog_cql', reinit=True)
+            wandb.run.name=log_dir.split('/')[-1]
+            if variant_dict is not None:
+                wandb.config.update(variant_dict)
 
     def train_from_torch(self, batch, online=False):
         self._current_epoch += 1
 
-        obs = batch['observations']
+        if self.imgstate:
+            obs = batch['observations']
+            state = batch['state']
+        else:
+            obs = batch['observations']
         actions = batch['actions']
-
         """
         Policy and Alpha Loss
         """
         """Start with BC"""
         new_obs_actions, policy_mean, policy_log_std, log_pi, *_ = self.policy(
-            obs, reparameterize=True, return_log_prob=True,
+            obs, reparameterize=True, return_log_prob=True, extra_fc_input = state if self.imgstate else None,
         )
         alpha = 0.0
-        policy_log_prob = self.policy.log_prob(obs, actions)
+        policy_log_prob = self.policy.log_prob(obs, actions, extra_fc_input = state if self.imgstate else None)
         policy_loss = (alpha * log_pi - policy_log_prob).mean()
         """
         Update networks
@@ -65,6 +93,14 @@ class BCTrainer(TorchTrainer):
         Save some statistics for eval
         """
         if self._need_to_update_eval_statistics:
+            if self.log_pickle and self._log_epoch % self.pickle_log_rate == 0:
+                new_path = os.path.join(self.log_dir,'model_pkl')
+                if not os.path.isdir(new_path):
+                    os.mkdir(new_path)
+                torch.save({
+                    'policy_state_dict': self.policy.state_dict(),
+                }, os.path.join(new_path, str(self._log_epoch)+'.pt'))
+
             self._need_to_update_eval_statistics = False
             """
             Eval should set this to None.
@@ -87,6 +123,9 @@ class BCTrainer(TorchTrainer):
                 'Policy log std',
                 ptu.get_numpy(policy_log_std),
             ))
+            if self.wand_b:
+                wandb.log({'trainer/'+k:v for k,v in self.eval_statistics.items()}, step=self._log_epoch)
+            self._log_epoch += 1
         self._n_train_steps_total += 1
 
     def get_diagnostics(self):
