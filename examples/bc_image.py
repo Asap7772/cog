@@ -113,26 +113,11 @@ def experiment(variant):
     else:
         replay_buffer = load_data_from_npy(variant, expl_env, observation_key, bin_change=variant['bin'], target_segment=variant['segment_type'], scale_rew=variant['trainer_kwargs']['with_lagrange'])
 
-    trainer = BCTrainer(
-        env=eval_env,
-        policy=policy,
-        #qf1=qf1,
-        #qf2=qf2,
-        #target_qf1=target_qf1,
-        #target_qf2=target_qf2,
-        validation=variant['val'],
-        validation_buffer=replay_buffer_val,
-        dist_diff=variant['dist_diff'],
-        log_dir=variant['log_dir'],
-        variant_dict=variant,
-        **variant['trainer_kwargs']
-    )
-
     if variant['val']:
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path + x, dict(p=p, alter_type=y, )))
         if args.buffer == 35:
-            path = '/global/scratch/stephentian/offline_rl/prior_data/'
+            path = '/home/stephentian/prior_data/'
             ba('val_pick_35_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-06-14T16-41-24_100.npy',
                p=args.prob, y='zero')
             ba('val_place_35_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-06-14T16-40-20_100.npy',
@@ -152,6 +137,23 @@ def experiment(variant):
         replay_buffer_val = None
         print('no validation buffer')
 
+
+    trainer = BCTrainer(
+        env=eval_env,
+        policy=policy,
+        #qf1=qf1,
+        #qf2=qf2,
+        #target_qf1=target_qf1,
+        #target_qf2=target_qf2,
+        validation=variant['val'],
+        validation_buffer=replay_buffer_val,
+        dist_diff=variant['dist_diff'],
+        log_dir=variant['log_dir'],
+        variant_dict=variant,
+        **variant['trainer_kwargs']
+    )
+
+    
 
     algorithm = TorchBatchRLAlgorithm(
         trainer=trainer,
@@ -341,7 +343,7 @@ if __name__ == "__main__":
         grasp = '/nfs/kun1/users/avi/imitation_datasets/scripted_Widow250MultiObjectGraspTrain-v0_2020-12-19T23-15-41.npy'
         args.buffer = [grasp, rand]
     elif args.buffer == 35:
-        path = '/global/scratch/stephentian/offline_rl/prior_data/'
+        path = '/home/stephentian/prior_data/'
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
         ba('pick_35obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-10_4375.npy', p=args.prob,
