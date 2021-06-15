@@ -205,9 +205,9 @@ def experiment(variant):
                 ba('val_place_2obj_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-48_108.npy', p=args.prob)
             elif args.buffer == 35:
                 path = p_data_path
-                ba('val_pick_35_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-06-14T16-41-24_100.npy',
+                ba('val_pick_35_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-06-14T21-52-13_100.npy',
                    p=args.prob, y='zero')
-                ba('val_place_35_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-06-14T16-40-20_100.npy',
+                ba('val_place_35_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-06-14T21-50-14_100.npy',
                    p=args.prob)
 
             old_pb, variant['prior_buffer'] = variant['prior_buffer'], buffers[0]
