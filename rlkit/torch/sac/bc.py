@@ -24,6 +24,8 @@ class BCTrainer(TorchTrainer):
             log_pickle=True,
             pickle_log_rate=5,
             imgstate = False,
+            validation=False,
+            validation_buffer=None,
             *args, **kwargs
     ):
         super().__init__()
@@ -51,6 +53,9 @@ class BCTrainer(TorchTrainer):
 
         self._num_policy_update_steps = 0
         self.discrete = False
+
+        self.validation = validation
+        self.validation_buffer = validation_buffer
 
         self.real_data = real_data
         self.log_dir = log_dir
@@ -100,6 +105,37 @@ class BCTrainer(TorchTrainer):
                 torch.save({
                     'policy_state_dict': self.policy.state_dict(),
                 }, os.path.join(new_path, str(self._log_epoch)+'.pt'))
+
+            if self.validation:
+                num_val = 32
+                batch_val = self.validation_buffer.random_batch(num_val)
+                if self.imgstate:
+                    state_val = ptu.from_numpy(batch_val['state'])
+                rewards_val = ptu.from_numpy(batch_val['rewards'])
+                terminals_val = ptu.from_numpy(batch_val['terminals'])
+                obs_val = ptu.from_numpy(batch_val['observations'])
+                actions_val = ptu.from_numpy(batch_val['actions'])
+                next_obs_val = ptu.from_numpy(batch_val['next_observations'])
+                val_new_obs_actions, val_policy_mean, val_policy_log_std, val_log_pi, *_ = self.policy(
+                    obs_val, reparameterize=True, return_log_prob=True, extra_fc_input=state if self.imgstate else None,
+                )
+                val_policy_log_prob = self.policy.log_prob(obs_val, actions_val, extra_fc_input=state if self.imgstate else None)
+                val_policy_loss = (alpha * val_log_pi - val_policy_log_prob).mean()
+                self.eval_statistics['Val Policy Loss'] = np.mean(ptu.get_numpy(
+                    val_policy_loss
+                ))
+                self.eval_statistics.update(create_stats_ordered_dict(
+                    'Val Log Pis',
+                    ptu.get_numpy(val_log_pi),
+                ))
+                self.eval_statistics.update(create_stats_ordered_dict(
+                    'Val Policy mu',
+                    ptu.get_numpy(val_policy_mean),
+                ))
+                self.eval_statistics.update(create_stats_ordered_dict(
+                    'Val Policy log std',
+                    ptu.get_numpy(val_policy_log_std),
+                ))
 
             self._need_to_update_eval_statistics = False
             """
