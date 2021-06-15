@@ -192,7 +192,8 @@ def experiment(variant):
             replay_buffer_val = load_data_from_npy_chaining_mult(
                 variant, expl_env, observation_key)
         else:
-            buffers = []
+            buffers = [
+            ]
             ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
             if args.buffer == 30:
                 path = p_data_path
@@ -202,7 +203,13 @@ def experiment(variant):
                 path = p_data_path
                 ba('val_pick_2obj_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-43_117.npy', p=args.prob,y='zero')
                 ba('val_place_2obj_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-48_108.npy', p=args.prob)
-            
+            elif args.buffer == 35:
+                path = p_data_path
+                ba('val_pick_35_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-06-14T16-41-24_100.npy',
+                   p=args.prob, y='zero')
+                ba('val_place_35_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-06-14T16-40-20_100.npy',
+                   p=args.prob)
+
             old_pb, variant['prior_buffer'] = variant['prior_buffer'], buffers[0]
             old_tb, variant['task_buffer'] = variant['task_buffer'], buffers[1]
             old_nt, variant['num_traj'] = variant['num_traj'], 0
