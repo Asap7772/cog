@@ -118,9 +118,9 @@ def experiment(variant):
         ba = lambda x, p=args.prob, y=None: buffers.append((path + x, dict(p=p, alter_type=y, )))
         if args.buffer == 35:
             path = '/home/stephentian/prior_data/'
-            ba('val_pick_35_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-06-14T16-41-24_100.npy',
+            ba('val_pick_35_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-06-14T21-52-13_100.npy',
                p=args.prob, y='zero')
-            ba('val_place_35_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-06-14T16-40-20_100.npy',
+            ba('val_place_35_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-06-14T21-50-14_100.npy',
                p=args.prob)
         old_pb, variant['prior_buffer'] = variant['prior_buffer'], buffers[0]
         old_tb, variant['task_buffer'] = variant['task_buffer'], buffers[1]
