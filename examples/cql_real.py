@@ -190,7 +190,7 @@ def experiment(variant):
         from os.path import expanduser
         data_path = os.path.join(expanduser("~"),'val_data_relabeled')
     else:
-        data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
+        data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data_relabeled/'
     if args.buffer == 0:
         print('lid on')
         paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_lidon_rew_handlabel_06_13.pkl')))
@@ -225,6 +225,12 @@ def experiment(variant):
         
     if variant['use_positive_rew']:
         replay_buffer._rewards *= 10
+    
+    if variant['terminals']:
+        if variant['use_positive_rew']:
+            replay_buffer._terminals = (replay_buffer._rewards/10).int()
+        else:
+            replay_buffer._terminals = (replay_buffer._rewards).int()
 
     if variant['mcret']:
         trainer = CQLMCTrainer(
@@ -441,10 +447,13 @@ if __name__ == "__main__":
     parser.add_argument("--dr3_feat", action="store_true", default=False)
     parser.add_argument("--dr3_weight", default=0.001, type=float)
     parser.add_argument("--color_jitter", action="store_true", default=False)
+    parser.add_argument("--terminals", action="store_true", default=False)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
     variant['filter'] = args.filter
+    variant['terminals'] = args.terminals
+
     variant['guassian_policy'] = args.guassian_policy
     variant['color_jitter'] = args.color_jitter
     variant['val'] = args.val
