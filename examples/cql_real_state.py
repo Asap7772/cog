@@ -22,7 +22,7 @@ DEFAULT_PRIOR_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
 DEFAULT_TASK_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
                         '_noise_0.1_2020-10-06T19-37-26_100.npy')
-CUSTOM_LOG_DIR = '/nfs/kun1/users/avi/doodad-output/'
+CUSTOM_LOG_DIR = '/nfs/kun1/users/asap7772/cog/data/'
 
 
 def experiment(variant):
@@ -60,7 +60,7 @@ def experiment(variant):
     
     paths = []
     observation_key = 'image'
-    data_path = os.path.join(expanduser("~"),'val_data_relabeled') if args.azure else '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
+    data_path = os.path.join(expanduser("~"),'val_data_relabeled') if args.azure else '/nfs/kun1/users/asap7772/real_data_drawer/val_data_relabeled/'
     if args.buffer == 0:
         print('lid on')
         paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_lidon_rew_handlabel_06_13.pkl')))
