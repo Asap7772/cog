@@ -209,6 +209,12 @@ def experiment(variant):
                    p=args.prob, y='zero')
                 ba('val_place_35_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-06-14T21-50-14_100.npy',
                    p=args.prob)
+            elif args.buffer == 36:
+                path = p_data_path
+                ba('val_pick_20obj_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-53_114.npy',
+                   p=args.prob, y='zero')
+                ba('val_place_20obj_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-58_90.npy',
+                   p=args.prob)
 
             old_pb, variant['prior_buffer'] = variant['prior_buffer'], buffers[0]
             old_tb, variant['task_buffer'] = variant['task_buffer'], buffers[1]
@@ -651,6 +657,11 @@ if __name__ == "__main__":
             path  = p_data_path
             ba('pick_35obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-10_4375.npy', p=args.prob, y='zero')
             ba('place_35obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-17-42_4875.npy', p=args.prob)
+        elif args.buffer == 36:
+            path  = p_data_path
+            ba('pick_20obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-01_4625.npy', p=args.prob,
+               y='zero')
+            ba('place_20obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-06-14T21-53-31_5000.npy', p=args.prob)
         elif args.buffer == 9000:
             variant['debug'] = True
             path  = p_data_path
