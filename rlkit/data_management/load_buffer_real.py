@@ -165,6 +165,6 @@ if __name__ == "__main__":
     
     replay_buffer = get_buffer()
     for path, rew_path in paths:
-        load_path(path, rew_path, replay_buffer, des_grasp=0.3, num_traj=200)
+        load_path(path, rew_path, replay_buffer, des_per=0.3, num_traj=200)
     import ipdb; ipdb.set_trace()
     

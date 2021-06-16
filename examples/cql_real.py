@@ -209,7 +209,10 @@ def experiment(variant):
     elif args.buffer == 5:
         print('Albert Pick Place')
         px = os.path.join(expanduser("~"),'val_data_relabeled', 'combined_2021-06-03_21_36_48_labeled.pkl') if args.azure else '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
-        paths.append((px, None))
+        data_path = '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
+        if args.azure:
+            data_path = px
+        paths.append((data_path, None))
     else:
         assert False
     if args.buffer in [4]:

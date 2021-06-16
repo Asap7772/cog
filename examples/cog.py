@@ -651,8 +651,12 @@ if __name__ == "__main__":
             ba('drawer_task.npy', p=args.prob)
         elif args.buffer == 34:
             path = ''
-            ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
-            ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
+            if args.azure:
+                ba(os.path.join(os.expand_user('~'), 'grasping35obj', 'may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy'))
+                ba(os.path.join(os.expand_user('~'), 'grasping35obj', 'may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy'))
+            else:
+                ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
+                ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
         elif args.buffer == 35:    
             path  = p_data_path
             ba('pick_35obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-10_4375.npy', p=args.prob, y='zero')
