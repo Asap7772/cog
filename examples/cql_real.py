@@ -208,7 +208,8 @@ def experiment(variant):
         path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
     elif args.buffer == 5:
         print('Albert Pick Place')
-        paths.append(('/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl', None))
+        px = os.path.join(expanduser("~"),'val_data_relabeled', 'combined_2021-06-03_21_36_48_labeled.pkl') if args.azure else '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
+        paths.append((, None))
     else:
         assert False
     if args.buffer in [4]:
