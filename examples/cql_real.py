@@ -206,6 +206,9 @@ def experiment(variant):
     elif args.buffer == 4:
         print('Stephen Tool Use')
         path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
+    elif args.buffer == 5:
+        print('Albert Pick Place')
+        paths.append(('/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'), None)
     else:
         assert False
     if args.buffer in [4]:
@@ -448,6 +451,8 @@ if __name__ == "__main__":
     parser.add_argument("--dr3_weight", default=0.001, type=float)
     parser.add_argument("--color_jitter", action="store_true", default=False)
     parser.add_argument("--terminals", action="store_true", default=False)
+    parser.add_argument('--des_per', type=float, default=-1)
+    parser.add_argument('--num_traj', type=int, default=50)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)

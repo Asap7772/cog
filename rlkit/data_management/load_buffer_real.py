@@ -47,13 +47,30 @@ def resize_small(img):
     img = img.transpose(2,0,1).flatten()
     return img
 
-def load_path(path, rew_path, replay_buffer, small_img=False, bc=False, imgstate=False):
+def parse_traj(data, des_per, num_traj):
+    succ, fail = [], []
+    for i in range(len(data)):
+        if sum(data[i]['rewards']) > 0:
+            succ.append(data[i])
+        else:
+            fail.append(data[i])
+
+    num_succ = int(des_per*num_traj)
+    num_fail = num_traj - num_succ
+    print('succ/fail', num_succ, num_fail)
+    return succ[:num_succ] + fail[:num_fail]
+
+
+def load_path(path, rew_path, replay_buffer, small_img=False, bc=False, imgstate=False, des_per=-1, num_traj = 100):
     data = np.load(path,allow_pickle=True)
     if rew_path is not None:
         rew = pickle.load(open(rew_path, 'rb'))
         assert len(data) == len(rew)
         for i in range(len(data)):
             data[i]['rewards'] = np.array(rew[i]).tolist()
+
+    if des_per > 0:
+        data = parse_traj(data, des_per, num_traj)
 
     if bc:
         data = [data[i] for i in range(len(data)) if sum(data[i]['rewards']) > 0]
@@ -75,13 +92,12 @@ def get_buffer_size(data):
 
 def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1, drop_last=True, small_img=False, imgstate=False):
     for j in range(len(data)):
-        # import ipdb; ipdb.set_trace()
         assert (len(data[j]['actions']) == len(data[j]['observations']) == len(
             data[j]['next_observations']))
 
         if 'next_actions' not in data[j]:
             data[j]['next_actions'] = np.concatenate((data[j]['actions'][1:], data[j]['actions'][-1:]))
-        rew = np.array(data[j]['rewards']) * (0.99**np.arange(len(data[j]['rewards'])))
+        rew = np.array(data[j]['rewards']).squeeze() * (0.99**np.arange(len(data[j]['rewards'])))
         mcrewards = np.cumsum(rew[::-1])[::-1].tolist() 
 
         if 'latents' in data[j]:
@@ -118,20 +134,21 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
         replay_buffer.add_path(path)
 
 def process_images(observations, small_img=False, imgstate=False):
+    key = '_observation' if 'image_observation' in observations[0] else ''
     output = []
     for i in range(len(observations)):
         try:
             if small_img:
-                image = observations[i]['image_observation'].reshape(3,48,48)
+                image = observations[i]['image' + key].reshape(3,48,48)
             else:
-                image = observations[i]['image_observation'].reshape(3,64,64)
-            state = observations[i]['state_observation']
+                image = observations[i]['image' + key].reshape(3,64,64)
+            state = observations[i]['state' + key]
         except:
             if small_img:
-                image = observations[i-1]['image_observation'].reshape(3,48,48)
+                image = observations[i-1]['image' + key].reshape(3,48,48)
             else:
-                image = observations[i-1]['image_observation'].reshape(3,64,64)
-            state = observations[i-1]['state_observation']
+                image = observations[i-1]['image' + key].reshape(3,64,64)
+            state = observations[i-1]['state' + key]
         if len(image.shape) == 3:
             image = image.flatten()
         else:
@@ -143,11 +160,11 @@ def process_images(observations, small_img=False, imgstate=False):
 if __name__ == "__main__":
     args = lambda:0 #RANDOM Object
     paths = []
-    data_path = '/nfs/kun1/users/ashvin/data/val_data'
-    paths.append( (os.path.join(data_path,'fixed_pot_demos.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
+    data_path = '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
+    paths.append( (data_path, None))
     
     replay_buffer = get_buffer()
     for path, rew_path in paths:
-        load_path(path, rew_path, replay_buffer)
+        load_path(path, rew_path, replay_buffer, des_grasp=0.3, num_traj=200)
     import ipdb; ipdb.set_trace()
     
