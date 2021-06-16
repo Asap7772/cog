@@ -216,7 +216,7 @@ def experiment(variant):
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
-            load_path(path, rew_path, replay_buffer, bc=variant['filter'])
+            load_path(path, rew_path, replay_buffer, bc=variant['filter'], des_per=variant['des_per'], num_traj=variant['num_traj'])
 
     if variant['val']:
         #TODO change
@@ -434,7 +434,6 @@ if __name__ == "__main__":
     parser.add_argument("--prob", default=1, type=float)
     parser.add_argument("--old_prior_prob", default=0, type=float)
     parser.add_argument('--gamma', default=1, type=float)
-    parser.add_argument('--num_traj', default=0, type=int)
     parser.add_argument('--eval_num', default=0, type=int)
     parser.add_argument('--guassian_policy', default=False, action='store_true')
     parser.add_argument("--name", default='test', type=str)
@@ -452,7 +451,7 @@ if __name__ == "__main__":
     parser.add_argument("--color_jitter", action="store_true", default=False)
     parser.add_argument("--terminals", action="store_true", default=False)
     parser.add_argument('--des_per', type=float, default=-1)
-    parser.add_argument('--num_traj', type=int, default=50)
+    parser.add_argument('--num_traj', default=50, type=int)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -489,6 +488,7 @@ if __name__ == "__main__":
     variant['only_bottleneck'] = args.only_bottleneck
     variant['gamma'] = args.gamma
     variant['num_traj'] = args.num_traj
+    variant['des_per'] = args.des_per
     variant['num_sample'] = args.eval_num
     
     variant['debug'] = False
