@@ -703,14 +703,14 @@ class RandomCrop:
 
 
 class VQVAEEncoderConcatCNN(ConcatCNN):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, num_res=3, **kwargs):
         kwargs['kernel_sizes'] = []
         kwargs['n_channels'] = []
         kwargs['strides'] = []
         kwargs['paddings'] = []
         super().__init__(*args, **kwargs)
         
-        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
+        self.encoder = Encoder(self.input_channels, 128, num_res, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
 
     def apply_forward_conv(self, h):
         out = self.encoder(h)
@@ -729,14 +729,14 @@ class VQVAEEncoderConcatCNN(ConcatCNN):
 
 
 class VQVAEEncoderCNN(CNN):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, num_res=3, **kwargs):
         kwargs['kernel_sizes'] = []
         kwargs['n_channels'] = []
         kwargs['strides'] = []
         kwargs['paddings'] = []
         super().__init__(*args, **kwargs)
 
-        self.encoder = Encoder(self.input_channels, 128, 3, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
+        self.encoder = Encoder(self.input_channels, 128, num_res, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
 
     def apply_forward_conv(self, h):
         out = self.encoder(h)

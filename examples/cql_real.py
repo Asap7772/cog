@@ -98,14 +98,14 @@ def experiment(variant):
                                              spectral_norm_conv=cnn_params['spectral_norm_conv'],
                                              spectral_norm_fc=cnn_params['spectral_norm_fc'])
         else:
-            qf1 = VQVAEEncoderConcatCNN(**cnn_params)
-            qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+            qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
+            qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
             if variant['share_encoder']:
                 print('sharing encoder weights between QF1 and QF2!')
                 del qf2.encoder
                 qf2.encoder = qf1.encoder
-            target_qf1 = VQVAEEncoderConcatCNN(**cnn_params)
-            target_qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+            target_qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
+            target_qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
 
     else:
         if variant['mcret'] or variant['bchead']:
@@ -149,7 +149,7 @@ def experiment(variant):
                 spectral_norm_fc=False,
                 spectral_norm_conv=False,
             )
-            policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
+            policy_obs_processor = VQVAEEncoderCNN(**cnn_params, num_res = variant['num_res'])
     else:
         cnn_params.update(
             output_size=256,
@@ -208,7 +208,7 @@ def experiment(variant):
         path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
     elif args.buffer == 5:
         print('Albert Pick Place')
-        px = os.path.join(expanduser("~"),'val_data_relabeled', 'combined_2021-06-03_21_36_48_labeled.pkl') if args.azure else '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
+        px = os.path.join(expanduser("~"),'albert_pickplace', 'combined_2021-06-03_21_36_48_labeled.pkl') if args.azure else '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
         data_path = '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
         if args.azure:
             data_path = px
@@ -456,11 +456,13 @@ if __name__ == "__main__":
     parser.add_argument("--terminals", action="store_true", default=False)
     parser.add_argument('--des_per', type=float, default=-1)
     parser.add_argument('--num_traj', default=50, type=int)
+    parser.add_argument('--num_res', default=3, type=int)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
     variant['filter'] = args.filter
     variant['terminals'] = args.terminals
+    variant['num_res'] = args.num_res
 
     variant['guassian_policy'] = args.guassian_policy
     variant['color_jitter'] = args.color_jitter
