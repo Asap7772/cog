@@ -1,3 +1,4 @@
+from torch import var
 import rlkit.torch.pytorch_util as ptu
 from rlkit.data_management.load_buffer_real import *
 from rlkit.samplers.data_collector import MdpPathCollector, \
@@ -305,6 +306,7 @@ def experiment(variant):
             validation_buffer=replay_buffer_val,
             real_data=True,
             guassian_policy=variant['guassian_policy'],
+            start_bottleneck=variant['start_bottleneck'],
             **variant['trainer_kwargs']
         )
 
@@ -462,6 +464,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     enable_gpus(args.gpu)
     variant['filter'] = args.filter
+    variant['start_bottleneck'] = args.start_bottleneck
     variant['terminals'] = args.terminals
     variant['num_res'] = args.num_res
 

@@ -213,6 +213,7 @@ class CQLTrainer(TorchTrainer):
             return new_obs_actions
 
     def train_from_torch(self, batch):
+        import ipdb; ipdb.set_trace()
         self._current_epoch += 1
         rewards = batch['rewards']
         terminals = batch['terminals']
@@ -356,7 +357,7 @@ class CQLTrainer(TorchTrainer):
             min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.min_q_weight
         
         if self.bottleneck:
-            cond = self.start_bottleneck < self._current_epoch
+            cond = self._current_epoch < self.start_bottleneck 
             qf1_bottleneck_sample, qf1_bottleneck_sample_log_prob, qf1_bottleneck_loss, qf1_bottleneck_mean, qf1_bottleneck_logstd, qf1_sample = self.qf1.detailed_forward(obs,actions)
             qf2_bottleneck_sample, qf2_bottleneck_sample_log_prob, qf2_bottleneck_loss, qf2_bottleneck_mean, qf2_bottleneck_logstd, qf2_sample = self.qf2.detailed_forward(obs,actions)
             
