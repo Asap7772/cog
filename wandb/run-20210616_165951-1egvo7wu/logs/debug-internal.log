@@ -34371,3 +34371,82 @@ requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.wandb.ai', port=4
 2021-06-18 11:56:46,182 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
 2021-06-18 11:56:59,077 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
 2021-06-18 11:56:59,077 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:57:14,159 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:57:14,160 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:57:19,884 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 11:57:29,234 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:57:29,235 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:57:38,760 DEBUG   SenderThread:40613 [sender.py:send():179] send: history
+2021-06-18 11:57:38,761 DEBUG   SenderThread:40613 [sender.py:send():179] send: summary
+2021-06-18 11:57:38,798 INFO    SenderThread:40613 [sender.py:_save_file():829] saving file wandb-summary.json with policy end
+2021-06-18 11:57:39,327 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/wandb-summary.json
+2021-06-18 11:57:40,376 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/output.log
+2021-06-18 11:57:44,311 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:57:44,311 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:57:53,416 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 11:57:59,388 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:57:59,388 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:58:14,461 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:58:14,461 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:58:26,828 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 11:58:29,536 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:58:29,536 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:58:44,627 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:58:44,628 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:58:53,939 DEBUG   SenderThread:40613 [sender.py:send():179] send: history
+2021-06-18 11:58:53,940 DEBUG   SenderThread:40613 [sender.py:send():179] send: summary
+2021-06-18 11:58:53,991 INFO    SenderThread:40613 [sender.py:_save_file():829] saving file wandb-summary.json with policy end
+2021-06-18 11:58:54,659 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/wandb-summary.json
+2021-06-18 11:58:55,707 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/output.log
+2021-06-18 11:58:59,704 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:58:59,705 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:59:00,547 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 11:59:14,794 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:59:14,794 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:59:29,867 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:59:29,868 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 11:59:34,120 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 11:59:44,940 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 11:59:44,941 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:00:00,024 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:00:00,025 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:00:05,773 DEBUG   SenderThread:40613 [sender.py:send():179] send: history
+2021-06-18 12:00:05,773 DEBUG   SenderThread:40613 [sender.py:send():179] send: summary
+2021-06-18 12:00:05,812 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/output.log
+2021-06-18 12:00:05,821 INFO    SenderThread:40613 [sender.py:_save_file():829] saving file wandb-summary.json with policy end
+2021-06-18 12:00:06,813 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/wandb-summary.json
+2021-06-18 12:00:07,649 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 12:00:15,099 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:00:15,099 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:00:30,174 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:00:30,174 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:00:41,197 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 12:00:45,250 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:00:45,250 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:01:00,328 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:01:00,329 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:01:14,782 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 12:01:15,405 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:01:15,406 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:01:22,357 DEBUG   SenderThread:40613 [sender.py:send():179] send: history
+2021-06-18 12:01:22,358 DEBUG   SenderThread:40613 [sender.py:send():179] send: summary
+2021-06-18 12:01:22,369 INFO    SenderThread:40613 [sender.py:_save_file():829] saving file wandb-summary.json with policy end
+2021-06-18 12:01:22,890 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/wandb-summary.json
+2021-06-18 12:01:23,911 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/output.log
+2021-06-18 12:01:30,482 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:01:30,483 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:01:45,556 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:01:45,556 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:01:48,507 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 12:02:00,632 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:02:00,633 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:02:15,716 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:02:15,716 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:02:22,152 DEBUG   SenderThread:40613 [sender.py:send():179] send: stats
+2021-06-18 12:02:30,790 DEBUG   HandlerThread:40613 [handler.py:handle_request():124] handle_request: stop_status
+2021-06-18 12:02:30,791 DEBUG   SenderThread:40613 [sender.py:send_request():193] send_request: stop_status
+2021-06-18 12:02:40,198 DEBUG   SenderThread:40613 [sender.py:send():179] send: history
+2021-06-18 12:02:40,199 DEBUG   SenderThread:40613 [sender.py:send():179] send: summary
+2021-06-18 12:02:40,239 INFO    SenderThread:40613 [sender.py:_save_file():829] saving file wandb-summary.json with policy end
+2021-06-18 12:02:41,003 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/wandb-summary.json
+2021-06-18 12:02:42,041 INFO    Thread-8  :40613 [dir_watcher.py:_on_file_modified():229] file/dir modified: /nfs/kun1/users/asap7772/cog/wandb/run-20210616_165951-1egvo7wu/files/output.log
