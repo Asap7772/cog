@@ -40,6 +40,7 @@ class CQLTrainer(TorchTrainer):
             use_automatic_entropy_tuning=True,
             target_entropy=None,
             policy_eval_start=0,
+            start_bottleneck=0,
             num_qs=2,
 
             # CQL
@@ -82,6 +83,7 @@ class CQLTrainer(TorchTrainer):
         self.env = env
         self.policy = policy
         self.qf1 = qf1
+        self.start_bottleneck=start_bottleneck
         self.qf2 = qf2
         self.target_qf1 = target_qf1
         self.target_qf2 = target_qf2
@@ -354,6 +356,7 @@ class CQLTrainer(TorchTrainer):
             min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.min_q_weight
         
         if self.bottleneck:
+            cond = self.start_bottleneck < self._current_epoch
             qf1_bottleneck_sample, qf1_bottleneck_sample_log_prob, qf1_bottleneck_loss, qf1_bottleneck_mean, qf1_bottleneck_logstd, qf1_sample = self.qf1.detailed_forward(obs,actions)
             qf2_bottleneck_sample, qf2_bottleneck_sample_log_prob, qf2_bottleneck_loss, qf2_bottleneck_mean, qf2_bottleneck_logstd, qf2_sample = self.qf2.detailed_forward(obs,actions)
             
@@ -361,8 +364,8 @@ class CQLTrainer(TorchTrainer):
                 min_qf1_loss = qf1_bottleneck_loss.mean()
                 min_qf2_loss = qf2_bottleneck_loss.mean()
             else:
-                min_qf1_loss = min_qf1_loss + self.bottleneck_const * qf1_bottleneck_loss.mean()
-                min_qf2_loss = min_qf2_loss + self.bottleneck_const * qf2_bottleneck_loss.mean() 
+                min_qf1_loss = min_qf1_loss + (0 if cond else self.bottleneck_const) * qf1_bottleneck_loss.mean()
+                min_qf2_loss = min_qf2_loss + (0 if cond else self.bottleneck_const) * qf2_bottleneck_loss.mean() 
                 reg_loss = qf1_bottleneck_loss.mean() + qf2_bottleneck_loss.mean()
 
             if self.bottleneck_lagrange:	

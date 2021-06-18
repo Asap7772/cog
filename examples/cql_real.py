@@ -457,6 +457,7 @@ if __name__ == "__main__":
     parser.add_argument('--des_per', type=float, default=-1)
     parser.add_argument('--num_traj', default=50, type=int)
     parser.add_argument('--num_res', default=3, type=int)
+    parser.add_argument('--start_bottleneck', default=0, type=int)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
