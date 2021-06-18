@@ -83845,3 +83845,1153 @@ time/training (s)                 77.5535
 time/epoch (s)                    77.5676
 time/total (s)                154989
 Epoch                           1822
+----------------------------  ---------------
+2021-06-18 12:03:51.547729 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1823 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.823e+06
+trainer/Policy Loss              -13.6767
+trainer/Log Pis Mean              10.6592
+trainer/Log Pis Std                6.42634
+trainer/Log Pis Max               34.1977
+trainer/Log Pis Min               -2.34885
+trainer/Policy mu Mean            -0.0841361
+trainer/Policy mu Std              3.2663
+trainer/Policy mu Max              7.43986
+trainer/Policy mu Min             -7.55792
+trainer/Policy log std Mean       -0.588477
+trainer/Policy log std Std         1.62443
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -2.96482
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9120
+evaluation/num paths total      9120
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.175108
+evaluation/Actions Std             0.720838
+evaluation/Actions Max             0.974228
+evaluation/Actions Min            -0.998169
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.00904836
+time/logging (s)                   0.0022434
+time/training (s)                 71.4736
+time/epoch (s)                    71.4848
+time/total (s)                155061
+Epoch                           1823
+----------------------------  ---------------
+2021-06-18 12:05:08.870235 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1824 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.824e+06
+trainer/Policy Loss              -13.5607
+trainer/Log Pis Mean              11.7326
+trainer/Log Pis Std                7.97289
+trainer/Log Pis Max               44.533
+trainer/Log Pis Min               -4.04879
+trainer/Policy mu Mean             0.062684
+trainer/Policy mu Std              3.42202
+trainer/Policy mu Max              7.54339
+trainer/Policy mu Min             -7.37329
+trainer/Policy log std Mean       -0.706362
+trainer/Policy log std Std         1.6534
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -3.96238
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9125
+evaluation/num paths total      9125
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.243712
+evaluation/Actions Std             0.767211
+evaluation/Actions Max             0.939636
+evaluation/Actions Min            -0.995448
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.00930497
+time/logging (s)                   0.00209929
+time/training (s)                 77.2401
+time/epoch (s)                    77.2516
+time/total (s)                155138
+Epoch                           1824
+----------------------------  ---------------
+2021-06-18 12:06:26.141852 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1825 finished
+----------------------------  ----------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.825e+06
+trainer/Policy Loss              -12.9378
+trainer/Log Pis Mean              11.5144
+trainer/Log Pis Std                8.25831
+trainer/Log Pis Max               37.1806
+trainer/Log Pis Min               -6.06822
+trainer/Policy mu Mean             0.0603965
+trainer/Policy mu Std              3.37624
+trainer/Policy mu Max              7.63097
+trainer/Policy mu Min             -7.3273
+trainer/Policy log std Mean       -0.679631
+trainer/Policy log std Std         1.62451
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -3.49023
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9130
+evaluation/num paths total      9130
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean            1.95354e-05
+evaluation/Actions Std             0.999961
+evaluation/Actions Max             0.999999
+evaluation/Actions Min            -0.999998
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0143463
+time/logging (s)                   0.00225661
+time/training (s)                 77.0424
+time/epoch (s)                    77.059
+time/total (s)                155216
+Epoch                           1825
+----------------------------  ----------------
+2021-06-18 12:07:38.189232 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1826 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.826e+06
+trainer/Policy Loss              -13.229
+trainer/Log Pis Mean              12.1337
+trainer/Log Pis Std                8.54352
+trainer/Log Pis Max               42.9054
+trainer/Log Pis Min               -5.69003
+trainer/Policy mu Mean            -0.217168
+trainer/Policy mu Std              3.32274
+trainer/Policy mu Max              7.35827
+trainer/Policy mu Min             -7.36264
+trainer/Policy log std Mean       -0.638783
+trainer/Policy log std Std         1.61521
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.50867
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9135
+evaluation/num paths total      9135
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.360349
+evaluation/Actions Std             0.632537
+evaluation/Actions Max             0.613881
+evaluation/Actions Min            -0.961282
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0087136
+time/logging (s)                   0.00239219
+time/training (s)                 71.9691
+time/epoch (s)                    71.9802
+time/total (s)                155288
+Epoch                           1826
+----------------------------  ---------------
+2021-06-18 12:08:55.379394 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1827 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.827e+06
+trainer/Policy Loss              -14.9736
+trainer/Log Pis Mean              14.1629
+trainer/Log Pis Std               10.1579
+trainer/Log Pis Max               47.2972
+trainer/Log Pis Min               -3.8102
+trainer/Policy mu Mean             0.0570641
+trainer/Policy mu Std              3.47987
+trainer/Policy mu Max              7.31629
+trainer/Policy mu Min             -7.30756
+trainer/Policy log std Mean       -1.07036
+trainer/Policy log std Std         1.61567
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.54368
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9140
+evaluation/num paths total      9140
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.0427383
+evaluation/Actions Std             0.690345
+evaluation/Actions Max             0.990937
+evaluation/Actions Min            -0.931182
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0118223
+time/logging (s)                   0.00351984
+time/training (s)                 76.9196
+time/epoch (s)                    76.9349
+time/total (s)                155365
+Epoch                           1827
+----------------------------  ---------------
+2021-06-18 12:10:10.009467 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1828 finished
+----------------------------  --------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.828e+06
+trainer/Policy Loss              -14.9443
+trainer/Log Pis Mean              12.929
+trainer/Log Pis Std                9.71291
+trainer/Log Pis Max               50.3969
+trainer/Log Pis Min               -2.06906
+trainer/Policy mu Mean            -0.0598909
+trainer/Policy mu Std              3.32672
+trainer/Policy mu Max              7.31781
+trainer/Policy mu Min             -7.33121
+trainer/Policy log std Mean       -0.959474
+trainer/Policy log std Std         1.63005
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.66273
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9145
+evaluation/num paths total      9145
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean            0.481746
+evaluation/Actions Std             0.831726
+evaluation/Actions Max             0.999948
+evaluation/Actions Min            -0.957871
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.011437
+time/logging (s)                   0.0413481
+time/training (s)                 74.3797
+time/epoch (s)                    74.4325
+time/total (s)                155440
+Epoch                           1828
+----------------------------  --------------
+2021-06-18 12:11:23.561366 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1829 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.829e+06
+trainer/Policy Loss              -13.7421
+trainer/Log Pis Mean              13.0712
+trainer/Log Pis Std                9.36635
+trainer/Log Pis Max               56.8961
+trainer/Log Pis Min               -5.89502
+trainer/Policy mu Mean            -0.146556
+trainer/Policy mu Std              3.39888
+trainer/Policy mu Max              7.28756
+trainer/Policy mu Min             -7.46562
+trainer/Policy log std Mean       -1.01478
+trainer/Policy log std Std         1.61912
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.89592
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9150
+evaluation/num paths total      9150
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.123791
+evaluation/Actions Std             0.746926
+evaluation/Actions Max             0.848242
+evaluation/Actions Min            -0.976828
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0135231
+time/logging (s)                   0.00220159
+time/training (s)                 71.8639
+time/epoch (s)                    71.8796
+time/total (s)                155513
+Epoch                           1829
+----------------------------  ---------------
+2021-06-18 12:12:41.190065 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1830 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.83e+06
+trainer/Policy Loss              -13.8623
+trainer/Log Pis Mean              12.9528
+trainer/Log Pis Std                9.61659
+trainer/Log Pis Max               55.8037
+trainer/Log Pis Min               -3.48818
+trainer/Policy mu Mean             0.169665
+trainer/Policy mu Std              3.29471
+trainer/Policy mu Max              7.32238
+trainer/Policy mu Min             -7.27373
+trainer/Policy log std Mean       -1.09837
+trainer/Policy log std Std         1.64
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.9915
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9155
+evaluation/num paths total      9155
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.00622315
+evaluation/Actions Std             0.706703
+evaluation/Actions Max             0.996356
+evaluation/Actions Min            -0.991902
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0128933
+time/logging (s)                   0.00214689
+time/training (s)                 77.498
+time/epoch (s)                    77.513
+time/total (s)                155591
+Epoch                           1830
+----------------------------  ---------------
+2021-06-18 12:13:57.494701 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1831 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.831e+06
+trainer/Policy Loss              -12.8023
+trainer/Log Pis Mean              10.4457
+trainer/Log Pis Std                7.33784
+trainer/Log Pis Max               33.4643
+trainer/Log Pis Min               -7.86376
+trainer/Policy mu Mean            -0.143394
+trainer/Policy mu Std              3.19143
+trainer/Policy mu Max              7.33353
+trainer/Policy mu Min             -7.40236
+trainer/Policy log std Mean       -0.557178
+trainer/Policy log std Std         1.58663
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.0519
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9160
+evaluation/num paths total      9160
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean            0.00193205
+evaluation/Actions Std             0.997737
+evaluation/Actions Max             0.999685
+evaluation/Actions Min            -0.999271
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0102343
+time/logging (s)                   0.00202585
+time/training (s)                 76.1682
+time/epoch (s)                    76.1805
+time/total (s)                155667
+Epoch                           1831
+----------------------------  ---------------
+2021-06-18 12:15:10.623530 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1832 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.832e+06
+trainer/Policy Loss              -11.8458
+trainer/Log Pis Mean              10.7154
+trainer/Log Pis Std                7.31537
+trainer/Log Pis Max               38.2755
+trainer/Log Pis Min               -5.60583
+trainer/Policy mu Mean            -0.147357
+trainer/Policy mu Std              3.19157
+trainer/Policy mu Max              7.24993
+trainer/Policy mu Min             -7.22418
+trainer/Policy log std Mean       -0.388607
+trainer/Policy log std Std         1.56019
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.0115
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9165
+evaluation/num paths total      9165
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.0334784
+evaluation/Actions Std             0.967587
+evaluation/Actions Max             0.99988
+evaluation/Actions Min            -0.999984
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.00972752
+time/logging (s)                   0.00201323
+time/training (s)                 72.936
+time/epoch (s)                    72.9478
+time/total (s)                155740
+Epoch                           1832
+----------------------------  ---------------
+2021-06-18 12:16:27.855197 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1833 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.833e+06
+trainer/Policy Loss              -13.6631
+trainer/Log Pis Mean              11.8979
+trainer/Log Pis Std                8.59835
+trainer/Log Pis Max               45.3454
+trainer/Log Pis Min               -8.6744
+trainer/Policy mu Mean            -0.139057
+trainer/Policy mu Std              3.30885
+trainer/Policy mu Max              7.34811
+trainer/Policy mu Min             -7.35717
+trainer/Policy log std Mean       -0.775166
+trainer/Policy log std Std         1.56949
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.32628
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9170
+evaluation/num paths total      9170
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.0173788
+evaluation/Actions Std             0.982879
+evaluation/Actions Max             0.999998
+evaluation/Actions Min            -0.999998
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0118674
+time/logging (s)                   0.00216484
+time/training (s)                 76.9398
+time/epoch (s)                    76.9539
+time/total (s)                155817
+Epoch                           1833
+----------------------------  ---------------
+2021-06-18 12:17:44.791267 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1834 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.834e+06
+trainer/Policy Loss              -13.1983
+trainer/Log Pis Mean              12.0831
+trainer/Log Pis Std                7.81764
+trainer/Log Pis Max               49.2894
+trainer/Log Pis Min               -4.67893
+trainer/Policy mu Mean            -0.175423
+trainer/Policy mu Std              3.35728
+trainer/Policy mu Max              7.34423
+trainer/Policy mu Min             -7.29989
+trainer/Policy log std Mean       -0.538665
+trainer/Policy log std Std         1.56553
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -3.09173
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9175
+evaluation/num paths total      9175
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.00764707
+evaluation/Actions Std             0.991885
+evaluation/Actions Max             0.99951
+evaluation/Actions Min            -0.999539
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0127942
+time/logging (s)                   0.00250821
+time/training (s)                 76.7149
+time/epoch (s)                    76.7302
+time/total (s)                155894
+Epoch                           1834
+----------------------------  ---------------
+2021-06-18 12:18:59.586037 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1835 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.835e+06
+trainer/Policy Loss              -13.6393
+trainer/Log Pis Mean              12.4676
+trainer/Log Pis Std                8.83822
+trainer/Log Pis Max               44.4306
+trainer/Log Pis Min               -5.08433
+trainer/Policy mu Mean            -0.219324
+trainer/Policy mu Std              3.38389
+trainer/Policy mu Max              7.36198
+trainer/Policy mu Min             -7.29491
+trainer/Policy log std Mean       -0.71613
+trainer/Policy log std Std         1.57262
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -3.94675
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9180
+evaluation/num paths total      9180
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.288156
+evaluation/Actions Std             0.820153
+evaluation/Actions Max             0.999972
+evaluation/Actions Min            -0.999996
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0103043
+time/logging (s)                   0.00235154
+time/training (s)                 74.479
+time/epoch (s)                    74.4916
+time/total (s)                155969
+Epoch                           1835
+----------------------------  ---------------
+2021-06-18 12:20:13.914016 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1836 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.836e+06
+trainer/Policy Loss              -14.3803
+trainer/Log Pis Mean              12.2589
+trainer/Log Pis Std                8.41901
+trainer/Log Pis Max               42.9863
+trainer/Log Pis Min               -4.16657
+trainer/Policy mu Mean            -0.19815
+trainer/Policy mu Std              3.33519
+trainer/Policy mu Max              7.3845
+trainer/Policy mu Min             -7.31901
+trainer/Policy log std Mean       -0.73564
+trainer/Policy log std Std         1.54029
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -3.76002
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9185
+evaluation/num paths total      9185
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.288737
+evaluation/Actions Std             0.696932
+evaluation/Actions Max             0.57398
+evaluation/Actions Min            -0.980323
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.00871548
+time/logging (s)                   0.00206229
+time/training (s)                 74.211
+time/epoch (s)                    74.2218
+time/total (s)                156043
+Epoch                           1836
+----------------------------  ---------------
+2021-06-18 12:21:29.926023 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1837 finished
+----------------------------  ----------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.837e+06
+trainer/Policy Loss              -13.3615
+trainer/Log Pis Mean              12.4269
+trainer/Log Pis Std                8.77623
+trainer/Log Pis Max               41.2105
+trainer/Log Pis Min               -7.43312
+trainer/Policy mu Mean             0.000753522
+trainer/Policy mu Std              3.31224
+trainer/Policy mu Max              7.3657
+trainer/Policy mu Min             -7.33814
+trainer/Policy log std Mean       -0.946275
+trainer/Policy log std Std         1.63686
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.33802
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9190
+evaluation/num paths total      9190
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.0102019
+evaluation/Actions Std             0.98896
+evaluation/Actions Max             0.992772
+evaluation/Actions Min            -0.999876
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0102374
+time/logging (s)                   0.00239299
+time/training (s)                 75.8315
+time/epoch (s)                    75.8441
+time/total (s)                156119
+Epoch                           1837
+----------------------------  ----------------
+2021-06-18 12:22:45.079921 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1838 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.838e+06
+trainer/Policy Loss              -15.0471
+trainer/Log Pis Mean              13.1883
+trainer/Log Pis Std               10.2732
+trainer/Log Pis Max               48.7983
+trainer/Log Pis Min               -8.49439
+trainer/Policy mu Mean            -0.0430503
+trainer/Policy mu Std              3.3778
+trainer/Policy mu Max              7.35298
+trainer/Policy mu Min             -7.27501
+trainer/Policy log std Mean       -1.11018
+trainer/Policy log std Std         1.64734
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.79192
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9195
+evaluation/num paths total      9195
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.270681
+evaluation/Actions Std             0.339142
+evaluation/Actions Max             0.241913
+evaluation/Actions Min            -0.690584
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0129619
+time/logging (s)                   0.00236192
+time/training (s)                 75.0043
+time/epoch (s)                    75.0196
+time/total (s)                156195
+Epoch                           1838
+----------------------------  ---------------
+2021-06-18 12:23:57.386939 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1839 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.839e+06
+trainer/Policy Loss              -14.7319
+trainer/Log Pis Mean              13.737
+trainer/Log Pis Std               10.0023
+trainer/Log Pis Max               51.7629
+trainer/Log Pis Min               -5.1883
+trainer/Policy mu Mean             0.0732181
+trainer/Policy mu Std              3.45052
+trainer/Policy mu Max              7.30998
+trainer/Policy mu Min             -7.43097
+trainer/Policy log std Mean       -1.04943
+trainer/Policy log std Std         1.67816
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.88605
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9200
+evaluation/num paths total      9200
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.24484
+evaluation/Actions Std             0.760631
+evaluation/Actions Max             0.700641
+evaluation/Actions Min            -0.997495
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0119696
+time/logging (s)                   0.00253959
+time/training (s)                 72.17
+time/epoch (s)                    72.1845
+time/total (s)                156267
+Epoch                           1839
+----------------------------  ---------------
+2021-06-18 12:25:15.449825 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1840 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.84e+06
+trainer/Policy Loss              -10.549
+trainer/Log Pis Mean               9.72615
+trainer/Log Pis Std                8.12321
+trainer/Log Pis Max               38.5738
+trainer/Log Pis Min               -6.57102
+trainer/Policy mu Mean             0.0760289
+trainer/Policy mu Std              2.41531
+trainer/Policy mu Max              7.48804
+trainer/Policy mu Min             -6.831
+trainer/Policy log std Mean        0.119239
+trainer/Policy log std Std         1.72198
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -2.61089
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9205
+evaluation/num paths total      9205
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean            0.190081
+evaluation/Actions Std             0.472545
+evaluation/Actions Max             0.958875
+evaluation/Actions Min            -0.308252
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0104137
+time/logging (s)                   0.00206005
+time/training (s)                 77.9822
+time/epoch (s)                    77.9947
+time/total (s)                156345
+Epoch                           1840
+----------------------------  ---------------
+2021-06-18 12:26:32.705608 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1841 finished
+----------------------------  ----------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.841e+06
+trainer/Policy Loss              -13.4936
+trainer/Log Pis Mean              11.6765
+trainer/Log Pis Std                8.78676
+trainer/Log Pis Max               44.4777
+trainer/Log Pis Min               -5.60924
+trainer/Policy mu Mean            -0.101045
+trainer/Policy mu Std              3.41293
+trainer/Policy mu Max              7.41142
+trainer/Policy mu Min             -7.31532
+trainer/Policy log std Mean       -0.64963
+trainer/Policy log std Std         1.62613
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -3.64019
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9210
+evaluation/num paths total      9210
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean            2.37346e-05
+evaluation/Actions Std             0.999908
+evaluation/Actions Max             0.999971
+evaluation/Actions Min            -0.999894
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.00819977
+time/logging (s)                   0.00235839
+time/training (s)                 76.3913
+time/epoch (s)                    76.4019
+time/total (s)                156422
+Epoch                           1841
+----------------------------  ----------------
+2021-06-18 12:27:38.322418 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1842 finished
+----------------------------  ----------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.842e+06
+trainer/Policy Loss              -15.394
+trainer/Log Pis Mean              12.9031
+trainer/Log Pis Std                9.52881
+trainer/Log Pis Max               51.6276
+trainer/Log Pis Min               -2.45474
+trainer/Policy mu Mean            -0.0190391
+trainer/Policy mu Std              3.34072
+trainer/Policy mu Max              7.30074
+trainer/Policy mu Min             -7.28983
+trainer/Policy log std Mean       -1.05804
+trainer/Policy log std Std         1.64462
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.52951
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9215
+evaluation/num paths total      9215
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean            2.80559e-05
+evaluation/Actions Std             0.99987
+evaluation/Actions Max             0.999941
+evaluation/Actions Min            -0.999968
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.00802362
+time/logging (s)                   0.00206233
+time/training (s)                 65.3769
+time/epoch (s)                    65.387
+time/total (s)                156488
+Epoch                           1842
+----------------------------  ----------------
+2021-06-18 12:28:46.356125 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1843 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.843e+06
+trainer/Policy Loss              -10.8905
+trainer/Log Pis Mean              10.6757
+trainer/Log Pis Std                8.41695
+trainer/Log Pis Max               32.4865
+trainer/Log Pis Min              -11.8833
+trainer/Policy mu Mean             0.140472
+trainer/Policy mu Std              2.60338
+trainer/Policy mu Max              7.31432
+trainer/Policy mu Min             -6.42206
+trainer/Policy log std Mean        0.238687
+trainer/Policy log std Std         1.62178
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -2.66699
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9220
+evaluation/num paths total      9220
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.12053
+evaluation/Actions Std             0.882306
+evaluation/Actions Max             0.895032
+evaluation/Actions Min            -0.998633
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0104488
+time/logging (s)                   0.00253163
+time/training (s)                 67.8378
+time/epoch (s)                    67.8507
+time/total (s)                156556
+Epoch                           1843
+----------------------------  ---------------
+2021-06-18 12:30:03.070556 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1844 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.844e+06
+trainer/Policy Loss              -13.2974
+trainer/Log Pis Mean              11.8092
+trainer/Log Pis Std                7.73567
+trainer/Log Pis Max               37.1755
+trainer/Log Pis Min               -4.35618
+trainer/Policy mu Mean            -0.152147
+trainer/Policy mu Std              3.49731
+trainer/Policy mu Max              7.41062
+trainer/Policy mu Min             -7.37957
+trainer/Policy log std Mean       -0.475645
+trainer/Policy log std Std         1.60205
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -3.29538
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9225
+evaluation/num paths total      9225
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.00257497
+evaluation/Actions Std             0.996981
+evaluation/Actions Max             0.998225
+evaluation/Actions Min            -0.999563
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.00794331
+time/logging (s)                   0.00206163
+time/training (s)                 76.4827
+time/epoch (s)                    76.4927
+time/total (s)                156632
+Epoch                           1844
+----------------------------  ---------------
+2021-06-18 12:31:17.186351 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1845 finished
+----------------------------  ----------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.845e+06
+trainer/Policy Loss              -13.3231
+trainer/Log Pis Mean              11.9354
+trainer/Log Pis Std                9.28148
+trainer/Log Pis Max               44.8519
+trainer/Log Pis Min               -3.94575
+trainer/Policy mu Mean            -0.00895771
+trainer/Policy mu Std              3.34095
+trainer/Policy mu Max              7.37016
+trainer/Policy mu Min             -7.34629
+trainer/Policy log std Mean       -0.79429
+trainer/Policy log std Std         1.6327
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.56381
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9230
+evaluation/num paths total      9230
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.000692618
+evaluation/Actions Std             0.998902
+evaluation/Actions Max             0.998631
+evaluation/Actions Min            -0.999676
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.00972205
+time/logging (s)                   0.00216278
+time/training (s)                 73.9965
+time/epoch (s)                    74.0084
+time/total (s)                156707
+Epoch                           1845
+----------------------------  ----------------
+2021-06-18 12:32:30.944054 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1846 finished
+----------------------------  ----------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.846e+06
+trainer/Policy Loss              -13.6307
+trainer/Log Pis Mean              10.9271
+trainer/Log Pis Std                7.35664
+trainer/Log Pis Max               35.1118
+trainer/Log Pis Min               -3.60433
+trainer/Policy mu Mean            -0.0284201
+trainer/Policy mu Std              3.24917
+trainer/Policy mu Max              7.35596
+trainer/Policy mu Min             -7.36766
+trainer/Policy log std Mean       -0.684154
+trainer/Policy log std Std         1.59724
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.05694
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9235
+evaluation/num paths total      9235
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.000324097
+evaluation/Actions Std             0.999371
+evaluation/Actions Max             0.999451
+evaluation/Actions Min            -0.999986
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.0148141
+time/logging (s)                   0.00231929
+time/training (s)                 73.6092
+time/epoch (s)                    73.6264
+time/total (s)                156780
+Epoch                           1846
+----------------------------  ----------------
+2021-06-18 12:33:45.706101 PDT | [real_pickplace_bc_resize_2021_06_16_16_59_22_0000--s-0] Epoch 1847 finished
+----------------------------  ---------------
+replay_buffer/top              26838
+trainer/Num Policy Updates         1.847e+06
+trainer/Policy Loss              -13.4821
+trainer/Log Pis Mean              11.6965
+trainer/Log Pis Std                7.69631
+trainer/Log Pis Max               47.673
+trainer/Log Pis Min               -4.65293
+trainer/Policy mu Mean            -0.145848
+trainer/Policy mu Std              3.34994
+trainer/Policy mu Max              7.29997
+trainer/Policy mu Min             -7.2699
+trainer/Policy log std Mean       -0.607886
+trainer/Policy log std Std         1.62863
+trainer/Policy log std Max         2
+trainer/Policy log std Min        -4.048
+exploration/num steps total        0
+exploration/num paths total        0
+evaluation/num steps total      9240
+evaluation/num paths total      9240
+evaluation/path length Mean        1
+evaluation/path length Std         0
+evaluation/path length Max         1
+evaluation/path length Min         1
+evaluation/Rewards Mean            0
+evaluation/Rewards Std             0
+evaluation/Rewards Max             0
+evaluation/Rewards Min             0
+evaluation/Returns Mean            0
+evaluation/Returns Std             0
+evaluation/Returns Max             0
+evaluation/Returns Min             0
+evaluation/Actions Mean           -0.154448
+evaluation/Actions Std             0.844825
+evaluation/Actions Max             0.730545
+evaluation/Actions Min            -0.999669
+evaluation/Num Paths               5
+evaluation/Average Returns         0
+time/evaluation sampling (s)       0.00959215
+time/logging (s)                   0.00218837
+time/training (s)                 74.4639
+time/epoch (s)                    74.4756
+time/total (s)                156855
+Epoch                           1847

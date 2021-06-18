@@ -623,7 +623,7 @@ class CQLTrainer(TorchTrainer):
                 self.eval_statistics['QF2 Bottleneck Mean'] = np.mean(ptu.get_numpy(qf2_bottleneck_mean))
                 self.eval_statistics['QF1 Bottleneck LogStd'] = np.mean(ptu.get_numpy(qf1_bottleneck_logstd))
                 self.eval_statistics['QF2 Bottleneck LogStd'] = np.mean(ptu.get_numpy(qf2_bottleneck_logstd))
-                self.eval_statistics['Bottleneck Regularizer On'] = float(cond)
+                self.eval_statistics['Bottleneck Regularizer OFF'] = float(cond)
 
                 if self.tsne and self.log_dir is not None:
                     new_path = os.path.join(self.log_dir,'visualize')
