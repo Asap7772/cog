@@ -213,7 +213,6 @@ class CQLTrainer(TorchTrainer):
             return new_obs_actions
 
     def train_from_torch(self, batch):
-        import ipdb; ipdb.set_trace()
         self._current_epoch += 1
         rewards = batch['rewards']
         terminals = batch['terminals']
