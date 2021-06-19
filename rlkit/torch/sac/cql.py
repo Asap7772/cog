@@ -355,7 +355,6 @@ class CQLTrainer(TorchTrainer):
             min_qf1_loss = min_qf1_loss - q1_pred.mean() * self.min_q_weight
             min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.min_q_weight
         
-        import ipdb; ipdb.set_trace()
         if self.bottleneck:
             cond = self._current_epoch < self.start_bottleneck 
             qf1_bottleneck_sample, qf1_bottleneck_sample_log_prob, qf1_bottleneck_loss, qf1_bottleneck_mean, qf1_bottleneck_logstd, qf1_sample = self.qf1.detailed_forward(obs,actions)
