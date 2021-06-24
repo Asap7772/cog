@@ -203,7 +203,8 @@ class CNN(nn.Module):
             return h
 
         if return_conv_outputs:
-            return self.output_activation(self.last_fc(h)), conv_outputs_flat
+            # return self.output_activation(self.last_fc(h)), conv_outputs_flat #TODO change later if needing to use this
+            return self.output_activation(self.last_fc(h)), h
         else:
             return self.output_activation(self.last_fc(h))
 

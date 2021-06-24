@@ -7,6 +7,7 @@ from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
+from rlkit.torch.sac.cql_single import CQLSingleTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, \
     ConcatBottleneckVQVAECNN, VQVAEEncoderCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
@@ -281,6 +282,29 @@ def experiment(variant):
             gamma=variant['gamma'],
             **variant['trainer_kwargs']
         )
+    elif variant['singleQ']:
+        trainer = CQLSingleTrainer(
+            env=eval_env,
+            policy=policy,
+            qf1=qf1,
+            target_qf1=target_qf1,
+            bottleneck=variant['bottleneck'],
+            bottleneck_const=variant['bottleneck_const'],
+            bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
+            only_bottleneck = variant['only_bottleneck'],
+            log_dir = variant['log_dir'],
+            wand_b=not variant['debug'],
+            variant_dict=variant,
+            validation=variant['val'],
+            validation_buffer=replay_buffer_val,
+            squared=variant['squared'],
+            **variant['trainer_kwargs']
+        )
+        del qf2, target_qf2
+        import torch; torch.cuda.empty_cache()
     else:
         trainer = CQLTrainer(
             env=eval_env,
@@ -440,7 +464,7 @@ if __name__ == "__main__":
     parser.add_argument("--discount", default=0.99, type=float)
     parser.add_argument('--only_one', action='store_true')
     parser.add_argument("--squared", action="store_true", default=False)
-    parser.add_argument("--azure", action="store_false", default=True)
+    parser.add_argument("--azure", action="store_true", default=False)
     parser.add_argument("--bigger_net", action="store_true", default=False)
     parser.add_argument("--deeper_net", action="store_true", default=False)
     parser.add_argument("--vqvae_enc", action="store_true", default=False)
@@ -452,6 +476,7 @@ if __name__ == "__main__":
     parser.add_argument("--dr3_feat", action="store_true", default=False)
     parser.add_argument("--dr3_weight", default=0.001, type=float)
     parser.add_argument("--eval_every_n", default=1, type=int)
+    parser.add_argument('--singleQ', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -499,10 +524,10 @@ if __name__ == "__main__":
         
         home = expanduser("~")
         p_data_path =  os.path.join(home, 'prior_data/') if args.azure else '/nfs/kun1/users/asap7772/prior_data/' 
-        p_data_path = '/home/stephentian/prior_data/'
+        # p_data_path = '/home/stephentian/prior_data/'
         
-        #path = '/nfs/kun1/users/asap7772/cog_data/'
-        path = '/home/stian/cog_data/'
+        path = '/nfs/kun1/users/asap7772/cog_data/'
+        # path = '/home/stian/cog_data/'
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
         if args.buffer == 0:
@@ -666,6 +691,10 @@ if __name__ == "__main__":
             ba('pick_20obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-01_4625.npy', p=args.prob,
                y='zero')
             ba('place_20obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-06-14T21-53-31_5000.npy', p=args.prob)
+        elif args.buffer == 37:
+            path  = p_data_path
+            ba('drawer_prior_multobj_Widow250DoubleDrawerOpenGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-06-23T11-52-07_10000.npy', p=args.prob, y='zero')
+            ba('drawer_task_multobj_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-06-23T11-52-15_9750.npy', p=args.prob)
         elif args.buffer == 9000:
             variant['debug'] = True
             path  = p_data_path

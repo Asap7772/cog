@@ -426,8 +426,8 @@ class CQLTrainer(TorchTrainer):
         q1_next_pred, q1_next_pred_conv_feats = self.qf1(next_obs, new_next_actions, return_conv_outputs=True)
         q2_next_pred, q2_next_pred_conv_feats = self.qf2(next_obs, new_next_actions, return_conv_outputs=True)
 
-        qf1_dr3_loss = (q1_pred_conv_feats * q1_next_pred_conv_feats).sum(dim=1).mean(dim=0)
-        qf2_dr3_loss = (q2_pred_conv_feats * q2_next_pred_conv_feats).sum(dim=1).mean(dim=0)
+        qf1_dr3_loss = (q1_pred_conv_feats * q1_next_pred_conv_feats.detach()).sum(dim=1).mean(dim=0)
+        qf2_dr3_loss = (q2_pred_conv_feats * q2_next_pred_conv_feats.detach()).sum(dim=1).mean(dim=0)
 
         # =====
 
