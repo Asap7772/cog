@@ -1,0 +1,220 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.10.22
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.6.10
+    t:
+      1:
+      - 1
+      - 5
+      4: 3.6.10
+      5: 0.10.22
+      8:
+      - 5
+algorithm:
+  desc: null
+  value: CQL
+algorithm_kwargs:
+  desc: null
+  value:
+    batch_size: 256
+    max_path_length: 0
+    min_num_steps_before_training: 1000
+    num_epochs: 3000
+    num_eval_steps_per_epoch: 0
+    num_expl_steps_per_train_loop: 5
+    num_trains_per_train_loop: 1000
+base_log_dir:
+  desc: null
+  value: null
+bchead:
+  desc: null
+  value: false
+bigger_net:
+  desc: null
+  value: false
+bottleneck:
+  desc: null
+  value: false
+bottleneck_const:
+  desc: null
+  value: 0.5
+bottleneck_dim:
+  desc: null
+  value: 16
+bottleneck_lagrange:
+  desc: null
+  value: false
+cnn_params:
+  desc: null
+  value:
+    added_fc_input_size: 0
+    hidden_sizes:
+    - 1024
+    - 512
+    image_augmentation: true
+    image_augmentation_padding: 4
+    input_channels: 3
+    input_height: 64
+    input_width: 64
+    kernel_sizes:
+    - 3
+    - 3
+    - 3
+    n_channels:
+    - 16
+    - 16
+    - 16
+    normalize_conv_activation: false
+    output_size: 256
+    paddings:
+    - 1
+    - 1
+    - 1
+    pool_paddings:
+    - 0
+    - 0
+    - 0
+    pool_sizes:
+    - 2
+    - 2
+    - 1
+    pool_strides:
+    - 2
+    - 2
+    - 1
+    pool_type: max2d
+    spectral_norm_conv: false
+    spectral_norm_fc: false
+    strides:
+    - 1
+    - 1
+    - 1
+color_jitter:
+  desc: null
+  value: true
+debug:
+  desc: null
+  value: false
+deeper_net:
+  desc: null
+  value: false
+des_per:
+  desc: null
+  value: -1
+deterministic_bottleneck:
+  desc: null
+  value: false
+dr3:
+  desc: null
+  value: false
+dr3_feat:
+  desc: null
+  value: true
+dr3_weight:
+  desc: null
+  value: 0.01
+dump_video_kwargs:
+  desc: null
+  value:
+    imsize: 48
+    save_video_period: 1
+duplicate:
+  desc: null
+  value: false
+filter:
+  desc: null
+  value: true
+gamma:
+  desc: null
+  value: 1
+guassian_policy:
+  desc: null
+  value: false
+log_dir:
+  desc: null
+  value: /nfs/kun1/users/asap7772/cog/rlkit/../data/last-pot-minq1-dr31e-2-singleq-encpolicy-norm/last_pot_minq1_dr31e-2_singleq_encpolicy_norm_2021_06_25_09_54_54_0000--s-0
+mcret:
+  desc: null
+  value: false
+normalize_conv_activation:
+  desc: null
+  value: true
+num_res:
+  desc: null
+  value: 3
+num_sample:
+  desc: null
+  value: 0
+num_traj:
+  desc: null
+  value: 50
+only_bottleneck:
+  desc: null
+  value: false
+prior_buffer:
+  desc: null
+  value: /media/avi/data/Work/github/avisingh599/minibullet/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all_noise_0.1_2020-10-06T19-37-26_100.npy
+seed:
+  desc: null
+  value: 10
+share_encoder:
+  desc: null
+  value: false
+singleQ:
+  desc: null
+  value: true
+spectral_norm_conv:
+  desc: null
+  value: false
+spectral_norm_fc:
+  desc: null
+  value: false
+start_bottleneck:
+  desc: null
+  value: 0
+task_buffer:
+  desc: null
+  value: /media/avi/data/Work/github/avisingh599/minibullet/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all_noise_0.1_2020-10-06T19-37-26_100.npy
+terminals:
+  desc: null
+  value: false
+trainer_kwargs:
+  desc: null
+  value:
+    deterministic_backup: true
+    discount: 0.99
+    lagrange_thresh: 5.0
+    max_q_backup: false
+    min_q_version: 3
+    min_q_weight: 1.0
+    num_qs: 2
+    num_random: 1
+    policy_eval_start: 10000
+    policy_lr: 0.0001
+    qf_lr: 0.0003
+    reward_scale: 1
+    soft_target_tau: 0.005
+    temp: 1.0
+    use_automatic_entropy_tuning: true
+    with_lagrange: false
+use_positive_rew:
+  desc: null
+  value: true
+val:
+  desc: null
+  value: false
+version:
+  desc: null
+  value: normal
+vqvae_enc:
+  desc: null
+  value: true
+vqvae_policy:
+  desc: null
+  value: true

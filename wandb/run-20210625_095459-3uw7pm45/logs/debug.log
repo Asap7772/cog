@@ -1,0 +1,29 @@
+2021-06-25 09:54:59,976 INFO    MainThread:61540 [wandb_setup.py:_flush():69] setting env: {}
+2021-06-25 09:54:59,976 WARNING MainThread:61540 [wandb_setup.py:_flush():69] could not save program above cwd: /home/asap7772/cog/examples/cql_real.py
+2021-06-25 09:54:59,976 INFO    MainThread:61540 [wandb_setup.py:_flush():69] setting login settings: {}
+2021-06-25 09:54:59,976 INFO    MainThread:61540 [wandb_init.py:_log_setup():334] Logging user logs to /nfs/kun1/users/asap7772/cog/wandb/run-20210625_095459-3uw7pm45/logs/debug.log
+2021-06-25 09:54:59,976 INFO    MainThread:61540 [wandb_init.py:_log_setup():335] Logging internal logs to /nfs/kun1/users/asap7772/cog/wandb/run-20210625_095459-3uw7pm45/logs/debug-internal.log
+2021-06-25 09:54:59,976 INFO    MainThread:61540 [wandb_init.py:init():367] calling init triggers
+2021-06-25 09:54:59,976 INFO    MainThread:61540 [wandb_init.py:init():374] wandb.init called with sweep_config: {}
+config: {}
+2021-06-25 09:54:59,976 INFO    MainThread:61540 [wandb_init.py:init():416] starting backend
+2021-06-25 09:54:59,976 INFO    MainThread:61540 [backend.py:_multiprocessing_setup():71] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2021-06-25 09:55:00,079 INFO    MainThread:61540 [backend.py:ensure_launched():123] starting backend process...
+2021-06-25 09:55:00,213 INFO    MainThread:61540 [backend.py:ensure_launched():128] started backend process with pid: 63029
+2021-06-25 09:55:00,268 INFO    MainThread:61540 [wandb_init.py:init():421] backend started and connected
+2021-06-25 09:55:00,270 INFO    MainThread:61540 [wandb_init.py:init():461] updated telemetry
+2021-06-25 09:55:00,272 INFO    MainThread:61540 [wandb_init.py:init():480] communicating current version
+2021-06-25 09:55:01,111 INFO    MainThread:61540 [wandb_init.py:init():485] got version response upgrade_message: "wandb version 0.10.32 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2021-06-25 09:55:01,111 INFO    MainThread:61540 [wandb_init.py:init():493] communicating run to backend with 30 second timeout
+2021-06-25 09:55:01,410 INFO    MainThread:61540 [wandb_init.py:init():518] starting run threads in backend
+2021-06-25 09:55:06,415 INFO    MainThread:61540 [wandb_run.py:_console_start():1480] atexit reg
+2021-06-25 09:55:06,416 INFO    MainThread:61540 [wandb_run.py:_redirect():1343] redirect: SettingsConsole.REDIRECT
+2021-06-25 09:55:06,418 INFO    MainThread:61540 [wandb_run.py:_redirect():1348] Redirecting console.
+2021-06-25 09:55:06,418 INFO    MainThread:61540 [redirect.py:install():213] install start
+2021-06-25 09:55:06,418 INFO    MainThread:61540 [redirect.py:install():228] install stop
+2021-06-25 09:55:06,418 INFO    MainThread:61540 [redirect.py:install():213] install start
+2021-06-25 09:55:06,418 INFO    MainThread:61540 [redirect.py:install():228] install stop
+2021-06-25 09:55:06,418 INFO    MainThread:61540 [wandb_run.py:_redirect():1394] Redirects installed.
+2021-06-25 09:55:06,418 INFO    MainThread:61540 [wandb_init.py:init():542] run started, returning control to user process
+2021-06-25 09:55:06,420 INFO    MainThread:61540 [wandb_run.py:_config_callback():733] config_cb None None {'algorithm': 'CQL', 'version': 'normal', 'algorithm_kwargs': {'num_epochs': 3000, 'num_eval_steps_per_epoch': 0, 'num_trains_per_train_loop': 1000, 'num_expl_steps_per_train_loop': 5, 'min_num_steps_before_training': 1000, 'max_path_length': 0, 'batch_size': 256}, 'trainer_kwargs': {'discount': 0.99, 'soft_target_tau': 0.005, 'policy_lr': 0.0001, 'qf_lr': 0.0003, 'reward_scale': 1, 'use_automatic_entropy_tuning': True, 'policy_eval_start': 10000, 'num_qs': 2, 'temp': 1.0, 'min_q_version': 3, 'min_q_weight': 1.0, 'with_lagrange': False, 'lagrange_thresh': 5.0, 'num_random': 1, 'max_q_backup': False, 'deterministic_backup': True}, 'cnn_params': {'kernel_sizes': [3, 3, 3], 'n_channels': [16, 16, 16], 'strides': [1, 1, 1], 'hidden_sizes': [1024, 512], 'paddings': [1, 1, 1], 'pool_type': 'max2d', 'pool_sizes': [2, 2, 1], 'pool_strides': [2, 2, 1], 'pool_paddings': [0, 0, 0], 'image_augmentation': True, 'image_augmentation_padding': 4, 'spectral_norm_conv': False, 'spectral_norm_fc': False, 'input_width': 64, 'input_height': 64, 'input_channels': 3, 'output_size': 256, 'added_fc_input_size': 0, 'normalize_conv_activation': False}, 'dump_video_kwargs': {'imsize': 48, 'save_video_period': 1}, 'filter': True, 'start_bottleneck': 0, 'terminals': False, 'num_res': 3, 'singleQ': True, 'normalize_conv_activation': True, 'guassian_policy': False, 'color_jitter': True, 'val': False, 'vqvae_policy': True, 'share_encoder': False, 'bigger_net': False, 'deeper_net': False, 'vqvae_enc': True, 'spectral_norm_conv': False, 'spectral_norm_fc': False, 'prior_buffer': '/media/avi/data/Work/github/avisingh599/minibullet/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all_noise_0.1_2020-10-06T19-37-26_100.npy', 'task_buffer': '/media/avi/data/Work/github/avisingh599/minibullet/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all_noise_0.1_2020-10-06T19-37-26_100.npy', 'bottleneck': False, 'bottleneck_const': 0.5, 'dr3': False, 'dr3_feat': True, 'dr3_weight': 0.1, 'bottleneck_lagrange': False, 'bottleneck_dim': 16, 'deterministic_bottleneck': False, 'only_bottleneck': False, 'gamma': 1, 'num_traj': 50, 'des_per': -1, 'num_sample': 0, 'debug': False, 'duplicate': False, 'mcret': False, 'bchead': False, 'use_positive_rew': True, 'seed': 10, 'base_log_dir': None, 'log_dir': '/nfs/kun1/users/asap7772/cog/rlkit/../data/last-pot-minq1-dr31e-1-singleq-encpolicy-norm/last_pot_minq1_dr31e-1_singleq_encpolicy_norm_2021_06_25_09_54_49_0000--s-0'}

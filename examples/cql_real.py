@@ -6,6 +6,7 @@ from rlkit.samplers.data_collector import MdpPathCollector, \
 
 from rlkit.torch.sac.policies import TanhGaussianPolicy, GaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
+from rlkit.torch.sac.cql_single import CQLSingleTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN,  VQVAEEncoderConcatCNN, \
@@ -75,6 +76,7 @@ def experiment(variant):
         input_channels=3,
         output_size=1,
         added_fc_input_size=action_dim,
+        normalize_conv_activation=variant['normalize_conv_activation']
     )
 
     if variant['vqvae_enc']:
@@ -131,6 +133,7 @@ def experiment(variant):
         hidden_sizes=[1024, 512],
         spectral_norm_fc=False,
         spectral_norm_conv=False,
+        normalize_conv_activation=False
     )
 
     policy_obs_processor = CNN(**cnn_params)
@@ -284,6 +287,28 @@ def experiment(variant):
             real_data=True,
             **variant['trainer_kwargs']
         )
+    elif variant['singleQ']:
+        trainer = CQLSingleTrainer(
+            env=eval_env,
+            policy=policy,
+            qf1=qf1,
+            target_qf1=target_qf1,
+            bottleneck=variant['bottleneck'],
+            bottleneck_const=variant['bottleneck_const'],
+            bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
+            only_bottleneck = variant['only_bottleneck'],
+            log_dir = variant['log_dir'],
+            wand_b=not variant['debug'],
+            variant_dict=variant,
+            validation=variant['val'],
+            validation_buffer=replay_buffer_val,
+            **variant['trainer_kwargs']
+        )
+        del qf2, target_qf2
+        import torch; torch.cuda.empty_cache()
     else:
         trainer = CQLTrainer(
             env=eval_env,
@@ -460,6 +485,8 @@ if __name__ == "__main__":
     parser.add_argument('--num_traj', default=50, type=int)
     parser.add_argument('--num_res', default=3, type=int)
     parser.add_argument('--start_bottleneck', default=0, type=int)
+    parser.add_argument('--singleQ', action='store_true')
+    parser.add_argument('--normalize_conv_activation', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -467,6 +494,8 @@ if __name__ == "__main__":
     variant['start_bottleneck'] = args.start_bottleneck
     variant['terminals'] = args.terminals
     variant['num_res'] = args.num_res
+    variant['singleQ'] = args.singleQ
+    variant['normalize_conv_activation'] = args.normalize_conv_activation
 
     variant['guassian_policy'] = args.guassian_policy
     variant['color_jitter'] = args.color_jitter

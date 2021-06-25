@@ -1,0 +1,549 @@
+2021-06-25 10:02:20.754853 PDT | [last_drawer_minq1_dr31e-4_singleq_encpolicy_2021_06_25_09_54_39_0000--s-0] Epoch 0 finished
+---------------------------------------  --------------
+replay_buffer/top                        6166
+trainer/QF1 Loss                           42.533
+trainer/min QF1 Loss                        3.85699
+trainer/Std QF1 values                      0.31929
+trainer/QF1 in-distribution values Mean    -1.61211e-05
+trainer/QF1 in-distribution values Std      0
+trainer/QF1 in-distribution values Max     -1.61211e-05
+trainer/QF1 in-distribution values Min     -1.61211e-05
+trainer/QF1 random values Mean             -1.61211e-05
+trainer/QF1 random values Std               1.13687e-13
+trainer/QF1 random values Max              -1.61211e-05
+trainer/QF1 random values Min              -1.61211e-05
+trainer/QF1 next_actions values Mean       -1.61211e-05
+trainer/QF1 next_actions values Std         1.13687e-13
+trainer/QF1 next_actions values Max        -1.61211e-05
+trainer/QF1 next_actions values Min        -1.61211e-05
+trainer/actions Mean                        0.134361
+trainer/actions Std                         0.58553
+trainer/actions Max                         1
+trainer/actions Min                        -1
+trainer/rewards Mean                        3.86719
+trainer/rewards Std                         4.86998
+trainer/rewards Max                        10
+trainer/rewards Min                         0
+trainer/Num Q Updates                       1
+trainer/Num Policy Updates                  1
+trainer/Policy Loss                        -2.71421
+trainer/Q1 Predictions Mean                -1.61211e-05
+trainer/Q1 Predictions Std                  2.78475e-13
+trainer/Q1 Predictions Max                 -1.61211e-05
+trainer/Q1 Predictions Min                 -1.61211e-05
+trainer/Q Targets Mean                      3.86716
+trainer/Q Targets Std                       4.86998
+trainer/Q Targets Max                       9.99997
+trainer/Q Targets Min                      -2.57483e-05
+trainer/Log Pis Mean                       -2.71423
+trainer/Log Pis Std                         0.464497
+trainer/Log Pis Max                        -1.40632
+trainer/Log Pis Min                        -5.57845
+trainer/Policy mu Mean                     -0.000694928
+trainer/Policy mu Std                       0.00122303
+trainer/Policy mu Max                       0.00104185
+trainer/Policy mu Min                      -0.00241115
+trainer/Policy log std Mean                 0.000454159
+trainer/Policy log std Std                  0.00128641
+trainer/Policy log std Max                  0.00192835
+trainer/Policy log std Min                 -0.0012375
+trainer/QF1 DR3 Loss                       42.432
+trainer/Alpha                               0.9999
+trainer/Alpha Loss                         -0
+exploration/num steps total                 0
+exploration/num paths total                 0
+time/evaluation sampling (s)                9.0458e-05
+time/logging (s)                            0.00245232
+time/training (s)                         448.947
+time/epoch (s)                            448.95
+time/total (s)                            462.264
+Epoch                                       0
+---------------------------------------  --------------
+2021-06-25 10:09:26.350223 PDT | [last_drawer_minq1_dr31e-4_singleq_encpolicy_2021_06_25_09_54_39_0000--s-0] Epoch 1 finished
+---------------------------------------  --------------
+replay_buffer/top                        6166
+trainer/QF1 Loss                           15.5333
+trainer/min QF1 Loss                        1.42068
+trainer/Std QF1 values                      3.78918
+trainer/QF1 in-distribution values Mean     8.34001
+trainer/QF1 in-distribution values Std      7.59719
+trainer/QF1 in-distribution values Max     30.9804
+trainer/QF1 in-distribution values Min      0.0187331
+trainer/QF1 random values Mean              7.58899
+trainer/QF1 random values Std               6.50301
+trainer/QF1 random values Max              28.9972
+trainer/QF1 random values Min               0.016984
+trainer/QF1 next_actions values Mean        8.33357
+trainer/QF1 next_actions values Std         7.5536
+trainer/QF1 next_actions values Max        28.5711
+trainer/QF1 next_actions values Min         0.0224534
+trainer/actions Mean                        0.122815
+trainer/actions Std                         0.593848
+trainer/actions Max                         1
+trainer/actions Min                        -1
+trainer/rewards Mean                        4.53125
+trainer/rewards Std                         4.97798
+trainer/rewards Max                        10
+trainer/rewards Min                         0
+trainer/Num Q Updates                    1001
+trainer/Num Policy Updates               1001
+trainer/Policy Loss                        -9.28655
+trainer/Q1 Predictions Mean                11.5996
+trainer/Q1 Predictions Std                  9.79029
+trainer/Q1 Predictions Max                 32.4933
+trainer/Q1 Predictions Min                  0.0192485
+trainer/Q Targets Mean                     11.704
+trainer/Q Targets Std                      10.4132
+trainer/Q Targets Max                      31.8798
+trainer/Q Targets Min                       0.0408944
+trainer/Log Pis Mean                       -0.498651
+trainer/Log Pis Std                         3.10366
+trainer/Log Pis Max                         7.10012
+trainer/Log Pis Min                        -5.39862
+trainer/Policy mu Mean                      0.17938
+trainer/Policy mu Std                       0.266154
+trainer/Policy mu Max                       0.657017
+trainer/Policy mu Min                      -0.061256
+trainer/Policy log std Mean                 0.300056
+trainer/Policy log std Std                  0.533487
+trainer/Policy log std Max                  1.24143
+trainer/Policy log std Min                 -0.171534
+trainer/QF1 DR3 Loss                        8.25775
+trainer/Alpha                               0.908292
+trainer/Alpha Loss                         -0.432276
+exploration/num steps total                 0
+exploration/num paths total                 0
+time/evaluation sampling (s)                2.90028e-05
+time/logging (s)                            0.00227834
+time/training (s)                         425.586
+time/epoch (s)                            425.588
+time/total (s)                            887.858
+Epoch                                       1
+---------------------------------------  --------------
+2021-06-25 10:16:43.823002 PDT | [last_drawer_minq1_dr31e-4_singleq_encpolicy_2021_06_25_09_54_39_0000--s-0] Epoch 2 finished
+---------------------------------------  --------------
+replay_buffer/top                        6166
+trainer/QF1 Loss                           34.4733
+trainer/min QF1 Loss                        1.23924
+trainer/Std QF1 values                      3.91216
+trainer/QF1 in-distribution values Mean    14.0898
+trainer/QF1 in-distribution values Std     12.22
+trainer/QF1 in-distribution values Max     48.05
+trainer/QF1 in-distribution values Min      0.00353534
+trainer/QF1 random values Mean             12.7921
+trainer/QF1 random values Std              10.8881
+trainer/QF1 random values Max              43.8756
+trainer/QF1 random values Min               0.00352831
+trainer/QF1 next_actions values Mean       14.3959
+trainer/QF1 next_actions values Std        12.3181
+trainer/QF1 next_actions values Max        43.0607
+trainer/QF1 next_actions values Min         0.00353811
+trainer/actions Mean                        0.152746
+trainer/actions Std                         0.583944
+trainer/actions Max                         1
+trainer/actions Min                        -1
+trainer/rewards Mean                        4.33594
+trainer/rewards Std                         4.95571
+trainer/rewards Max                        10
+trainer/rewards Min                         0
+trainer/Num Q Updates                    2001
+trainer/Num Policy Updates               2001
+trainer/Policy Loss                       -14.8519
+trainer/Q1 Predictions Mean                17.4548
+trainer/Q1 Predictions Std                 13.5574
+trainer/Q1 Predictions Max                 53.7065
+trainer/Q1 Predictions Min                  0.00605092
+trainer/Q Targets Mean                     17.5814
+trainer/Q Targets Std                      14.7283
+trainer/Q Targets Max                      57.846
+trainer/Q Targets Min                       0.00663523
+trainer/Log Pis Mean                       -0.273761
+trainer/Log Pis Std                         3.30456
+trainer/Log Pis Max                         7.46832
+trainer/Log Pis Min                        -4.83496
+trainer/Policy mu Mean                      0.188214
+trainer/Policy mu Std                       0.259653
+trainer/Policy mu Max                       0.682624
+trainer/Policy mu Min                      -0.0458586
+trainer/Policy log std Mean                 0.281959
+trainer/Policy log std Std                  0.55712
+trainer/Policy log std Max                  1.32758
+trainer/Policy log std Min                 -0.23713
+trainer/QF1 DR3 Loss                        1.74672
+trainer/Alpha                               0.82367
+trainer/Alpha Loss                         -0.828626
+exploration/num steps total                 0
+exploration/num paths total                 0
+time/evaluation sampling (s)                3.02531e-05
+time/logging (s)                            0.00159445
+time/training (s)                         437.465
+time/epoch (s)                            437.466
+time/total (s)                           1325.33
+Epoch                                       2
+---------------------------------------  --------------
+2021-06-25 10:23:56.976345 PDT | [last_drawer_minq1_dr31e-4_singleq_encpolicy_2021_06_25_09_54_39_0000--s-0] Epoch 3 finished
+---------------------------------------  -------------
+replay_buffer/top                        6166
+trainer/QF1 Loss                           43.7477
+trainer/min QF1 Loss                        1.31409
+trainer/Std QF1 values                      4.51686
+trainer/QF1 in-distribution values Mean    19.2847
+trainer/QF1 in-distribution values Std     18.6679
+trainer/QF1 in-distribution values Max     71.4096
+trainer/QF1 in-distribution values Min     -0.220388
+trainer/QF1 random values Mean             16.2142
+trainer/QF1 random values Std              17.7596
+trainer/QF1 random values Max              68.3645
+trainer/QF1 random values Min              -0.220292
+trainer/QF1 next_actions values Mean       18.7124
+trainer/QF1 next_actions values Std        19.0019
+trainer/QF1 next_actions values Max        67.5031
+trainer/QF1 next_actions values Min        -0.21942
+trainer/actions Mean                        0.14433
+trainer/actions Std                         0.586741
+trainer/actions Max                         1
+trainer/actions Min                        -1
+trainer/rewards Mean                        3.86719
+trainer/rewards Std                         4.86998
+trainer/rewards Max                        10
+trainer/rewards Min                         0
+trainer/Num Q Updates                    3001
+trainer/Num Policy Updates               3001
+trainer/Policy Loss                       -18.9975
+trainer/Q1 Predictions Mean                22.1511
+trainer/Q1 Predictions Std                 19.064
+trainer/Q1 Predictions Max                 66.3066
+trainer/Q1 Predictions Min                 -0.216708
+trainer/Q Targets Mean                     21.3995
+trainer/Q Targets Std                      19.0845
+trainer/Q Targets Max                      65.2297
+trainer/Q Targets Min                      -0.106175
+trainer/Log Pis Mean                       -0.0842651
+trainer/Log Pis Std                         3.5526
+trainer/Log Pis Max                         8.66376
+trainer/Log Pis Min                        -4.80938
+trainer/Policy mu Mean                      0.210793
+trainer/Policy mu Std                       0.298682
+trainer/Policy mu Max                       0.760392
+trainer/Policy mu Min                      -0.06268
+trainer/Policy log std Mean                 0.312947
+trainer/Policy log std Std                  0.567581
+trainer/Policy log std Max                  1.33901
+trainer/Policy log std Min                 -0.178778
+trainer/QF1 DR3 Loss                        1.1925
+trainer/Alpha                               0.747152
+trainer/Alpha Loss                         -1.19011
+exploration/num steps total                 0
+exploration/num paths total                 0
+time/evaluation sampling (s)                2.5026e-05
+time/logging (s)                            0.00175
+time/training (s)                         433.147
+time/epoch (s)                            433.149
+time/total (s)                           1758.48
+Epoch                                       3
+---------------------------------------  -------------
+2021-06-25 10:31:13.318619 PDT | [last_drawer_minq1_dr31e-4_singleq_encpolicy_2021_06_25_09_54_39_0000--s-0] Epoch 4 finished
+---------------------------------------  --------------
+replay_buffer/top                        6166
+trainer/QF1 Loss                           59.428
+trainer/min QF1 Loss                        0.381504
+trainer/Std QF1 values                      5.09427
+trainer/QF1 in-distribution values Mean    14.9412
+trainer/QF1 in-distribution values Std     22.2515
+trainer/QF1 in-distribution values Max     89.4643
+trainer/QF1 in-distribution values Min     -3.1326
+trainer/QF1 random values Mean             12.2362
+trainer/QF1 random values Std              21.1303
+trainer/QF1 random values Max              86.7645
+trainer/QF1 random values Min              -3.66966
+trainer/QF1 next_actions values Mean       15.7358
+trainer/QF1 next_actions values Std        22.0667
+trainer/QF1 next_actions values Max        89.586
+trainer/QF1 next_actions values Min        -3.44302
+trainer/actions Mean                        0.133541
+trainer/actions Std                         0.587781
+trainer/actions Max                         1
+trainer/actions Min                        -1
+trainer/rewards Mean                        4.02344
+trainer/rewards Std                         4.90371
+trainer/rewards Max                        10
+trainer/rewards Min                         0
+trainer/Num Q Updates                    4001
+trainer/Num Policy Updates               4001
+trainer/Policy Loss                       -15.4592
+trainer/Q1 Predictions Mean                19.2777
+trainer/Q1 Predictions Std                 22.0482
+trainer/Q1 Predictions Max                 86.8147
+trainer/Q1 Predictions Min                 -2.32532
+trainer/Q Targets Mean                     21.37
+trainer/Q Targets Std                      24.0708
+trainer/Q Targets Max                      96.9017
+trainer/Q Targets Min                      -2.04426
+trainer/Log Pis Mean                        0.0720028
+trainer/Log Pis Std                         3.5688
+trainer/Log Pis Max                         8.58402
+trainer/Log Pis Min                        -7.8106
+trainer/Policy mu Mean                      0.269975
+trainer/Policy mu Std                       0.39162
+trainer/Policy mu Max                       1.0224
+trainer/Policy mu Min                      -0.111264
+trainer/Policy log std Mean                 0.323447
+trainer/Policy log std Std                  0.62541
+trainer/Policy log std Max                  1.57892
+trainer/Policy log std Min                 -0.306092
+trainer/QF1 DR3 Loss                        1.02314
+trainer/Alpha                               0.678208
+trainer/Alpha Loss                         -1.52487
+exploration/num steps total                 0
+exploration/num paths total                 0
+time/evaluation sampling (s)                2.94759e-05
+time/logging (s)                            0.00154307
+time/training (s)                         436.335
+time/epoch (s)                            436.336
+time/total (s)                           2194.82
+Epoch                                       4
+---------------------------------------  --------------
+2021-06-25 10:38:33.609616 PDT | [last_drawer_minq1_dr31e-4_singleq_encpolicy_2021_06_25_09_54_39_0000--s-0] Epoch 5 finished
+---------------------------------------  --------------
+replay_buffer/top                        6166
+trainer/QF1 Loss                           84.6074
+trainer/min QF1 Loss                        0.198784
+trainer/Std QF1 values                      5.72793
+trainer/QF1 in-distribution values Mean    21.9287
+trainer/QF1 in-distribution values Std     31.8975
+trainer/QF1 in-distribution values Max    139.829
+trainer/QF1 in-distribution values Min     -8.54282
+trainer/QF1 random values Mean             17.7391
+trainer/QF1 random values Std              30.8874
+trainer/QF1 random values Max             147.403
+trainer/QF1 random values Min              -7.96513
+trainer/QF1 next_actions values Mean       22.1472
+trainer/QF1 next_actions values Std        31.3041
+trainer/QF1 next_actions values Max       135.155
+trainer/QF1 next_actions values Min        -8.7385
+trainer/actions Mean                        0.13529
+trainer/actions Std                         0.583748
+trainer/actions Max                         1
+trainer/actions Min                        -1
+trainer/rewards Mean                        3.98438
+trainer/rewards Std                         4.89576
+trainer/rewards Max                        10
+trainer/rewards Min                         0
+trainer/Num Q Updates                    5001
+trainer/Num Policy Updates               5001
+trainer/Policy Loss                       -22.0696
+trainer/Q1 Predictions Mean                26.4619
+trainer/Q1 Predictions Std                 31.087
+trainer/Q1 Predictions Max                148.777
+trainer/Q1 Predictions Min                 -5.67572
+trainer/Q Targets Mean                     24.5983
+trainer/Q Targets Std                      31.7242
+trainer/Q Targets Max                     135.914
+trainer/Q Targets Min                      -7.91959
+trainer/Log Pis Mean                        0.609313
+trainer/Log Pis Std                         3.56441
+trainer/Log Pis Max                         9.9262
+trainer/Log Pis Min                        -5.2936
+trainer/Policy mu Mean                      0.248401
+trainer/Policy mu Std                       0.694276
+trainer/Policy mu Max                       2.25353
+trainer/Policy mu Min                      -0.929903
+trainer/Policy log std Mean                 0.0485833
+trainer/Policy log std Std                  0.883981
+trainer/Policy log std Max                  1.46427
+trainer/Policy log std Min                 -1.94937
+trainer/QF1 DR3 Loss                        0.824651
+trainer/Alpha                               0.620457
+trainer/Alpha Loss                         -1.61808
+exploration/num steps total                 0
+exploration/num paths total                 0
+time/evaluation sampling (s)                2.72109e-05
+time/logging (s)                            0.00205927
+time/training (s)                         440.284
+time/epoch (s)                            440.286
+time/total (s)                           2635.11
+Epoch                                       5
+---------------------------------------  --------------
+2021-06-25 10:45:48.273915 PDT | [last_drawer_minq1_dr31e-4_singleq_encpolicy_2021_06_25_09_54_39_0000--s-0] Epoch 6 finished
+---------------------------------------  --------------
+replay_buffer/top                        6166
+trainer/QF1 Loss                           75.8471
+trainer/min QF1 Loss                       -0.205639
+trainer/Std QF1 values                      6.52454
+trainer/QF1 in-distribution values Mean    20.1345
+trainer/QF1 in-distribution values Std     34.8288
+trainer/QF1 in-distribution values Max    172.849
+trainer/QF1 in-distribution values Min    -19.1162
+trainer/QF1 random values Mean             13.3972
+trainer/QF1 random values Std              34.2977
+trainer/QF1 random values Max             163.638
+trainer/QF1 random values Min             -20.645
+trainer/QF1 next_actions values Mean       19.621
+trainer/QF1 next_actions values Std        34.4942
+trainer/QF1 next_actions values Max       172.424
+trainer/QF1 next_actions values Min       -19.9301
+trainer/actions Mean                        0.127494
+trainer/actions Std                         0.579828
+trainer/actions Max                         1
+trainer/actions Min                        -1
+trainer/rewards Mean                        3.67188
+trainer/rewards Std                         4.82038
+trainer/rewards Max                        10
+trainer/rewards Min                         0
+trainer/Num Q Updates                    6001
+trainer/Num Policy Updates               6001
+trainer/Policy Loss                       -18.7554
+trainer/Q1 Predictions Mean                24.1305
+trainer/Q1 Predictions Std                 33.9795
+trainer/Q1 Predictions Max                171.085
+trainer/Q1 Predictions Min                -15.8044
+trainer/Q Targets Mean                     24.4372
+trainer/Q Targets Std                      35.4901
+trainer/Q Targets Max                     170.538
+trainer/Q Targets Min                     -14.5123
+trainer/Log Pis Mean                        1.43262
+trainer/Log Pis Std                         3.70415
+trainer/Log Pis Max                        10.4473
+trainer/Log Pis Min                        -4.7752
+trainer/Policy mu Mean                      0.293226
+trainer/Policy mu Std                       0.808476
+trainer/Policy mu Max                       2.80527
+trainer/Policy mu Min                      -1.41326
+trainer/Policy log std Mean                -0.146108
+trainer/Policy log std Std                  1.02574
+trainer/Policy log std Max                  1.63812
+trainer/Policy log std Min                 -2.1714
+trainer/QF1 DR3 Loss                        0.90035
+trainer/Alpha                               0.570836
+trainer/Alpha Loss                         -1.43921
+exploration/num steps total                 0
+exploration/num paths total                 0
+time/evaluation sampling (s)                2.81259e-05
+time/logging (s)                            0.00173671
+time/training (s)                         434.657
+time/epoch (s)                            434.658
+time/total (s)                           3069.78
+Epoch                                       6
+---------------------------------------  --------------
+2021-06-25 10:52:52.307764 PDT | [last_drawer_minq1_dr31e-4_singleq_encpolicy_2021_06_25_09_54_39_0000--s-0] Epoch 7 finished
+---------------------------------------  --------------
+replay_buffer/top                        6166
+trainer/QF1 Loss                           75.3679
+trainer/min QF1 Loss                       -0.654562
+trainer/Std QF1 values                      6.3714
+trainer/QF1 in-distribution values Mean    22.4491
+trainer/QF1 in-distribution values Std     46.8362
+trainer/QF1 in-distribution values Max    201.147
+trainer/QF1 in-distribution values Min    -28.1333
+trainer/QF1 random values Mean             14.2354
+trainer/QF1 random values Std              45.6768
+trainer/QF1 random values Max             190.434
+trainer/QF1 random values Min             -30.2832
+trainer/QF1 next_actions values Mean       21.4785
+trainer/QF1 next_actions values Std        46.8225
+trainer/QF1 next_actions values Max       191.555
+trainer/QF1 next_actions values Min       -34.7284
+trainer/actions Mean                        0.12611
+trainer/actions Std                         0.570429
+trainer/actions Max                         1
+trainer/actions Min                        -1
+trainer/rewards Mean                        4.17969
+trainer/rewards Std                         4.93225
+trainer/rewards Max                        10
+trainer/rewards Min                         0
+trainer/Num Q Updates                    7001
+trainer/Num Policy Updates               7001
+trainer/Policy Loss                       -20.405
+trainer/Q1 Predictions Mean                25.966
+trainer/Q1 Predictions Std                 46.0899
+trainer/Q1 Predictions Max                194.084
+trainer/Q1 Predictions Min                -27.5228
+trainer/Q Targets Mean                     27.5185
+trainer/Q Targets Std                      48.3841
+trainer/Q Targets Max                     205.474
+trainer/Q Targets Min                     -28.8471
+trainer/Log Pis Mean                        1.42202
+trainer/Log Pis Std                         3.93831
+trainer/Log Pis Max                        13.0121
+trainer/Log Pis Min                        -6.16023
+trainer/Policy mu Mean                      0.261503
+trainer/Policy mu Std                       0.842539
+trainer/Policy mu Max                       2.75271
+trainer/Policy mu Min                      -1.71
+trainer/Policy log std Mean                -0.297718
+trainer/Policy log std Std                  1.11324
+trainer/Policy log std Max                  1.60533
+trainer/Policy log std Min                 -2.56283
+trainer/QF1 DR3 Loss                        0.996129
+trainer/Alpha                               0.525781
+trainer/Alpha Loss                         -1.65709
+exploration/num steps total                 0
+exploration/num paths total                 0
+time/evaluation sampling (s)                2.54889e-05
+time/logging (s)                            0.00230272
+time/training (s)                         424.024
+time/epoch (s)                            424.027
+time/total (s)                           3493.81
+Epoch                                       7
+---------------------------------------  --------------
+2021-06-25 11:00:03.959217 PDT | [last_drawer_minq1_dr31e-4_singleq_encpolicy_2021_06_25_09_54_39_0000--s-0] Epoch 8 finished
+---------------------------------------  --------------
+replay_buffer/top                        6166
+trainer/QF1 Loss                           97.4258
+trainer/min QF1 Loss                       -2.19048
+trainer/Std QF1 values                      7.76765
+trainer/QF1 in-distribution values Mean    17.407
+trainer/QF1 in-distribution values Std     41.7363
+trainer/QF1 in-distribution values Max    200.235
+trainer/QF1 in-distribution values Min    -48.6561
+trainer/QF1 random values Mean              9.7333
+trainer/QF1 random values Std              41.2411
+trainer/QF1 random values Max             191.007
+trainer/QF1 random values Min             -48.0433
+trainer/QF1 next_actions values Mean       16.8965
+trainer/QF1 next_actions values Std        42.2664
+trainer/QF1 next_actions values Max       197.395
+trainer/QF1 next_actions values Min       -48.0623
+trainer/actions Mean                        0.120179
+trainer/actions Std                         0.584585
+trainer/actions Max                         1
+trainer/actions Min                        -1
+trainer/rewards Mean                        3.94531
+trainer/rewards Std                         4.8875
+trainer/rewards Max                        10
+trainer/rewards Min                         0
+trainer/Num Q Updates                    8001
+trainer/Num Policy Updates               8001
+trainer/Policy Loss                       -16.2507
+trainer/Q1 Predictions Mean                23.6427
+trainer/Q1 Predictions Std                 42.5068
+trainer/Q1 Predictions Max                200.137
+trainer/Q1 Predictions Min                -37.5783
+trainer/Q Targets Mean                     22.4692
+trainer/Q Targets Std                      44.74
+trainer/Q Targets Max                     213.64
+trainer/Q Targets Min                     -47.9077
+trainer/Log Pis Mean                        2.44825
+trainer/Log Pis Std                         4.30002
+trainer/Log Pis Max                        17.1001
+trainer/Log Pis Min                        -5.85975
+trainer/Policy mu Mean                      0.351451
+trainer/Policy mu Std                       0.869652
+trainer/Policy mu Max                       2.91452
+trainer/Policy mu Min                      -1.50318
+trainer/Policy log std Mean                -0.32563
+trainer/Policy log std Std                  1.12613
+trainer/Policy log std Max                  1.59311
+trainer/Policy log std Min                 -2.31992
+trainer/QF1 DR3 Loss                        0.940313
+trainer/Alpha                               0.484259
+trainer/Alpha Loss                         -1.1251
+exploration/num steps total                 0
+exploration/num paths total                 0
+time/evaluation sampling (s)                3.87072e-05
+time/logging (s)                            0.00159418
+time/training (s)                         431.641
+time/epoch (s)                            431.643
+time/total (s)                           3925.46
+Epoch                                       8
+---------------------------------------  --------------

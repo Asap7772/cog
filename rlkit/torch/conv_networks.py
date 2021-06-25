@@ -37,6 +37,7 @@ class CNN(nn.Module):
             image_augmentation_padding=4,
             spectral_norm_conv=False,
             spectral_norm_fc=False,
+            normalize_conv_activation=False,
     ):
         if hidden_sizes is None:
             hidden_sizes = []
@@ -69,6 +70,11 @@ class CNN(nn.Module):
 
         self.spectral_norm_conv = spectral_norm_conv
         self.spectral_norm_fc = spectral_norm_fc
+
+        self.normalize_conv_activation = normalize_conv_activation
+        
+        if normalize_conv_activation:
+            print('normalizing conv activation')
 
         self.conv_layers = nn.ModuleList()
         self.conv_norm_layers = nn.ModuleList()
@@ -187,7 +193,11 @@ class CNN(nn.Module):
 
         # flatten channels for fc layers
         h = h.view(h.size(0), -1)
+        
+        if self.normalize_conv_activation:
+            h = h/(torch.norm(h)+1e-9)
         conv_outputs_flat = h
+
         if self.added_fc_input_size != 0:
             extra_fc_input = input.narrow(
                 start=self.conv_input_length,
@@ -196,15 +206,14 @@ class CNN(nn.Module):
             )
             h = torch.cat((h, extra_fc_input), dim=1)
 
-
         h = self.apply_forward_fc(h)
 
         if return_last_activations:
             return h
 
         if return_conv_outputs:
-            # return self.output_activation(self.last_fc(h)), conv_outputs_flat #TODO change later if needing to use this
-            return self.output_activation(self.last_fc(h)), h
+            return self.output_activation(self.last_fc(h)), conv_outputs_flat
+            # return self.output_activation(self.last_fc(h)), h # for dr3 last layer
         else:
             return self.output_activation(self.last_fc(h))
 

@@ -333,11 +333,11 @@ class CQLTrainer(TorchTrainer):
             )
         else:
             cat_q1 = torch.cat(
-                [q1_rand, q1_pred.unsqueeze(1), q1_next_actions,
+                [q1_rand, q1_next_actions,
                  q1_curr_actions], 1
             )
             cat_q2 = torch.cat(
-                [q2_rand, q2_pred.unsqueeze(1), q2_next_actions,
+                [q2_rand, q2_next_actions,
                  q2_curr_actions], 1
             )
 

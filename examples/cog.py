@@ -75,6 +75,7 @@ def experiment(variant):
         input_channels=3,
         output_size=1,
         added_fc_input_size=action_dim,
+        normalize_conv_activation=variant['normalize_conv_activation']
     )
     if variant['vqvae_enc']:
         if variant['bottleneck']:
@@ -150,6 +151,7 @@ def experiment(variant):
                 hidden_sizes=[1024, 512],
                 spectral_norm_fc=False,
                 spectral_norm_conv=False,
+                normalize_conv_activation=False,
             )
 
             policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
@@ -160,6 +162,7 @@ def experiment(variant):
             hidden_sizes=[1024, 512],
             spectral_norm_fc=False,
             spectral_norm_conv=False,
+            normalize_conv_activation=False,
         )
         policy_obs_processor = CNN(**cnn_params)
 
@@ -477,6 +480,7 @@ if __name__ == "__main__":
     parser.add_argument("--dr3_weight", default=0.001, type=float)
     parser.add_argument("--eval_every_n", default=1, type=int)
     parser.add_argument('--singleQ', action='store_true')
+    parser.add_argument('--normalize_conv_activation', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -487,6 +491,8 @@ if __name__ == "__main__":
     variant['vqvae_enc'] = args.vqvae_enc
     variant['vqvae_policy'] = args.vqvae_policy
     variant['share_encoder'] = args.share_encoder
+    variant['singleQ'] = args.singleQ
+    variant['normalize_conv_activation'] = args.normalize_conv_activation
 
     variant['spectral_norm_conv'] = args.spectral_norm_conv
     variant['spectral_norm_fc'] = args.spectral_norm_fc

@@ -1,0 +1,174 @@
+diff --git a/examples/cql_real.py b/examples/cql_real.py
+index 8191de5..b5e524d 100644
+--- a/examples/cql_real.py
++++ b/examples/cql_real.py
+@@ -6,6 +6,7 @@ from rlkit.samplers.data_collector import MdpPathCollector, \
+ 
+ from rlkit.torch.sac.policies import TanhGaussianPolicy, GaussianPolicy, MakeDeterministic
+ from rlkit.torch.sac.cql import CQLTrainer
++from rlkit.torch.sac.cql_single import CQLSingleTrainer
+ from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
+ from rlkit.torch.sac.cql_bchead import CQLBCTrainer
+ from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN,  VQVAEEncoderConcatCNN, \
+@@ -75,6 +76,7 @@ def experiment(variant):
+         input_channels=3,
+         output_size=1,
+         added_fc_input_size=action_dim,
++        normalize_conv_activation=variant['normalize_conv_activation']
+     )
+ 
+     if variant['vqvae_enc']:
+@@ -131,6 +133,7 @@ def experiment(variant):
+         hidden_sizes=[1024, 512],
+         spectral_norm_fc=False,
+         spectral_norm_conv=False,
++        normalize_conv_activation=False
+     )
+ 
+     policy_obs_processor = CNN(**cnn_params)
+@@ -284,6 +287,28 @@ def experiment(variant):
+             real_data=True,
+             **variant['trainer_kwargs']
+         )
++    elif variant['singleQ']:
++        trainer = CQLSingleTrainer(
++            env=eval_env,
++            policy=policy,
++            qf1=qf1,
++            target_qf1=target_qf1,
++            bottleneck=variant['bottleneck'],
++            bottleneck_const=variant['bottleneck_const'],
++            bottleneck_lagrange=variant['bottleneck_lagrange'],
++            dr3=variant['dr3'],
++            dr3_feat=variant['dr3_feat'],
++            dr3_weight=variant['dr3_weight'],
++            only_bottleneck = variant['only_bottleneck'],
++            log_dir = variant['log_dir'],
++            wand_b=not variant['debug'],
++            variant_dict=variant,
++            validation=variant['val'],
++            validation_buffer=replay_buffer_val,
++            **variant['trainer_kwargs']
++        )
++        del qf2, target_qf2
++        import torch; torch.cuda.empty_cache()
+     else:
+         trainer = CQLTrainer(
+             env=eval_env,
+@@ -460,6 +485,8 @@ if __name__ == "__main__":
+     parser.add_argument('--num_traj', default=50, type=int)
+     parser.add_argument('--num_res', default=3, type=int)
+     parser.add_argument('--start_bottleneck', default=0, type=int)
++    parser.add_argument('--singleQ', action='store_true')
++    parser.add_argument('--normalize_conv_activation', action='store_true')
+ 
+     args = parser.parse_args()
+     enable_gpus(args.gpu)
+@@ -467,6 +494,8 @@ if __name__ == "__main__":
+     variant['start_bottleneck'] = args.start_bottleneck
+     variant['terminals'] = args.terminals
+     variant['num_res'] = args.num_res
++    variant['singleQ'] = args.singleQ
++    variant['normalize_conv_activation'] = args.normalize_conv_activation
+ 
+     variant['guassian_policy'] = args.guassian_policy
+     variant['color_jitter'] = args.color_jitter
+diff --git a/rlkit/torch/conv_networks.py b/rlkit/torch/conv_networks.py
+index 308c4da..f739f04 100644
+--- a/rlkit/torch/conv_networks.py
++++ b/rlkit/torch/conv_networks.py
+@@ -37,6 +37,7 @@ class CNN(nn.Module):
+             image_augmentation_padding=4,
+             spectral_norm_conv=False,
+             spectral_norm_fc=False,
++            normalize_conv_activation=False,
+     ):
+         if hidden_sizes is None:
+             hidden_sizes = []
+@@ -70,6 +71,11 @@ class CNN(nn.Module):
+         self.spectral_norm_conv = spectral_norm_conv
+         self.spectral_norm_fc = spectral_norm_fc
+ 
++        self.normalize_conv_activation = normalize_conv_activation
++        
++        if normalize_conv_activation:
++            print('normalizing conv activation')
++
+         self.conv_layers = nn.ModuleList()
+         self.conv_norm_layers = nn.ModuleList()
+         self.pool_layers = nn.ModuleList()
+@@ -187,7 +193,11 @@ class CNN(nn.Module):
+ 
+         # flatten channels for fc layers
+         h = h.view(h.size(0), -1)
++        
++        if self.normalize_conv_activation:
++            h = h/(torch.norm(h)+1e-9)
+         conv_outputs_flat = h
++
+         if self.added_fc_input_size != 0:
+             extra_fc_input = input.narrow(
+                 start=self.conv_input_length,
+@@ -196,15 +206,14 @@ class CNN(nn.Module):
+             )
+             h = torch.cat((h, extra_fc_input), dim=1)
+ 
+-
+         h = self.apply_forward_fc(h)
+ 
+         if return_last_activations:
+             return h
+ 
+         if return_conv_outputs:
+-            # return self.output_activation(self.last_fc(h)), conv_outputs_flat #TODO change later if needing to use this
+-            return self.output_activation(self.last_fc(h)), h
++            return self.output_activation(self.last_fc(h)), conv_outputs_flat
++            # return self.output_activation(self.last_fc(h)), h # for dr3 last layer
+         else:
+             return self.output_activation(self.last_fc(h))
+ 
+diff --git a/rlkit/torch/sac/cql.py b/rlkit/torch/sac/cql.py
+index 6885845..d5f525b 100644
+--- a/rlkit/torch/sac/cql.py
++++ b/rlkit/torch/sac/cql.py
+@@ -333,11 +333,11 @@ class CQLTrainer(TorchTrainer):
+             )
+         else:
+             cat_q1 = torch.cat(
+-                [q1_rand, q1_pred.unsqueeze(1), q1_next_actions,
++                [q1_rand, q1_next_actions,
+                  q1_curr_actions], 1
+             )
+             cat_q2 = torch.cat(
+-                [q2_rand, q2_pred.unsqueeze(1), q2_next_actions,
++                [q2_rand, q2_next_actions,
+                  q2_curr_actions], 1
+             )
+ 
+diff --git a/wandb/debug-internal.log b/wandb/debug-internal.log
+index 3bbac52..5fc0fa0 120000
+--- a/wandb/debug-internal.log
++++ b/wandb/debug-internal.log
+@@ -1 +1 @@
+-run-20210616_165951-1egvo7wu/logs/debug-internal.log
+\ No newline at end of file
++run-20210625_095505-3bx3pepk/logs/debug-internal.log
+\ No newline at end of file
+diff --git a/wandb/debug.log b/wandb/debug.log
+index 56c5938..89e42ea 120000
+--- a/wandb/debug.log
++++ b/wandb/debug.log
+@@ -1 +1 @@
+-run-20210616_165951-1egvo7wu/logs/debug.log
+\ No newline at end of file
++run-20210625_095505-3bx3pepk/logs/debug.log
+\ No newline at end of file
+diff --git a/wandb/latest-run b/wandb/latest-run
+index d4aca18..aa73791 120000
+--- a/wandb/latest-run
++++ b/wandb/latest-run
+@@ -1 +1 @@
+-run-20210616_165951-1egvo7wu
+\ No newline at end of file
++run-20210625_095505-3bx3pepk
+\ No newline at end of file
