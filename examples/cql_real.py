@@ -15,6 +15,7 @@ from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.envs.dummy_env import DummyEnv
 from rlkit.launchers.launcher_util import setup_logger
+from railrl.data_management.obs_dict_replay_buffer import ObsDictReplayBuffer
 
 import argparse, os
 import roboverse
@@ -109,7 +110,6 @@ def experiment(variant):
                 qf2.encoder = qf1.encoder
             target_qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
             target_qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
-
     else:
         if variant['mcret'] or variant['bchead']:
             qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
@@ -209,7 +209,7 @@ def experiment(variant):
         paths.append((os.path.join(data_path,'fixed_drawer_demos_latent.npy'), os.path.join(data_path,'fixed_drawer_demos_draweropen_rew_handlabel_06_13.pkl')))
     elif args.buffer == 4:
         print('Stephen Tool Use')
-        path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
+        path = os.path.join(expanduser("~"),'on_policy_longer_1_26_buffers', 'move_tool_obj_together_fixed_6_2_train.pkl') if args.azure else '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
     elif args.buffer == 5:
         print('Albert Pick Place')
         px = os.path.join(expanduser("~"),'albert_pickplace', 'combined_2021-06-03_21_36_48_labeled.pkl') if args.azure else '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
@@ -221,6 +221,14 @@ def experiment(variant):
         assert False
     if args.buffer in [4]:
         replay_buffer = pickle.load(open(path,'rb'))
+
+        replay_buffer_new = ObsDictReplayBuffer(replay_buffer.max_size, replay_buffer.env, dummy=True)
+        replay_buffer_new.load_from(replay_buffer)
+
+        replay_buffer = replay_buffer_new
+
+        replay_buffer.color_jitter=True
+        replay_buffer.warp_img=True
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
