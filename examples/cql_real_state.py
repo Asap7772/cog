@@ -80,14 +80,21 @@ def experiment(variant):
         assert False
 
     if args.buffer in [4]:
+        print('loading')
         replay_buffer = pickle.load(open(path,'rb'))
+        print('done loading')
+        import ipdb; ipdb.set_trace()
+        if variant['rew_type'] == 1:
+            pass
+        elif variant['rew_type'] == 2:
+            pass
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
             load_path(path, rew_path, replay_buffer,bc=variant['filter'])
 
-    # Translate 0/1 rewards to +0/+10 rewards.
-    replay_buffer._rewards = replay_buffer._rewards * 10.0
+        # Translate 0/1 rewards to +0/+10 rewards.
+        replay_buffer._rewards = replay_buffer._rewards * 10.0
 
     trainer = CQLTrainerLatent(
             env=eval_env,
@@ -217,11 +224,13 @@ if __name__ == "__main__":
     parser.add_argument('--obs_dim', type=int, default=720)
     parser.add_argument('--color_jitter', action='store_true')
     parser.add_argument('--azure', action='store_true')
+    parser.add_argument('--rew_type', type=int, default=0)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
     
     variant['buffer'] = args.buffer = int(args.buffer)
+    variant['rew_type'] = args.rew_type
     variant['filter'] = args.filter
     variant['color_jitter'] = args.color_jitter
     variant['obs_dim'] = args.obs_dim

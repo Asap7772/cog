@@ -61,6 +61,28 @@ def parse_traj(data, des_per, num_traj):
     return succ[:num_succ] + fail[:num_fail]
 
 
+def load_data(path, rew_path, small_img=False, bc=False, des_per=-1, num_traj = 100):
+    data = np.load(path,allow_pickle=True)
+    if rew_path is not None:
+        rew = pickle.load(open(rew_path, 'rb'))
+        assert len(data) == len(rew)
+        for i in range(len(data)):
+            data[i]['rewards'] = np.array(rew[i]).tolist()
+
+    if des_per > 0:
+        data = parse_traj(data, des_per, num_traj)
+
+    if bc:
+        data = [data[i] for i in range(len(data)) if sum(data[i]['rewards']) > 0]
+        print('kept', len(data), 'traj')
+
+    if small_img:
+        for i in range(len(data)):
+            for j in range(len(data[i]['observations'])):
+                data[i]['observations'][j]['image_observation'] = resize_small(data[i]['observations'][j]['image_observation'])
+                data[i]['next_observations'][j]['image_observation'] = resize_small(data[i]['next_observations'][j]['image_observation'])
+    return data
+
 def load_path(path, rew_path, replay_buffer, small_img=False, bc=False, imgstate=False, des_per=-1, num_traj = 100):
     data = np.load(path,allow_pickle=True)
     if rew_path is not None:

@@ -220,7 +220,23 @@ def experiment(variant):
     else:
         assert False
     if args.buffer in [4]:
+        print('loading')
         replay_buffer = pickle.load(open(path,'rb'))
+        print('done loading')
+
+        if variant['rew_type'] == 1:
+            replay_buffer._terminals *= 0 # no terminals
+        variant['use_positive_rew'] = False
+        
+        #original is (-1, 1)
+        import ipdb; ipdb.set_trace()
+        if variant['rew_type'] == 1: #(0, 10)
+            replay_buffer._rewards *= 5
+            replay_buffer._rewards += 5
+        elif variant['rew_type'] == 2:  #(-2, 10)
+            replay_buffer._rewards *= 6
+            replay_buffer._rewards += 4
+
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
@@ -485,11 +501,16 @@ if __name__ == "__main__":
     parser.add_argument('--num_traj', default=50, type=int)
     parser.add_argument('--num_res', default=3, type=int)
     parser.add_argument('--start_bottleneck', default=0, type=int)
+    parser.add_argument('--rew_type', default=0, type=int)
     parser.add_argument('--singleQ', action='store_true')
     parser.add_argument('--normalize_conv_activation', action='store_true')
+    parser.add_argument('--rew_type', default=0, type=int)
+    parser.add_argument('--no_terminals', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['']
+    variant['rew_type'] = args.rew_type
     variant['filter'] = args.filter
     variant['start_bottleneck'] = args.start_bottleneck
     variant['terminals'] = args.terminals
