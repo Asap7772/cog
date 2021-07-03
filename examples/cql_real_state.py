@@ -22,7 +22,7 @@ DEFAULT_PRIOR_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
 DEFAULT_TASK_BUFFER = ('/media/avi/data/Work/github/avisingh599/minibullet'
                         '/data/oct6_Widow250DrawerGraspNeutral-v0_20K_save_all'
                         '_noise_0.1_2020-10-06T19-37-26_100.npy')
-CUSTOM_LOG_DIR = '/nfs/kun1/users/avi/doodad-output/'
+CUSTOM_LOG_DIR = '/nfs/kun1/users/asap7772/cog/data/'
 
 
 def experiment(variant):
@@ -60,7 +60,7 @@ def experiment(variant):
     
     paths = []
     observation_key = 'image'
-    data_path = os.path.join(expanduser("~"),'val_data_relabeled') if args.azure else '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
+    data_path = os.path.join(expanduser("~"),'val_data_relabeled') if args.azure else '/nfs/kun1/users/asap7772/real_data_drawer/val_data_relabeled/'
     if args.buffer == 0:
         print('lid on')
         paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_lidon_rew_handlabel_06_13.pkl')))
@@ -80,14 +80,21 @@ def experiment(variant):
         assert False
 
     if args.buffer in [4]:
+        print('loading')
         replay_buffer = pickle.load(open(path,'rb'))
+        print('done loading')
+        import ipdb; ipdb.set_trace()
+        if variant['rew_type'] == 1:
+            pass
+        elif variant['rew_type'] == 2:
+            pass
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
             load_path(path, rew_path, replay_buffer,bc=variant['filter'])
 
-    # Translate 0/1 rewards to +0/+10 rewards.
-    replay_buffer._rewards = replay_buffer._rewards * 10.0
+        # Translate 0/1 rewards to +0/+10 rewards.
+        replay_buffer._rewards = replay_buffer._rewards * 10.0
 
     trainer = CQLTrainerLatent(
             env=eval_env,
@@ -217,11 +224,13 @@ if __name__ == "__main__":
     parser.add_argument('--obs_dim', type=int, default=720)
     parser.add_argument('--color_jitter', action='store_true')
     parser.add_argument('--azure', action='store_true')
+    parser.add_argument('--rew_type', type=int, default=0)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
     
     variant['buffer'] = args.buffer = int(args.buffer)
+    variant['rew_type'] = args.rew_type
     variant['filter'] = args.filter
     variant['color_jitter'] = args.color_jitter
     variant['obs_dim'] = args.obs_dim

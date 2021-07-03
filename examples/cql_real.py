@@ -1,3 +1,4 @@
+from torch import var
 import rlkit.torch.pytorch_util as ptu
 from rlkit.data_management.load_buffer_real import *
 from rlkit.samplers.data_collector import MdpPathCollector, \
@@ -5,6 +6,7 @@ from rlkit.samplers.data_collector import MdpPathCollector, \
 
 from rlkit.torch.sac.policies import TanhGaussianPolicy, GaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
+from rlkit.torch.sac.cql_single import CQLSingleTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN,  VQVAEEncoderConcatCNN, \
@@ -13,6 +15,7 @@ from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.envs.dummy_env import DummyEnv
 from rlkit.launchers.launcher_util import setup_logger
+from railrl.data_management.obs_dict_replay_buffer import ObsDictReplayBuffer
 
 import argparse, os
 import roboverse
@@ -74,6 +77,7 @@ def experiment(variant):
         input_channels=3,
         output_size=1,
         added_fc_input_size=action_dim,
+        normalize_conv_activation=variant['normalize_conv_activation']
     )
 
     if variant['vqvae_enc']:
@@ -98,15 +102,14 @@ def experiment(variant):
                                              spectral_norm_conv=cnn_params['spectral_norm_conv'],
                                              spectral_norm_fc=cnn_params['spectral_norm_fc'])
         else:
-            qf1 = VQVAEEncoderConcatCNN(**cnn_params)
-            qf2 = VQVAEEncoderConcatCNN(**cnn_params)
+            qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
+            qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
             if variant['share_encoder']:
                 print('sharing encoder weights between QF1 and QF2!')
                 del qf2.encoder
                 qf2.encoder = qf1.encoder
-            target_qf1 = VQVAEEncoderConcatCNN(**cnn_params)
-            target_qf2 = VQVAEEncoderConcatCNN(**cnn_params)
-
+            target_qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
+            target_qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
     else:
         if variant['mcret'] or variant['bchead']:
             qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
@@ -114,10 +117,10 @@ def experiment(variant):
             target_qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
             target_qf2 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
         elif variant['bottleneck']:
-            qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-            qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-            target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
-            target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'])
+            qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'],width=cnn_params['input_width'],height=cnn_params['input_height'])
+            qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'],width=cnn_params['input_width'],height=cnn_params['input_height'])
+            target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'],width=cnn_params['input_width'],height=cnn_params['input_height'])
+            target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'],width=cnn_params['input_width'],height=cnn_params['input_height'])
         else:
             qf1 = ConcatCNN(**cnn_params)
             qf2 = ConcatCNN(**cnn_params)
@@ -130,6 +133,7 @@ def experiment(variant):
         hidden_sizes=[1024, 512],
         spectral_norm_fc=False,
         spectral_norm_conv=False,
+        normalize_conv_activation=False
     )
 
     policy_obs_processor = CNN(**cnn_params)
@@ -149,7 +153,7 @@ def experiment(variant):
                 spectral_norm_fc=False,
                 spectral_norm_conv=False,
             )
-            policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
+            policy_obs_processor = VQVAEEncoderCNN(**cnn_params, num_res = variant['num_res'])
     else:
         cnn_params.update(
             output_size=256,
@@ -188,33 +192,66 @@ def experiment(variant):
     paths = []
     if args.azure:
         from os.path import expanduser
-        home = expanduser("~")
-        data_path = os.path.join(home, 'drawer_data/') 
+        data_path = os.path.join(expanduser("~"),'val_data_relabeled')
     else:
-        data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data/'
+        data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data_relabeled/'
     if args.buffer == 0:
         print('lid on')
-        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_putlidon_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_lidon_rew_handlabel_06_13.pkl')))
     elif args.buffer == 1:
         print('lid off')
-        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_takeofflid_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_pot_demos_latent.npy'), os.path.join(data_path,'fixed_pot_demos_lidoff_rew_handlabel_06_13.pkl')))
     elif args.buffer == 2:
         print('tray')
         paths.append((os.path.join(data_path,'fixed_tray_demos_latent.npy'), os.path.join(data_path,'fixed_tray_demos_rew.pkl')))
     elif args.buffer == 3:
         print('drawer')
-        paths.append((os.path.join(data_path,'fixed_drawer_demos_latent.npy'), os.path.join(data_path,'fixed_drawer_demos_rew.pkl')))
+        paths.append((os.path.join(data_path,'fixed_drawer_demos_latent.npy'), os.path.join(data_path,'fixed_drawer_demos_draweropen_rew_handlabel_06_13.pkl')))
     elif args.buffer == 4:
         print('Stephen Tool Use')
-        path = '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
+        path = os.path.join(expanduser("~"),'on_policy_longer_1_26_buffers', 'move_tool_obj_together_fixed_6_2_train.pkl') if args.azure else '/nfs/kun1/users/stephentian/on_policy_longer_1_26_buffers/move_tool_obj_together_fixed_6_2_train.pkl'
+    elif args.buffer == 5:
+        print('Albert Pick Place')
+        px = os.path.join(expanduser("~"),'albert_pickplace', 'combined_2021-06-03_21_36_48_labeled.pkl') if args.azure else '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
+        data_path = '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
+        if args.azure:
+            data_path = px
+        paths.append((data_path, None))
     else:
         assert False
+    
     if args.buffer in [4]:
+        print('loading')
         replay_buffer = pickle.load(open(path,'rb'))
+        print('done loading')
+
+        # import ipdb; ipdb.set_trace()
+
+        if variant['no_terminals']:
+            replay_buffer._terminals *= 0 # no terminals
+        variant['use_positive_rew'] = False
+        
+        #original is (-1, 1)
+        if variant['rew_type'] == 1: #(0, 10)
+            replay_buffer._rewards *= 5
+            replay_buffer._rewards += 5
+        elif variant['rew_type'] == 2:  #(-2, 10)
+            replay_buffer._rewards *= 6
+            replay_buffer._rewards += 4
+
+        replay_buffer_new = ObsDictReplayBuffer(replay_buffer.max_size, replay_buffer.env, dummy=True)
+        replay_buffer_new.load_from(replay_buffer)
+
+        replay_buffer = replay_buffer_new
+
+        replay_buffer.color_jitter=True
+        replay_buffer.warp_img=True
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
-            load_path(path, rew_path, replay_buffer, bc=variant['filter'])
+            load_path(path, rew_path, replay_buffer, bc=variant['filter'], des_per=variant['des_per'], num_traj=variant['num_traj'])
+
+    import ipdb; ipdb.set_trace()
 
     if variant['val']:
         #TODO change
@@ -226,6 +263,12 @@ def experiment(variant):
         
     if variant['use_positive_rew']:
         replay_buffer._rewards *= 10
+    
+    if variant['terminals']:
+        if variant['use_positive_rew']:
+            replay_buffer._terminals = (replay_buffer._rewards/10).int()
+        else:
+            replay_buffer._terminals = (replay_buffer._rewards).int()
 
     if variant['mcret']:
         trainer = CQLMCTrainer(
@@ -271,6 +314,28 @@ def experiment(variant):
             real_data=True,
             **variant['trainer_kwargs']
         )
+    elif variant['singleQ']:
+        trainer = CQLSingleTrainer(
+            env=eval_env,
+            policy=policy,
+            qf1=qf1,
+            target_qf1=target_qf1,
+            bottleneck=variant['bottleneck'],
+            bottleneck_const=variant['bottleneck_const'],
+            bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
+            only_bottleneck = variant['only_bottleneck'],
+            log_dir = variant['log_dir'],
+            wand_b=not variant['debug'],
+            variant_dict=variant,
+            validation=variant['val'],
+            validation_buffer=replay_buffer_val,
+            **variant['trainer_kwargs']
+        )
+        del qf2, target_qf2
+        import torch; torch.cuda.empty_cache()
     else:
         trainer = CQLTrainer(
             env=eval_env,
@@ -293,6 +358,7 @@ def experiment(variant):
             validation_buffer=replay_buffer_val,
             real_data=True,
             guassian_policy=variant['guassian_policy'],
+            start_bottleneck=variant['start_bottleneck'],
             **variant['trainer_kwargs']
         )
 
@@ -426,7 +492,6 @@ if __name__ == "__main__":
     parser.add_argument("--prob", default=1, type=float)
     parser.add_argument("--old_prior_prob", default=0, type=float)
     parser.add_argument('--gamma', default=1, type=float)
-    parser.add_argument('--num_traj', default=0, type=int)
     parser.add_argument('--eval_num', default=0, type=int)
     parser.add_argument('--guassian_policy', default=False, action='store_true')
     parser.add_argument("--name", default='test', type=str)
@@ -442,10 +507,27 @@ if __name__ == "__main__":
     parser.add_argument("--dr3_feat", action="store_true", default=False)
     parser.add_argument("--dr3_weight", default=0.001, type=float)
     parser.add_argument("--color_jitter", action="store_true", default=False)
+    parser.add_argument("--terminals", action="store_true", default=False)
+    parser.add_argument('--des_per', type=float, default=-1)
+    parser.add_argument('--num_traj', default=50, type=int)
+    parser.add_argument('--num_res', default=3, type=int)
+    parser.add_argument('--start_bottleneck', default=0, type=int)
+    parser.add_argument('--singleQ', action='store_true')
+    parser.add_argument('--normalize_conv_activation', action='store_true')
+    parser.add_argument('--rew_type', default=0, type=int)
+    parser.add_argument('--no_terminals', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['no_terminals'] = args.no_terminals
+    variant['rew_type'] = args.rew_type
     variant['filter'] = args.filter
+    variant['start_bottleneck'] = args.start_bottleneck
+    variant['terminals'] = args.terminals
+    variant['num_res'] = args.num_res
+    variant['singleQ'] = args.singleQ
+    variant['normalize_conv_activation'] = args.normalize_conv_activation
+
     variant['guassian_policy'] = args.guassian_policy
     variant['color_jitter'] = args.color_jitter
     variant['val'] = args.val
@@ -476,6 +558,7 @@ if __name__ == "__main__":
     variant['only_bottleneck'] = args.only_bottleneck
     variant['gamma'] = args.gamma
     variant['num_traj'] = args.num_traj
+    variant['des_per'] = args.des_per
     variant['num_sample'] = args.eval_num
     
     variant['debug'] = False

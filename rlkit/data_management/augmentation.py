@@ -21,6 +21,44 @@ def batch_crop(x, img_size = (3,64,64)):
     else:
         return x
 
+def batch_warp(x, mat, img_size = (3,64,64)):
+    flag = type(x) != torch.Tensor
+    if flag:
+        x = torch.from_numpy(x)
+    
+    x = x.detach().clone()
+    y = x.reshape(-1, *img_size).float()
+
+    for i in range(y.shape[0]):
+        x[i] = warp(y[i], mat)
+
+    if flag:
+        return x.cpu().numpy()
+    else:
+        return x
+
+def warp(x, mat, SIZE = 64):
+    def to_numpy(obs_img):
+        if type(obs_img) == torch.Tensor:
+            from torchvision import transforms
+            im_new = transforms.ToPILImage()(obs_img.float().cpu())
+        else:
+            im_new = obs_img
+        return np.array(im_new)
+
+    im = to_numpy(x)
+    warped = cv2.warpPerspective(im, mat, (im.shape[1], im.shape[0]))
+
+    def revert(img):
+        from PIL import Image
+        img = Image.fromarray(img)
+        img = np.array(img)
+        img = img*1.0/255
+        img = img.transpose([2,0,1]) #.flatten()
+        return torch.from_numpy(img).float()
+
+    return revert(warped).flatten()
+
 def crop(x, SIZE = 64):
     jitter = ColorJitter((0.75,1.25), (0.9,1.1), (0.9,1.1), (-0.1,0.1))
     cropper = RandomResizedCrop((SIZE, SIZE), (0.9, 1.0), (0.9, 1.1))

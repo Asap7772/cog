@@ -7,6 +7,7 @@ from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
+from rlkit.torch.sac.cql_single import CQLSingleTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, \
     ConcatBottleneckVQVAECNN, VQVAEEncoderCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
@@ -74,6 +75,7 @@ def experiment(variant):
         input_channels=3,
         output_size=1,
         added_fc_input_size=action_dim,
+        normalize_conv_activation=variant['normalize_conv_activation']
     )
     if variant['vqvae_enc']:
         if variant['bottleneck']:
@@ -149,6 +151,7 @@ def experiment(variant):
                 hidden_sizes=[1024, 512],
                 spectral_norm_fc=False,
                 spectral_norm_conv=False,
+                normalize_conv_activation=False,
             )
 
             policy_obs_processor = VQVAEEncoderCNN(**cnn_params)
@@ -159,6 +162,7 @@ def experiment(variant):
             hidden_sizes=[1024, 512],
             spectral_norm_fc=False,
             spectral_norm_conv=False,
+            normalize_conv_activation=False,
         )
         policy_obs_processor = CNN(**cnn_params)
 
@@ -192,7 +196,8 @@ def experiment(variant):
             replay_buffer_val = load_data_from_npy_chaining_mult(
                 variant, expl_env, observation_key)
         else:
-            buffers = []
+            buffers = [
+            ]
             ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
             if args.buffer == 30:
                 path = p_data_path
@@ -202,7 +207,19 @@ def experiment(variant):
                 path = p_data_path
                 ba('val_pick_2obj_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-43_117.npy', p=args.prob,y='zero')
                 ba('val_place_2obj_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-48_108.npy', p=args.prob)
-            
+            elif args.buffer == 35:
+                path = p_data_path
+                ba('val_pick_35_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-06-14T21-52-13_100.npy',
+                   p=args.prob, y='zero')
+                ba('val_place_35_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-06-14T21-50-14_100.npy',
+                   p=args.prob)
+            elif args.buffer == 36:
+                path = p_data_path
+                ba('val_pick_20obj_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-53_114.npy',
+                   p=args.prob, y='zero')
+                ba('val_place_20obj_Widow250PlaceTrayMult-v0_100_save_all_noise_0.1_2021-05-07T01-16-58_90.npy',
+                   p=args.prob)
+
             old_pb, variant['prior_buffer'] = variant['prior_buffer'], buffers[0]
             old_tb, variant['task_buffer'] = variant['task_buffer'], buffers[1]
             old_nt, variant['num_traj'] = variant['num_traj'], 0
@@ -268,6 +285,29 @@ def experiment(variant):
             gamma=variant['gamma'],
             **variant['trainer_kwargs']
         )
+    elif variant['singleQ']:
+        trainer = CQLSingleTrainer(
+            env=eval_env,
+            policy=policy,
+            qf1=qf1,
+            target_qf1=target_qf1,
+            bottleneck=variant['bottleneck'],
+            bottleneck_const=variant['bottleneck_const'],
+            bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
+            only_bottleneck = variant['only_bottleneck'],
+            log_dir = variant['log_dir'],
+            wand_b=not variant['debug'],
+            variant_dict=variant,
+            validation=variant['val'],
+            validation_buffer=replay_buffer_val,
+            squared=variant['squared'],
+            **variant['trainer_kwargs']
+        )
+        del qf2, target_qf2
+        import torch; torch.cuda.empty_cache()
     else:
         trainer = CQLTrainer(
             env=eval_env,
@@ -427,7 +467,7 @@ if __name__ == "__main__":
     parser.add_argument("--discount", default=0.99, type=float)
     parser.add_argument('--only_one', action='store_true')
     parser.add_argument("--squared", action="store_true", default=False)
-    parser.add_argument("--azure", action="store_false", default=True)
+    parser.add_argument("--azure", action="store_true", default=False)
     parser.add_argument("--bigger_net", action="store_true", default=False)
     parser.add_argument("--deeper_net", action="store_true", default=False)
     parser.add_argument("--vqvae_enc", action="store_true", default=False)
@@ -439,6 +479,8 @@ if __name__ == "__main__":
     parser.add_argument("--dr3_feat", action="store_true", default=False)
     parser.add_argument("--dr3_weight", default=0.001, type=float)
     parser.add_argument("--eval_every_n", default=1, type=int)
+    parser.add_argument('--singleQ', action='store_true')
+    parser.add_argument('--normalize_conv_activation', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
@@ -449,6 +491,8 @@ if __name__ == "__main__":
     variant['vqvae_enc'] = args.vqvae_enc
     variant['vqvae_policy'] = args.vqvae_policy
     variant['share_encoder'] = args.share_encoder
+    variant['singleQ'] = args.singleQ
+    variant['normalize_conv_activation'] = args.normalize_conv_activation
 
     variant['spectral_norm_conv'] = args.spectral_norm_conv
     variant['spectral_norm_fc'] = args.spectral_norm_fc
@@ -486,10 +530,10 @@ if __name__ == "__main__":
         
         home = expanduser("~")
         p_data_path =  os.path.join(home, 'prior_data/') if args.azure else '/nfs/kun1/users/asap7772/prior_data/' 
-        p_data_path = '/home/stephentian/prior_data/'
+        # p_data_path = '/home/stephentian/prior_data/'
         
-        #path = '/nfs/kun1/users/asap7772/cog_data/'
-        path = '/home/stian/cog_data/'
+        path = '/nfs/kun1/users/asap7772/cog_data/'
+        # path = '/home/stian/cog_data/'
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
         if args.buffer == 0:
@@ -638,12 +682,25 @@ if __name__ == "__main__":
             ba('drawer_task.npy', p=args.prob)
         elif args.buffer == 34:
             path = ''
-            ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
-            ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
+            if args.azure:
+                ba(os.path.join(os.expand_user('~'), 'grasping35obj', 'may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy'))
+                ba(os.path.join(os.expand_user('~'), 'grasping35obj', 'may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy'))
+            else:
+                ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
+                ba('/nfs/kun1/users/avi/scripted_sim_datasets/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48/may11_Widow250OneObjectGraspTrain-v0_20K_save_all_noise_0.1_2021-05-11T16-56-48_20000.npy')
         elif args.buffer == 35:    
             path  = p_data_path
             ba('pick_35obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-10_4375.npy', p=args.prob, y='zero')
             ba('place_35obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-17-42_4875.npy', p=args.prob)
+        elif args.buffer == 36:
+            path  = p_data_path
+            ba('pick_20obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-01_4625.npy', p=args.prob,
+               y='zero')
+            ba('place_20obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-06-14T21-53-31_5000.npy', p=args.prob)
+        elif args.buffer == 37:
+            path  = p_data_path
+            ba('drawer_prior_multobj_Widow250DoubleDrawerOpenGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-06-23T11-52-07_10000.npy', p=args.prob, y='zero')
+            ba('drawer_task_multobj_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-06-23T11-52-15_9750.npy', p=args.prob)
         elif args.buffer == 9000:
             variant['debug'] = True
             path  = p_data_path

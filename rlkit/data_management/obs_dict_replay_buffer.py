@@ -425,7 +425,6 @@ class ObsDictReplayBuffer(ReplayBuffer):
         rewards = path["rewards"]
         next_obs = path["next_observations"]
         terminals = path["terminals"]
-
         if 'mcrewards' in path:
             mcrewards = path['mcrewards']
         else:
@@ -459,7 +458,6 @@ class ObsDictReplayBuffer(ReplayBuffer):
                            obs, next_obs, rewards, mcrewards=None, 
                            next_actions=None, object_positions=None,
                            latents=None, next_latents=None):
-
         if self._top + path_len >= self.max_size:
             num_pre_wrap_steps = self.max_size - self._top
             # numpy slice
