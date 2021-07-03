@@ -57,7 +57,7 @@ def warp(x, mat, SIZE = 64):
         img = img.transpose([2,0,1]) #.flatten()
         return torch.from_numpy(img).float()
 
-    return revert(warped).cpu().numpy()
+    return revert(warped).flatten()
 
 def crop(x, SIZE = 64):
     jitter = ColorJitter((0.75,1.25), (0.9,1.1), (0.9,1.1), (-0.1,0.1))
