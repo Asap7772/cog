@@ -230,14 +230,26 @@ def experiment(variant):
         if variant['no_terminals']:
             replay_buffer._terminals *= 0 # no terminals
         variant['use_positive_rew'] = False
+
+        pts = np.load('toolusepts.npy', allow_pickle=True)
+        dist = np.array([np.linalg.norm(pts[i,0] - pts[i,1]) for i in range(pts.shape[0])])
+        rew = (dist < variant['dist_thresh']) * 1 # change from bool to int
+
+        replay_buffer._rewards[:rew.shape[0]] = rew[None].T
+        replay_buffer._terminals[:rew.shape[0]] = rew[None].T
         
-        #original is (-1, 1)
+        #original is (0, 1)
         if variant['rew_type'] == 1: #(0, 10)
-            replay_buffer._rewards *= 5
-            replay_buffer._rewards += 5
+            replay_buffer._rewards *= 10
         elif variant['rew_type'] == 2:  #(-2, 10)
-            replay_buffer._rewards *= 6
-            replay_buffer._rewards += 4
+            replay_buffer._rewards *= 12
+            replay_buffer._rewards -= 2
+        elif variant['rew_type'] == 3:
+            replay_buffer._rewards[:rew.shape[0]] = (dist[None].T)/5 #move away task non sparse
+        elif variant['rew_type'] == 4:
+            replay_buffer._rewards[:rew.shape[0]] = (50-dist[None].T)/5 #move together task non sparse
+
+        replay_buffer._size = rew.shape[0] # change buffer shape to updated size
 
         replay_buffer_new = ObsDictReplayBuffer(replay_buffer.max_size, replay_buffer.env, dummy=True)
         replay_buffer_new.load_from(replay_buffer)
@@ -245,13 +257,11 @@ def experiment(variant):
         replay_buffer = replay_buffer_new
 
         replay_buffer.color_jitter=True
-        replay_buffer.warp_img=True
+        replay_buffer.warp_img=variant['warp']
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
             load_path(path, rew_path, replay_buffer, bc=variant['filter'], des_per=variant['des_per'], num_traj=variant['num_traj'])
-
-    import ipdb; ipdb.set_trace()
 
     if variant['val']:
         #TODO change
@@ -516,9 +526,13 @@ if __name__ == "__main__":
     parser.add_argument('--normalize_conv_activation', action='store_true')
     parser.add_argument('--rew_type', default=0, type=int)
     parser.add_argument('--no_terminals', action='store_true')
+    parser.add_argument('--dist_thresh', default=10, type=float)
+    parser.add_argument('--warp', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['dist_thresh'] = args.dist_thresh
+    variant['warp'] = args.warp
     variant['no_terminals'] = args.no_terminals
     variant['rew_type'] = args.rew_type
     variant['filter'] = args.filter

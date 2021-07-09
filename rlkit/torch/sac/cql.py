@@ -214,7 +214,6 @@ class CQLTrainer(TorchTrainer):
 
     def train_from_torch(self, batch):
         self._current_epoch += 1
-        import ipdb; ipdb.set_trace()
         rewards = batch['rewards']
         terminals = batch['terminals']
         obs = batch['observations'] if 'observations' in batch else batch['observations_image']
