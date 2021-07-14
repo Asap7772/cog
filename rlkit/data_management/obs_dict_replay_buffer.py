@@ -297,6 +297,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
             target_segment = 'fixed_other',
             store_latent=True,
             latent_dim=720,
+            num_viewpoints=1,
             color_jitter=False,
             jit_percent = 0.1,
     ):
@@ -344,11 +345,16 @@ class ObsDictReplayBuffer(ReplayBuffer):
         self._mcrewards = np.zeros((max_size, 1))
         self._object_positions = np.zeros((max_size, 2))
         # self._obs[key][i] is the value of observation[key] at time i
+
         self._obs = {}
         self._next_obs = {}
         print(self.env.observation_space.spaces, self.ob_keys_to_save,internal_keys)
         self.ob_spaces = self.env.observation_space.spaces
 
+        self.num_viewpoints = num_viewpoints
+        self.other_viewpoints = [np.zeros((max_size, self.ob_spaces['image'].low.size), dtype=np.uint8) for _ in range(num_viewpoints-1)]
+        self.next_other_viewpoints = [np.zeros((max_size, self.ob_spaces['image'].low.size), dtype=np.uint8) for _ in range(num_viewpoints-1)]
+        
         self.target_segment = target_segment
         
         for key in self.ob_keys_to_save + internal_keys:
@@ -425,6 +431,13 @@ class ObsDictReplayBuffer(ReplayBuffer):
         rewards = path["rewards"]
         next_obs = path["next_observations"]
         terminals = path["terminals"]
+
+        if self.num_viewpoints > 1:
+            viewpoints = path['viewpoints']
+            next_viewpoints = path['next_viewpoints']
+        else:
+            viewpoints = next_viewpoints = None
+
         if 'mcrewards' in path:
             mcrewards = path['mcrewards']
         else:
@@ -452,12 +465,13 @@ class ObsDictReplayBuffer(ReplayBuffer):
         self.add_processed_path(path_len, actions, terminals, obs, 
         next_obs, rewards, mcrewards=mcrewards, next_actions=next_actions,
         object_positions=object_positions if 'object_position' in path else None,
-        latents=latents, next_latents=next_latents)
+        latents=latents, next_latents=next_latents, viewpoints = viewpoints, next_viewpoints=next_viewpoints)
 
     def add_processed_path(self, path_len, actions, terminals,
                            obs, next_obs, rewards, mcrewards=None, 
                            next_actions=None, object_positions=None,
-                           latents=None, next_latents=None):
+                           latents=None, next_latents=None,
+                           viewpoints=None, next_viewpoints=None):
         if self._top + path_len >= self.max_size:
             num_pre_wrap_steps = self.max_size - self._top
             # numpy slice
@@ -484,6 +498,11 @@ class ObsDictReplayBuffer(ReplayBuffer):
                 if latents is not None:
                     self._latents[buffer_slice] = latents[path_slice]
                     self._next_latents[buffer_slice] = next_latents[path_slice]
+                
+                if viewpoints is not None:
+                    for i in range(len(self.other_viewpoints)):
+                        self.other_viewpoints[i][buffer_slice] = viewpoints[i][path_slice]
+                        self.next_other_viewpoints[i][buffer_slice] = next_viewpoints[i][path_slice]
 
                 for key in self.ob_keys_to_save + self.internal_keys:
                     self._obs[key][buffer_slice] = obs[key][path_slice]
@@ -518,6 +537,11 @@ class ObsDictReplayBuffer(ReplayBuffer):
             if latents is not None:
                 self._latents[slc] = latents
                 self._next_latents[slc] = next_latents
+            
+            if viewpoints is not None:
+                for i in range(len(self.other_viewpoints)):
+                    self.other_viewpoints[i][slc] = viewpoints[i]
+                    self.next_other_viewpoints[i][slc] = np.array(next_viewpoints[i])[:]
 
             for key in self.ob_keys_to_save + self.internal_keys:
                 self._obs[key][slc] = obs[key]
@@ -575,6 +599,13 @@ class ObsDictReplayBuffer(ReplayBuffer):
         mcrewards = self._mcrewards[indices]
         object_positions=self._object_positions[indices]
         terminals = self._terminals[indices]
+
+        other_viewpoints = []
+        next_other_viewpoints = []
+        for i in range(len(self.other_viewpoints)):
+            other_viewpoints.append(self.other_viewpoints[i][indices])
+            next_other_viewpoints.append(self.next_other_viewpoints[i][indices])
+
         if isinstance(self.observation_key, tuple):
             obs = self._obs['image'][indices]
             next_obs = self._next_obs['image'][indices]
@@ -590,13 +621,23 @@ class ObsDictReplayBuffer(ReplayBuffer):
             self.color_segment_img(obs, target=self.target_segment)
             self.color_segment_img(next_obs, target=self.target_segment)
 
+            other_viewpoints = [self.color_segment_img(x, target=self.target_segment) for x in other_viewpoints]
+            next_other_viewpoints = [self.color_segment_img(x, target=self.target_segment) for x in next_other_viewpoints]
+
         if self.observation_key == 'image':
             obs = normalize_image(obs)
             next_obs = normalize_image(next_obs)
+
+            other_viewpoints = [normalize_image(x) for x in other_viewpoints]
+            next_other_viewpoints = [normalize_image(x) for x in next_other_viewpoints]
+
         
         if self.color_jitter and np.random.rand() < self.jit_percent:
             obs = batch_crop(obs)
             next_obs = batch_crop(next_obs)
+
+            other_viewpoints = [batch_crop(x) for x in other_viewpoints]
+            next_other_viewpoints = [batch_crop(x) for x in next_other_viewpoints]
 
         batch = {}
 
@@ -625,6 +666,12 @@ class ObsDictReplayBuffer(ReplayBuffer):
             'next_observations': next_obs,
             'indices': np.array(indices).reshape(-1, 1),
         })
+
+        if other_viewpoints is not None and other_viewpoints != []:
+            batch.update({
+                'other_viewpoints' : np.array(other_viewpoints),
+                'next_other_viewpoints' : np.array(next_other_viewpoints),
+            })
 
         if state is not None:
             batch.update({

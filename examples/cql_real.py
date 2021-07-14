@@ -10,7 +10,7 @@ from rlkit.torch.sac.cql_single import CQLSingleTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN,  VQVAEEncoderConcatCNN, \
-    ConcatBottleneckVQVAECNN, VQVAEEncoderCNN
+    ConcatBottleneckVQVAECNN, VQVAEEncoderCNN, MultiToweredCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.envs.dummy_env import DummyEnv
@@ -36,7 +36,11 @@ CUSTOM_LOG_DIR = '/home/asap7772/doodad-output'
 
 
 def experiment(variant):
-    eval_env = DummyEnv()
+    if variant['kitchen']:
+        eval_env = DummyEnv(action_shape=(7,))
+    else:
+        eval_env = DummyEnv(action_shape=(4,))
+    
     if variant['num_sample'] != 0:
         eval_env.num_obj_sample=variant['num_sample']
     expl_env = eval_env
@@ -110,6 +114,11 @@ def experiment(variant):
                 qf2.encoder = qf1.encoder
             target_qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
             target_qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
+    elif variant['kitchen']:
+        qf1 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
+        qf2 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
+        target_qf1 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
+        target_qf2 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
     else:
         if variant['mcret'] or variant['bchead']:
             qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
@@ -136,6 +145,7 @@ def experiment(variant):
         normalize_conv_activation=False
     )
 
+
     policy_obs_processor = CNN(**cnn_params)
 
     if variant['vqvae_policy']:
@@ -154,6 +164,8 @@ def experiment(variant):
                 spectral_norm_conv=False,
             )
             policy_obs_processor = VQVAEEncoderCNN(**cnn_params, num_res = variant['num_res'])
+    elif variant['kitchen']:
+        policy_obs_processor = MultiToweredCNN(output_size=cnn_params['output_size'], added_fc_size=0)
     else:
         cnn_params.update(
             output_size=256,
@@ -190,6 +202,8 @@ def experiment(variant):
 
     observation_key = 'image'
     paths = []
+    num_viewpoints = 1
+
     if args.azure:
         from os.path import expanduser
         data_path = os.path.join(expanduser("~"),'val_data_relabeled')
@@ -217,6 +231,36 @@ def experiment(variant):
         if args.azure:
             data_path = px
         paths.append((data_path, None))
+    elif args.buffer == 6:
+        print('Pick Kitchen 1')
+        prior = [
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_eggplant_in_pot_or_pan/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pot_in_sink/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_green_squash_in_pot_or_pan/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_carrot_on_plate/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_knife_on_cutting_board/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_corn_in_pan_which-is_on_stove_distractors/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pepper_in_pot_or_pan/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_carrot_on_cutting_board/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_sweet_potato_in_pot_which_is_in_sink_distractors/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_lid_on_stove/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_lid_on_pot_or_pan/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pot_on_stove_which_is_near_stove_distractors/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_corn_in_pot_which_is_in_sink_distractors/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_sweet_potato_in_pan_which_is_on_stove_distractors/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_corn_in_pan_which_is_on_stove_distractors/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_sweet_potato_in_pan_which_is_on_stove/out.npy',
+        ]
+        num_viewpoints = 3
+        for p in prior:
+            paths.append((p, None))
+
+        task = [
+            ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pan_in_sink/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pan_in_sink/out_rew.npy') 
+        ]
+
+        for t in task:
+            paths.append(t)
     else:
         assert False
     
@@ -224,8 +268,6 @@ def experiment(variant):
         print('loading')
         replay_buffer = pickle.load(open(path,'rb'))
         print('done loading')
-
-        # import ipdb; ipdb.set_trace()
 
         if variant['no_terminals']:
             replay_buffer._terminals *= 0 # no terminals
@@ -258,6 +300,12 @@ def experiment(variant):
 
         replay_buffer.color_jitter=True
         replay_buffer.warp_img=variant['warp']
+
+    elif args.buffer in [6]:
+        replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'], num_viewpoints=num_viewpoints, action_shape=(7,))
+        for path, rew_path in paths:
+            print(path)
+            load_path_kitchen(path, rew_path, replay_buffer)
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
@@ -528,9 +576,13 @@ if __name__ == "__main__":
     parser.add_argument('--no_terminals', action='store_true')
     parser.add_argument('--dist_thresh', default=10, type=float)
     parser.add_argument('--warp', action='store_true')
+    parser.add_argument('--kitchen', action='store_true')
+    parser.add_argument('--batch_size', type=int, default=256)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['algorithm_kwargs']['batch_size'] = args.batch_size
+    variant['kitchen'] = args.kitchen
     variant['dist_thresh'] = args.dist_thresh
     variant['warp'] = args.warp
     variant['no_terminals'] = args.no_terminals

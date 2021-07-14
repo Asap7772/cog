@@ -27,7 +27,7 @@ def plot_traj(imgs, rows, cols, rewards = None):
     fig.tight_layout()
     return fig
 
-buffer_num = 4
+buffer_num = 5
 observation_key = 'image'
 paths = []
 data_path = '/nfs/kun1/users/asap7772/real_data_drawer/val_data_relabeled/'
@@ -52,18 +52,23 @@ elif buffer_num == 4:
     buff_name = 'real_pick_place.npy'
     data_path = '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
     paths.append((data_path, None))
+elif buffer_num == 5:
+    print('Bridge Data')
+    buff_name = 'put_pot_in_sink.npy'
+    data_path = '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pot_in_sink/out.npy'
+    paths.append((data_path, None))
 else:
     assert False
 
 for path, rew_path in paths:
-    data = load_data(path, rew_path, bc=True)
+    data = load_data(path, rew_path, bc=False if buffer_num in [5] else True)
 
 
 # p = '/nfs/kun1/users/asap7772/prior_data/'
 # buff_name = 'place_35obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-17-42_4875.npy'
 save_path = '/nfs/kun1/users/asap7772/cog/film_strip_out'
 num_traj = 10
-skip_by = 2 if buffer_num == 4 else 10 
+skip_by = 1 if buffer_num in [4,5] else 10 
 
 def process_image(img):
     image_dataset = torch.from_numpy(img.reshape(3,64,64)).float()
@@ -75,9 +80,17 @@ def process_image(img):
     return im_new if buffer_num == 4 else im_new.rotate(270)
 
 for i in range(num_traj):
-    imgs = [x['image' if buffer_num == 4 else 'image_observation'] for x in data[i]['observations']] 
+    if buffer_num == 4:
+        key = 'image' 
+    elif buffer_num == 5:
+        key = 'images1'
+        data[i]['rewards'] = [x[-1] for x in data[i]['actions']]
+    else:
+        key = 'image_observation'
+    
+    imgs = [x[key] for x in data[i]['observations']] 
     imgs = [process_image(x) for x in imgs[::skip_by]]
-    rewards = data[i]['rewards'][::skip_by]
+    rewards = data[i]['rewards'][::skip_by]  if buffer_num == 5 else data[i]['rewards'][::skip_by] 
     fig = plot_traj(imgs, 1, len(imgs), rewards = rewards)
     if not os.path.exists(os.path.join(save_path, buff_name.split('.')[0])):
         os.mkdir(os.path.join(save_path, buff_name.split('.')[0]))

@@ -9,14 +9,15 @@ import pickle
 
 # TODO Clean up this file
 MAX_SIZE = int(1E5)
-def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64,3), imgstate=False, color_jitter=False):
-    expl_env = DummyEnv(image_shape=image_shape)
+def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64,3), state_shape=(3,), action_shape=(4,), imgstate=False, color_jitter=False, num_viewpoints=1):
+    expl_env = DummyEnv(image_shape=image_shape,state_shape=state_shape, action_shape=action_shape)
     replay_buffer = ObsDictReplayBuffer(
         buffer_size,
         expl_env,
         observation_key=observation_key,
         internal_keys=None,
         color_jitter=color_jitter,
+        num_viewpoints=num_viewpoints,
         jit_percent=0.1, #TODO Change
     )
     return replay_buffer
@@ -105,6 +106,7 @@ def load_path(path, rew_path, replay_buffer, small_img=False, bc=False, imgstate
                 data[i]['next_observations'][j]['image_observation'] = resize_small(data[i]['next_observations'][j]['image_observation'])
     add_data_to_buffer(data, replay_buffer, small_img=small_img, imgstate=imgstate)
 
+
 def get_buffer_size(data):
     num_transitions = 0
     for i in range(len(data)):
@@ -179,14 +181,68 @@ def process_images(observations, small_img=False, imgstate=False):
         output.append(dict(state=state, image=image) if imgstate else dict(image=image))     
     return output
 
+
+def load_path_kitchen(path, rew_path, replay_buffer):
+    data = np.load(path,allow_pickle=True)
+    if rew_path is not None:
+        rew = np.load(rew_path,allow_pickle=True)
+        assert len(data) == len(rew)
+        for i in range(len(data)):
+            data[i]['rewards'] = np.array(rew[i]).tolist()
+
+    add_data_to_buffer_kitchen(data, replay_buffer)
+
+def add_data_to_buffer_kitchen(data, replay_buffer):
+    for j in range(len(data)):
+        if 'next_actions' not in data[j]:
+            data[j]['next_actions'] = np.concatenate((data[j]['actions'][1:], data[j]['actions'][-1:]))
+        rew = np.array(data[j]['rewards']).squeeze() * (0.99**np.arange(len(data[j]['rewards'])))
+        mcrewards = np.cumsum(rew[::-1])[::-1].tolist() 
+
+        viewpoints = []
+        next_viewpoints = []
+        if replay_buffer.num_viewpoints >= 1:
+            for i in range(1,replay_buffer.num_viewpoints):
+                viewpoints.append([x['images' + str(i)]*255 for x in data[j]['observations']])
+                next_viewpoints.append([x['images' + str(i)]*255 for x in data[j]['next_observations']])
+
+        path = dict(
+            rewards=[np.asarray([r]) for r in data[j]['rewards']],
+            mcrewards=[np.asarray([r]) for r in mcrewards],
+            actions=data[j]['actions'],
+            next_actions =data[j]['next_actions'],
+            terminals=[np.asarray([t]) for t in data[j]['terminals']],
+            observations=process_images_kitchen(data[j]['observations']),
+            next_observations=process_images_kitchen(data[j]['next_observations']),
+            viewpoints=viewpoints,
+            next_viewpoints=next_viewpoints,
+        )
+        replay_buffer.add_path(path)
+
+def process_images_kitchen(observations):
+    output = []
+    for i in range(len(observations)):
+        image = observations[i]['images0'].reshape(3,64,64) * 255
+        state = observations[i-1]['state']
+        if len(image.shape) == 3:
+            image = image.flatten()
+        else:
+            print('image shape: {}'.format(image.shape))
+            raise ValueError
+        output.append(dict(image=image))     
+    return output
+
 if __name__ == "__main__":
     args = lambda:0 #RANDOM Object
-    paths = []
-    data_path = '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
-    paths.append( (data_path, None))
+    # paths = []
+    # data_path = '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
+    # paths.append( (data_path, None))
     
-    replay_buffer = get_buffer()
+    paths = [('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pan_in_sink/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pan_in_sink/out_rew.npy')]
+    
+    replay_buffer = get_buffer(num_viewpoints=3, action_shape=(7,))
     for path, rew_path in paths:
-        load_path(path, rew_path, replay_buffer, des_per=0.3, num_traj=200)
+        load_path_kitchen(path, rew_path, replay_buffer)
+    batch = replay_buffer.random_batch(16)
     import ipdb; ipdb.set_trace()
     

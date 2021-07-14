@@ -194,21 +194,31 @@ class CQLTrainer(TorchTrainer):
                 wandb.config.update(variant_dict)
     
     def _get_tensor_values(self, obs, actions, network=None):
+        flag = len(obs.shape) == 3 # multiple viewpoints
+
         action_shape = actions.shape[0]
-        obs_shape = obs.shape[0]
+        obs_shape = obs.shape[1 if flag else 0]
         num_repeat = int (action_shape / obs_shape)
-        obs_temp = obs.unsqueeze(1).repeat(1, num_repeat, 1).view(obs.shape[0] * num_repeat, obs.shape[1])
+
+        if flag:
+            obs_temp = obs.unsqueeze(1).repeat(1, 1, num_repeat, 1).view(obs.shape[0], obs.shape[1] * num_repeat, obs.shape[2])
+        else:
+            obs_temp = obs.unsqueeze(1).repeat(1, num_repeat, 1).view(obs.shape[0] * num_repeat, obs.shape[1])
         preds = network(obs_temp, actions)
-        preds = preds.view(obs.shape[0], num_repeat, 1)
+        preds = preds.view(obs.shape[1 if flag else 0], num_repeat, 1)
         return preds
 
     def _get_policy_actions(self, obs, num_actions, network=None):
-        obs_temp = obs.unsqueeze(1).repeat(1, num_actions, 1).view(obs.shape[0] * num_actions, obs.shape[1])
+        flag = len(obs.shape) == 3
+        if flag:
+            obs_temp = obs.unsqueeze(1).repeat(1, 1, num_actions, 1).view(obs.shape[0], obs.shape[1] * num_actions, obs.shape[2])
+        else:
+            obs_temp = obs.unsqueeze(1).repeat(1, num_actions, 1).view(obs.shape[0] * num_actions, obs.shape[1])
         new_obs_actions, _, _, new_obs_log_pi, *_ = network(
             obs_temp, reparameterize=True, return_log_prob=True,
         )
         if not self.discrete:
-            return new_obs_actions, new_obs_log_pi.view(obs.shape[0], num_actions, 1)
+            return new_obs_actions, new_obs_log_pi.view(obs.shape[1 if flag else 0], num_actions, 1)
         else:
             return new_obs_actions
 
@@ -219,6 +229,12 @@ class CQLTrainer(TorchTrainer):
         obs = batch['observations'] if 'observations' in batch else batch['observations_image']
         actions = batch['actions']
         next_obs = batch['next_observations'] if 'next_observations' in batch else batch['next_observations_image']
+
+        if 'other_viewpoints' in batch:
+            other_viewpoints = batch['other_viewpoints']
+            next_other_viewpoints = batch['next_other_viewpoints']
+            obs = torch.cat((obs[None], other_viewpoints))
+            next_obs = torch.cat((next_obs[None], next_other_viewpoints))
 
         """
         Policy and Alpha Loss

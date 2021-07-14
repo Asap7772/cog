@@ -3,12 +3,12 @@ import gym.spaces
 import numpy as np
 
 class DummyEnv(Env):
-    def __init__(self, image_shape = (64, 64, 3), state_shape=(3,)) -> None:
+    def __init__(self, image_shape = (64, 64, 3), state_shape=(3,), action_shape=(4,)) -> None:
         super().__init__()
 
         self.image_shape = image_shape
         self.state_shape = state_shape
-        self.action_shape = (4,)
+        self.action_shape = action_shape
 
         self.observation_space = gym.spaces.Dict({
                 'image': gym.spaces.Box(0, 255, self.image_shape),
