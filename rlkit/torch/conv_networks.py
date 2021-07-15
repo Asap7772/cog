@@ -562,6 +562,83 @@ class MultiToweredCNN(nn.Module):
         return self.mlp(h)
 
 
+class MultiToweredBottleneckCNN(nn.Module):
+    def __init__(self, num_towers=3, channels=3, width=64, height=64, added_fc_size=7, output_size=1, mlp_dim=512, mlp_layers=2, dim=1, bottleneck_dim = 16):
+        super().__init__()
+        self.cnn_out = 2*bottleneck_dim
+        self.bottleneck_dim = bottleneck_dim
+
+        cnn_params=dict(
+            kernel_sizes=[3, 3, 3],
+            n_channels=[16, 16, 16],
+            strides=[1, 1, 1],
+            hidden_sizes=[1024],
+            paddings=[1, 1, 1],
+            pool_type='max2d',
+            pool_sizes=[2, 2, 1],  # the one at the end means no pool
+            pool_strides=[2, 2, 1],
+            pool_paddings=[0, 0, 0],
+            image_augmentation=True,
+            image_augmentation_padding=4,
+        )
+
+        cnn_params.update(
+            input_width=width,
+            input_height=height,
+            input_channels=channels,
+            output_size=self.cnn_out,
+            added_fc_input_size=0
+        )
+
+        self.num_towers = num_towers
+        self.cnns = nn.ModuleList([ConcatCNN(**cnn_params) for x in range(num_towers)])
+        self.dim=dim
+
+        self.mlp = Mlp([mlp_dim]*mlp_layers,output_size, self.bottleneck_dim*num_towers + added_fc_size)
+
+
+    def forward(self, observation, actions=None, return_conv_outputs=False):
+        assert observation.shape[0] == len(self.cnns)
+        out = []
+        for i in range(observation.shape[0]):
+            mean_logstd = self.cnns[i](observation[i])
+            mean, log_std = mean_logstd[:,:self.bottleneck_dim], mean_logstd[:,self.bottleneck_dim:]
+            dist = Normal(mean, torch.exp(log_std))
+            sample = dist.rsample()
+            out.append(sample)
+        
+        if actions is not None:
+            out.append(actions)
+
+        h = torch.cat(out, dim=self.dim)
+
+        if return_conv_outputs:
+            return self.mlp(h), h
+        return self.mlp(h)
+
+
+    def detailed_forward(self, observation, actions=None, return_conv_outputs=False):
+        assert observation.shape[0] == len(self.cnns)
+        out = []
+        for i in range(observation.shape[0]):
+            mean_logstd = self.cnns[i](observation[i])
+            mean, log_std = mean_logstd[:,:self.bottleneck_dim], mean_logstd[:,self.bottleneck_dim:]
+            dist = Normal(mean, torch.exp(log_std))
+            sample = dist.rsample()
+            out.append(sample)
+
+        log_prob = dist.log_prob(sample)
+        # equation is $$\frac{1}{2}[\mu^T\mu + tr(\Sigma) -k -log|\Sigma|]$$
+        K = self.bottleneck_dim
+        reg_loss = 1/2*(mean.norm(dim=-1, keepdim=True)**2 + (std**2).sum(axis=-1, keepdim=True)- K - torch.log(std**2+1E-9).sum(axis=-1, keepdim=True))
+
+        if self.deterministic:
+            sample=mean
+            log_prob= -torch.ones_like(log_prob).cuda()
+            reg_loss = torch.zeros_like(reg_loss).cuda()
+        return self.mlp(sample), log_prob, reg_loss, mean, log_std, sample
+
+
 class ConcatRegressCNN(RegressCNN):
     """
     Concatenate inputs along dimension and then pass through MLP.

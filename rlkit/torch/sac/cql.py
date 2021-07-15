@@ -56,6 +56,7 @@ class CQLTrainer(TorchTrainer):
             lagrange_thresh=0.0,
             log_pickle=True,
             pickle_log_rate=5,
+            random_viewpoint=False,
 
             # Handling of the transfer setting
             hinge_trans=False,
@@ -101,6 +102,8 @@ class CQLTrainer(TorchTrainer):
         self.dr3 = dr3
         self.dr3_feat = dr3_feat
         self.dr3_weight = dr3_weight
+
+        self.random_viewpoint = random_viewpoint
 
         self.use_automatic_entropy_tuning = use_automatic_entropy_tuning
         if self.use_automatic_entropy_tuning:
@@ -236,6 +239,15 @@ class CQLTrainer(TorchTrainer):
             obs = torch.cat((obs[None], other_viewpoints))
             next_obs = torch.cat((next_obs[None], next_other_viewpoints))
 
+            if self.random_viewpoint:
+                view = torch.randint(0,3,(actions.shape[0],)) # chose viewpoint for each element in the batch
+                view = view.repeat(1,obs.shape[-1],1).transpose(0,1).transpose(0,2)
+
+                obs = torch.transpose(obs, 0, 1)
+                next_obs = torch.transpose(next_obs, 0, 1)
+
+                obs = torch.gather(obs,1,view.cuda()).flatten(1)
+                next_obs = torch.gather(next_obs,1,view.cuda()).flatten(1)
         """
         Policy and Alpha Loss
         """

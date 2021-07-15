@@ -84,7 +84,7 @@ def experiment(variant):
         normalize_conv_activation=variant['normalize_conv_activation']
     )
 
-    if variant['vqvae_enc']:
+    if variant['vqvae_enc'] and not variant['kitchen']:
         if variant['bottleneck']:
             qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
                                       deterministic=variant['deterministic_bottleneck'],
@@ -115,10 +115,26 @@ def experiment(variant):
             target_qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
             target_qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
     elif variant['kitchen']:
-        qf1 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
-        qf2 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
-        target_qf1 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
-        target_qf2 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
+        if variant['random_viewpoint']:
+            if variant['vqvae_enc']:
+                qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
+                qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
+                if variant['share_encoder']:
+                    print('sharing encoder weights between QF1 and QF2!')
+                    del qf2.encoder
+                    qf2.encoder = qf1.encoder
+                target_qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
+                target_qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
+            else:
+                qf1 = ConcatCNN(**cnn_params)
+                qf2 = ConcatCNN(**cnn_params)
+                target_qf1 = ConcatCNN(**cnn_params)
+                target_qf2 = ConcatCNN(**cnn_params)
+        else:
+            qf1 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
+            qf2 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
+            target_qf1 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
+            target_qf2 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
     else:
         if variant['mcret'] or variant['bchead']:
             qf1 = TwoHeadCNN(action_dim, deterministic= not variant['bottleneck'], bottleneck_dim=variant['bottleneck_dim'])
@@ -148,7 +164,7 @@ def experiment(variant):
 
     policy_obs_processor = CNN(**cnn_params)
 
-    if variant['vqvae_policy']:
+    if variant['vqvae_policy'] and not variant['kitchen']:
         if variant['share_encoder']:
             print('sharing encoder weights between QF and Policy with VQVAE Encoder')
             policy_obs_processor = qf1.encoder
@@ -165,7 +181,27 @@ def experiment(variant):
             )
             policy_obs_processor = VQVAEEncoderCNN(**cnn_params, num_res = variant['num_res'])
     elif variant['kitchen']:
-        policy_obs_processor = MultiToweredCNN(output_size=cnn_params['output_size'], added_fc_size=0)
+        if variant['random_viewpoint']:
+            if variant['vqvae_policy']:
+                cnn_params.update(
+                    output_size=256,
+                    added_fc_input_size=0,
+                    hidden_sizes=[1024, 512],
+                    spectral_norm_fc=False,
+                    spectral_norm_conv=False,
+                )
+                policy_obs_processor = VQVAEEncoderCNN(**cnn_params, num_res = variant['num_res'])
+            else:
+                cnn_params.update(
+                    output_size=256,
+                    added_fc_input_size=0,
+                    hidden_sizes=[1024, 512],
+                    spectral_norm_fc=False,
+                    spectral_norm_conv=False,
+                )
+                policy_obs_processor = CNN(**cnn_params)
+        else:
+            policy_obs_processor = MultiToweredCNN(output_size=cnn_params['output_size'], added_fc_size=0)
     else:
         cnn_params.update(
             output_size=256,
@@ -261,6 +297,41 @@ def experiment(variant):
 
         for t in task:
             paths.append(t)
+    elif args.buffer == 7:
+        print('Pick Kitchen 8052 Task 1 (put in pot)')
+        num_viewpoints = 5
+        task = [
+            ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_carrot_in_pot_or_pan/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_carrot_in_pot_or_pan/out_rew.npy'),
+            ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_in_pot_or_pan/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_in_pot_or_pan/out_rew.npy'),
+            ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_strawberry_in_pot/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_strawberry_in_pot/out_rew.npy'),
+            ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_sweet_potato_in_pot/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_sweet_potato_in_pot/out_rew.npy'),
+        ]
+
+        for t in task:
+            paths.append(t)
+    elif args.buffer == 8:
+        num_viewpoints = 5
+        print('Pick Kitchen 8052 Task 2 (put in pot with negatives)')
+        prior = [
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_knife_on_cutting_board/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/turn_lever_vertical_to_front/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_pot_or_pan_in_sink/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_pot_or_pan_on_stove/out.npy',
+            '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/flip_orange_pot_upright_in_sink/out.npy'
+        ]
+
+        for p in prior:
+            paths.append((p, None))
+
+        task = [
+            ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_carrot_in_pot_or_pan/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_carrot_in_pot_or_pan/out_rew.npy'),
+            ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_in_pot_or_pan/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_in_pot_or_pan/out_rew.npy'),
+            ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_strawberry_in_pot/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_strawberry_in_pot/out_rew.npy'),
+            ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_sweet_potato_in_pot/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_sweet_potato_in_pot/out_rew.npy'),
+        ]
+
+        for t in task:
+            paths.append(t)
     else:
         assert False
     
@@ -301,7 +372,7 @@ def experiment(variant):
         replay_buffer.color_jitter=True
         replay_buffer.warp_img=variant['warp']
 
-    elif args.buffer in [6]:
+    elif args.buffer in [6,7,8]:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'], num_viewpoints=num_viewpoints, action_shape=(7,))
         for path, rew_path in paths:
             print(path)
@@ -417,6 +488,7 @@ def experiment(variant):
             real_data=True,
             guassian_policy=variant['guassian_policy'],
             start_bottleneck=variant['start_bottleneck'],
+            random_viewpoint = variant['random_viewpoint'],
             **variant['trainer_kwargs']
         )
 
@@ -576,13 +648,15 @@ if __name__ == "__main__":
     parser.add_argument('--no_terminals', action='store_true')
     parser.add_argument('--dist_thresh', default=10, type=float)
     parser.add_argument('--warp', action='store_true')
-    parser.add_argument('--kitchen', action='store_true')
     parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--kitchen', action='store_true')
+    parser.add_argument('--random_viewpoint', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
     variant['algorithm_kwargs']['batch_size'] = args.batch_size
     variant['kitchen'] = args.kitchen
+    variant['random_viewpoint'] = args.random_viewpoint
     variant['dist_thresh'] = args.dist_thresh
     variant['warp'] = args.warp
     variant['no_terminals'] = args.no_terminals
