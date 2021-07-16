@@ -33,7 +33,7 @@ class Mlp(nn.Module):
             layer_norm_kwargs=None,
             spectral_norm=False,
     ):
-        super().__init__()
+        super(Mlp, self).__init__()
 
         if layer_norm_kwargs is None:
             layer_norm_kwargs = dict()
@@ -99,10 +99,11 @@ class MlpPolicy(Mlp, Policy):
     def __init__(
             self,
             *args,
-            obs_normalizer: TorchFixedNormalizer = None,
             **kwargs
     ):
         super().__init__(*args, **kwargs)
+        if 'obs_normalizer' in kwargs:
+            obs_normalizer = kwargs['obs_normalizer']
         self.obs_normalizer = obs_normalizer
 
     def forward(self, obs, **kwargs):

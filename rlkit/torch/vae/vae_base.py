@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from rlkit.torch import pytorch_util as ptu
 
 
-class VAEBase(torch.nn.Module, metaclass=abc.ABCMeta):
+class VAEBase(torch.nn.Module):
     def __init__(
             self,
             representation_size,

@@ -4,7 +4,8 @@ import numpy as np
 import torch.utils.data
 from torch import nn
 from torch.nn import functional as F
-from rlkit.pythonplusplus import identity
+def identity(x):
+    return x
 from torch.autograd import Variable
 from rlkit.torch import pytorch_util as ptu
 from rlkit.torch.vae.vae_base import compute_bernoulli_log_prob, \

@@ -2,7 +2,8 @@ from rlkit.torch.networks import Mlp
 import torch
 from torch import nn as nn
 from torch.distributions import Normal
-from rlkit.pythonplusplus import identity
+def identity(x):
+    return x
 from rlkit.torch.vae.vq_vae import Encoder
 
 import numpy as np
@@ -50,7 +51,7 @@ class CNN(nn.Module):
         assert pool_type in {'none', 'max2d'}
         if pool_type == 'max2d':
             assert len(pool_sizes) == len(pool_strides) == len(pool_paddings)
-        super().__init__()
+        super(CNN,self).__init__()
 
         self.hidden_sizes = hidden_sizes
         self.input_width = input_width
@@ -238,9 +239,10 @@ class CNN(nn.Module):
 
 
 class RegressCNN(CNN):
-    def __init__(self, *args, dim=1, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.dim = dim
+        if 'dim' in kwargs:
+            self.dim = kwargs['dim'] 
         
         init_w=1e-4
         self.regress_layer = nn.Linear(conv_output_flat_size, dim)
@@ -287,9 +289,10 @@ class ConcatMlp(Mlp):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, *args, dim=1, **kwargs):
+    def __init__(self, *args,**kwargs):
         super().__init__(*args, **kwargs)
-        self.dim = dim
+        if 'dim' in kwargs:
+            self.dim = kwargs['dim'] 
 
     def forward(self, *inputs, **kwargs):
         flat_inputs = torch.cat(inputs, dim=self.dim)
@@ -299,9 +302,10 @@ class ConcatCNN(CNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, *args, dim=1, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.dim = dim
+    def __init__(self, *args, **kwargs):
+        super(ConcatCNN, self).__init__(*args, **kwargs)
+        if 'dim' in kwargs:
+            self.dim = kwargs['dim'] 
 
     def forward(self, *inputs, **kwargs):
         flat_inputs = torch.cat(inputs, dim=self.dim)
@@ -357,7 +361,7 @@ class ConcatBottleneckCNN(CNN):
         self.cnn_params = cnn_params
         self.action_dim = action_dim
 
-        super().__init__(**cnn_params)
+        super(ConcatBottleneckCNN,self).__init__(**cnn_params)
         self.bottleneck_dim = bottleneck_dim
         self.deterministic=deterministic
         self.mlp = Mlp([512,512,512],output_size,self.cnn_params['output_size']//2, spectral_norm=spectral_norm_fc)
@@ -566,9 +570,10 @@ class ConcatRegressCNN(RegressCNN):
     """
     Concatenate inputs along dimension and then pass through MLP.
     """
-    def __init__(self, *args, dim=1, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.dim = dim
+        if 'dim' in kwargs:
+            self.dim = kwargs['dim'] 
 
     def forward(self, *inputs, **kwargs):
         flat_inputs = torch.cat(inputs, dim=self.dim)
@@ -762,13 +767,16 @@ class RandomCrop:
 
 
 class VQVAEEncoderConcatCNN(ConcatCNN):
-    def __init__(self, *args, num_res=3, **kwargs):
+    def __init__(self, *args, **kwargs):
         kwargs['kernel_sizes'] = []
         kwargs['n_channels'] = []
         kwargs['strides'] = []
         kwargs['paddings'] = []
         super().__init__(*args, **kwargs)
         
+        if 'num_res' in kwargs:
+            num_res = kwargs['num_res'] 
+
         self.encoder = Encoder(self.input_channels, 128, num_res, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
 
     def apply_forward_conv(self, h):
@@ -788,12 +796,15 @@ class VQVAEEncoderConcatCNN(ConcatCNN):
 
 
 class VQVAEEncoderCNN(CNN):
-    def __init__(self, *args, num_res=3, **kwargs):
+    def __init__(self, *args, **kwargs):
         kwargs['kernel_sizes'] = []
         kwargs['n_channels'] = []
         kwargs['strides'] = []
         kwargs['paddings'] = []
         super().__init__(*args, **kwargs)
+
+        if 'num_res' in kwargs:
+            num_res = kwargs['num_res'] 
 
         self.encoder = Encoder(self.input_channels, 128, num_res, 64, spectral_norm=kwargs['spectral_norm_conv'] if 'spectral_norm_conv' in kwargs else False, input_dim=kwargs['input_width'])
 

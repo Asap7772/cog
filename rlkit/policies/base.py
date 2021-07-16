@@ -1,11 +1,10 @@
 import abc
 
 
-class Policy(object, metaclass=abc.ABCMeta):
+class Policy(object):
     """
     General policy interface.
     """
-    @abc.abstractmethod
     def get_action(self, observation):
         """
 
@@ -18,6 +17,6 @@ class Policy(object, metaclass=abc.ABCMeta):
         pass
 
 
-class ExplorationPolicy(Policy, metaclass=abc.ABCMeta):
+class ExplorationPolicy(Policy):
     def set_num_steps_total(self, t):
         pass

@@ -48,7 +48,7 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
             shared_encoder=False,
             **kwargs
     ):
-        super().__init__(
+        super(TanhGaussianPolicy, self).__init__(
             hidden_sizes,
             input_size=obs_dim,
             output_size=action_dim,
