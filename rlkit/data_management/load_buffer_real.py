@@ -6,6 +6,7 @@ from rlkit.data_management.combined_replay_buffer_prop import CombinedReplayBuff
 import os
 from rlkit.envs.dummy_env import DummyEnv
 import pickle
+import matplotlib.pyplot as plt
 
 # TODO Clean up this file
 MAX_SIZE = int(1E5)
@@ -18,7 +19,7 @@ def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64
         internal_keys=None,
         color_jitter=color_jitter,
         num_viewpoints=num_viewpoints,
-        jit_percent=0.1, #TODO Change
+        jit_percent=0.9, #TODO Change
     )
     return replay_buffer
 
@@ -182,7 +183,7 @@ def process_images(observations, small_img=False, imgstate=False):
     return output
 
 
-def load_path_kitchen(path, rew_path, replay_buffer):
+def load_path_kitchen(path, rew_path, replay_buffer, rescale=True):
     data = np.load(path,allow_pickle=True)
     if rew_path is not None:
         rew = np.load(rew_path,allow_pickle=True)
@@ -191,6 +192,18 @@ def load_path_kitchen(path, rew_path, replay_buffer):
             data[i]['rewards'] = np.array(rew[i]).tolist()
 
     add_data_to_buffer_kitchen(data, replay_buffer)
+
+    if rescale:
+        #rescaling of actions
+        all_actions = replay_buffer._actions[:replay_buffer._top]
+        replay_buffer._actions[:replay_buffer._top][:,0] = np.clip(all_actions[:,0]*20, -1, 1)
+        replay_buffer._actions[:replay_buffer._top][:,1] = np.clip(all_actions[:,1]*20, -1, 1)
+        replay_buffer._actions[:replay_buffer._top][:,2] = np.clip(all_actions[:,2]*20, -1, 1)
+        replay_buffer._actions[:replay_buffer._top][:,3] = np.clip(all_actions[:,3]*20, -1, 1)
+        replay_buffer._actions[:replay_buffer._top][:,4] = np.clip(all_actions[:,4]*20, -1, 1)
+        replay_buffer._actions[:replay_buffer._top][:,5] = np.clip(all_actions[:,5]*20, -1, 1)
+        replay_buffer._actions[:replay_buffer._top][:,6] = np.clip(all_actions[:,6]*-0.8+.9 + np.random.uniform(-.1,.1, all_actions[:,6].shape), -1, 1)
+        all_actions = replay_buffer._actions[:replay_buffer._top]
 
 def add_data_to_buffer_kitchen(data, replay_buffer):
     for j in range(len(data)):
@@ -220,9 +233,20 @@ def add_data_to_buffer_kitchen(data, replay_buffer):
         replay_buffer.add_path(path)
 
 def process_images_kitchen(observations):
+    def plot_img(obs_img):
+        if type(obs_img) == torch.Tensor:
+            from torchvision import transforms
+            im_new = transforms.ToPILImage()(obs_img.cpu())
+        else:
+            im_new = obs_img
+        plt.imshow(im_new)
+
     output = []
     for i in range(len(observations)):
-        image = observations[i]['images0'].reshape(3,64,64) * 255
+        image = observations[i]['images0'].reshape(3,64,64)
+        # plot_img(torch.from_numpy(image))
+        # plt.show()
+
         state = observations[i-1]['state']
         if len(image.shape) == 3:
             image = image.flatten()
@@ -234,15 +258,12 @@ def process_images_kitchen(observations):
 
 if __name__ == "__main__":
     args = lambda:0 #RANDOM Object
-    # paths = []
-    # data_path = '/nfs/kun1/users/albert/realrobot_datasets/combined_2021-06-03_21_36_48_labeled.pkl'
-    # paths.append( (data_path, None))
+    paths = []
+    observation_key = 'image'
     
-    paths = [('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pan_in_sink/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pan_in_sink/out_rew.npy')]
-    
-    replay_buffer = get_buffer(num_viewpoints=3, action_shape=(7,))
+    paths.append(('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out.npy','/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out_rew.npy'))
+
+    replay_buffer = get_buffer(observation_key=observation_key, color_jitter = True, num_viewpoints=5, action_shape=(7,))
     for path, rew_path in paths:
+        print(path)
         load_path_kitchen(path, rew_path, replay_buffer)
-    batch = replay_buffer.random_batch(16)
-    import ipdb; ipdb.set_trace()
-    

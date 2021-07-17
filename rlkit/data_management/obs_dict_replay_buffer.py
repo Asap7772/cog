@@ -426,6 +426,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
 
     def add_path(self, path):
         obs = path["observations"]
+        
         actions = path["actions"]
         next_actions = path["next_actions"]
         rewards = path["rewards"]
@@ -631,7 +632,6 @@ class ObsDictReplayBuffer(ReplayBuffer):
             other_viewpoints = [normalize_image(x) for x in other_viewpoints]
             next_other_viewpoints = [normalize_image(x) for x in next_other_viewpoints]
 
-        
         if self.color_jitter and np.random.rand() < self.jit_percent:
             obs = batch_crop(obs)
             next_obs = batch_crop(next_obs)

@@ -4,7 +4,7 @@ from rlkit.samplers.data_collector import MdpPathCollector, \
     CustomMDPPathCollector, CustomMDPPathCollector_EVAL
 
 from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
-from rlkit.torch.sac.bc import BCTrainer
+from rlkit.torch.sac.bc import BCTrainer, BCTrainerMSE
 from rlkit.torch.conv_networks import CNN, ConcatCNN, VQVAEEncoderCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
@@ -25,10 +25,12 @@ import roboverse
 DEFAULT_BUFFER = ('/nfs/kun1/users/albert/minibullet_datasets/11270225_10k_grasp_Widow250MultiObjectOneGraspRandomBowlPositionTrain-v0_10K_save_all_noise_0.1_2020-11-27T02-24-16_9750.npy')
 CUSTOM_LOG_DIR = '/home/stian/doodad-output'
 
-
 def experiment(variant):
-    variant['image_shape'] =  (48,48,3) if variant['small_image'] else (64,64,3)
-    eval_env = expl_env = DummyEnv(image_shape=variant['image_shape'])
+    variant['image_shape'] = (48,48,3) if variant['small_image'] else (64,64,3)
+    if variant['kitchen']:
+        eval_env = expl_env = DummyEnv(action_shape=(7,),image_shape=variant['image_shape'])
+    else:
+        eval_env = expl_env = DummyEnv(action_shape=(4,),image_shape=variant['image_shape'])
     action_dim = eval_env.action_space.low.size
 
     if variant['multi_bin']:
@@ -115,17 +117,29 @@ def experiment(variant):
         if args.azure:
             data_path = px
         paths.append((data_path, None))
+    elif args.buffer == 6:
+        print('Pick Kitchen 1')
+        prior = ['/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out.npy']
+        num_viewpoints = 5
+        for p in prior:
+            paths.append((p, None))
     else:
         assert False
     
     if args.buffer in [4]:
         replay_buffer = pickle.load(open(path,'rb'))
+    elif args.buffer in [6,7,8]:
+        replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'], num_viewpoints=num_viewpoints, action_shape=(7,))
+        for path, rew_path in paths:
+            print(path)
+            load_path_kitchen(path, rew_path, replay_buffer)
     else:
         replay_buffer = get_buffer(observation_key=observation_key, image_shape=variant['image_shape'])
         for path, rew_path in paths:
             load_path(path, rew_path, replay_buffer, small_img=variant['small_image'], bc=True, imgstate = variant['imgstate'])
     
-    trainer = BCTrainer(
+    if variant['mse']:
+        trainer = BCTrainerMSE(
         env=eval_env,
         policy=policy,
         #qf1=qf1,
@@ -138,6 +152,20 @@ def experiment(variant):
         variant_dict=variant,
         **variant['trainer_kwargs']
     )
+    else:
+        trainer = BCTrainer(
+            env=eval_env,
+            policy=policy,
+            #qf1=qf1,
+            #qf2=qf2,
+            #target_qf1=target_qf1,
+            #target_qf2=target_qf2,
+            dist_diff=variant['dist_diff'],
+            log_dir=variant['log_dir'],
+            imgstate=variant['imgstate'],
+            variant_dict=variant,
+            **variant['trainer_kwargs']
+        )
 
     algorithm = TorchBatchRLAlgorithm(
         trainer=trainer,
@@ -181,7 +209,7 @@ if __name__ == "__main__":
             num_expl_steps_per_train_loop=5,
             min_num_steps_before_training=1000,
             max_path_length=30,
-            batch_size=256,
+            batch_size=64,
         ),
         trainer_kwargs=dict(
             discount=0.99,
@@ -253,6 +281,7 @@ if __name__ == "__main__":
     parser.add_argument('--dist_diff', action="store_true", default=False)
 
     parser.add_argument('--larger_net', action="store_true", default=False)
+    parser.add_argument('--color_jitter', action='store_false', default=True)
     
     # Stephen added
     parser.add_argument('--deeper_net', action="store_true", default=False)
@@ -261,10 +290,15 @@ if __name__ == "__main__":
     parser.add_argument('--duplicate', action="store_true", default=False)
     parser.add_argument('--num_traj', default=0, type=int)
     parser.add_argument('--smimg', default=False, action='store_true')
+    parser.add_argument('--kitchen', default=False, action='store_true')
     parser.add_argument('--imgstate', default=False, action='store_true') # both image and state
     parser.add_argument('--state_dim', default=3, type=int)
+    parser.add_argument('--mse', default=False, action='store_true')
 
     args = parser.parse_args()
+    variant['mse'] = args.mse
+    variant['color_jitter'] = args.color_jitter
+    variant['kitchen'] = args.kitchen
     variant['state_dim'] = args.state_dim
     variant['imgstate'] = args.imgstate
     variant['transfer'] = args.transfer

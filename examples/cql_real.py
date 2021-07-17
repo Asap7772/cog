@@ -126,10 +126,16 @@ def experiment(variant):
                 target_qf1 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
                 target_qf2 = VQVAEEncoderConcatCNN(**cnn_params, num_res = variant['num_res'])
             else:
-                qf1 = ConcatCNN(**cnn_params)
-                qf2 = ConcatCNN(**cnn_params)
-                target_qf1 = ConcatCNN(**cnn_params)
-                target_qf2 = ConcatCNN(**cnn_params)
+                if variant['bottleneck']:
+                    qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'],width=cnn_params['input_width'],height=cnn_params['input_height'])
+                    qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'],width=cnn_params['input_width'],height=cnn_params['input_height'])
+                    target_qf1 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'],width=cnn_params['input_width'],height=cnn_params['input_height'])
+                    target_qf2 = ConcatBottleneckCNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'],width=cnn_params['input_width'],height=cnn_params['input_height'])
+                else:
+                    qf1 = ConcatCNN(**cnn_params)
+                    qf2 = ConcatCNN(**cnn_params)
+                    target_qf1 = ConcatCNN(**cnn_params)
+                    target_qf2 = ConcatCNN(**cnn_params)
         else:
             qf1 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
             qf2 = MultiToweredCNN(output_size=1, width=cnn_params['input_width'],height=cnn_params['input_height'])
@@ -332,6 +338,10 @@ def experiment(variant):
 
         for t in task:
             paths.append(t)
+    elif args.buffer == 9:
+        print('Pick Kitchen 1')
+        num_viewpoints = 5
+        paths.append(('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out.npy','/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out_rew.npy'))
     else:
         assert False
     
@@ -372,7 +382,7 @@ def experiment(variant):
         replay_buffer.color_jitter=True
         replay_buffer.warp_img=variant['warp']
 
-    elif args.buffer in [6,7,8]:
+    elif args.buffer in [6,7,8,9]:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'], num_viewpoints=num_viewpoints, action_shape=(7,))
         for path, rew_path in paths:
             print(path)
@@ -636,7 +646,7 @@ if __name__ == "__main__":
     parser.add_argument("--dr3", action="store_true", default=False)
     parser.add_argument("--dr3_feat", action="store_true", default=False)
     parser.add_argument("--dr3_weight", default=0.001, type=float)
-    parser.add_argument("--color_jitter", action="store_true", default=False)
+    parser.add_argument("--color_jitter", action="store_false", default=True)
     parser.add_argument("--terminals", action="store_true", default=False)
     parser.add_argument('--des_per', type=float, default=-1)
     parser.add_argument('--num_traj', default=50, type=int)
