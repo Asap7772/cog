@@ -183,13 +183,18 @@ def process_images(observations, small_img=False, imgstate=False):
     return output
 
 
-def load_path_kitchen(path, rew_path, replay_buffer, rescale=True):
+def load_path_kitchen(path, rew_path, replay_buffer, rescale=True, terminals=False):
     data = np.load(path,allow_pickle=True)
     if rew_path is not None:
         rew = np.load(rew_path,allow_pickle=True)
         assert len(data) == len(rew)
         for i in range(len(data)):
             data[i]['rewards'] = np.array(rew[i]).tolist()
+        
+        if terminals:
+            data[i]['terminals'] = np.zeros_like(data[i]['rewards'])
+            data[i]['terminals'][-1] = 1
+            data[i]['rewards'] = data[i]['terminals'] * 10
 
     add_data_to_buffer_kitchen(data, replay_buffer)
 

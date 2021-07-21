@@ -335,7 +335,6 @@ def experiment(variant):
             ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_strawberry_in_pot/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_strawberry_in_pot/out_rew.npy'),
             ('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_sweet_potato_in_pot/out.npy', '/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_sweet_potato_in_pot/out_rew.npy'),
         ]
-
         for t in task:
             paths.append(t)
     elif args.buffer == 9:
@@ -382,15 +381,27 @@ def experiment(variant):
         replay_buffer.color_jitter=True
         replay_buffer.warp_img=variant['warp']
 
+        if variant['terminals']:
+            if variant['use_positive_rew']:
+                replay_buffer._terminals = (replay_buffer._rewards/10).int()
+            else:
+                replay_buffer._terminals = (replay_buffer._rewards).int()
+
     elif args.buffer in [6,7,8,9]:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'], num_viewpoints=num_viewpoints, action_shape=(7,))
         for path, rew_path in paths:
             print(path)
-            load_path_kitchen(path, rew_path, replay_buffer)
+            load_path_kitchen(path, rew_path, replay_buffer, terminals=variant['terminals'])
     else:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'])
         for path, rew_path in paths:
             load_path(path, rew_path, replay_buffer, bc=variant['filter'], des_per=variant['des_per'], num_traj=variant['num_traj'])
+        
+        if variant['terminals']:
+            if variant['use_positive_rew']:
+                replay_buffer._terminals = (replay_buffer._rewards/10).int()
+            else:
+                replay_buffer._terminals = (replay_buffer._rewards).int()
 
     if variant['val']:
         #TODO change
@@ -402,12 +413,6 @@ def experiment(variant):
         
     if variant['use_positive_rew']:
         replay_buffer._rewards *= 10
-    
-    if variant['terminals']:
-        if variant['use_positive_rew']:
-            replay_buffer._terminals = (replay_buffer._rewards/10).int()
-        else:
-            replay_buffer._terminals = (replay_buffer._rewards).int()
 
     if variant['mcret']:
         trainer = CQLMCTrainer(
