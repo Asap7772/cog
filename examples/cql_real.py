@@ -535,7 +535,7 @@ def experiment(variant):
             start_bottleneck=variant['start_bottleneck'],
             random_viewpoint = variant['random_viewpoint'],
             first_viewpoint=variant['first_viewpoint'],
-            history=variant['history']
+            history=variant['history'],
             **variant['trainer_kwargs']
         )
 

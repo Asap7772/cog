@@ -230,7 +230,7 @@ class CQLTrainer(TorchTrainer):
         else:
             return new_obs_actions
 
-    def train_from_torch(self, batch):
+    def train_from_torch(self, batch, image_size = (3,64,64)):
         self._current_epoch += 1
         rewards = batch['rewards']
         terminals = batch['terminals']
@@ -240,8 +240,8 @@ class CQLTrainer(TorchTrainer):
         
         if self.history:
             prev_obs = batch['prev_observations']
-            next_obs = torch.cat((obs,next_obs),1) #6 channel image
-            obs = torch.cat((prev_obs,obs),1)
+            next_obs = torch.cat((obs.reshape(-1, *image_size),next_obs.reshape(-1, *image_size)),1).flatten(1) #6 channel image
+            obs = torch.cat((prev_obs.reshape(-1, *image_size),obs.reshape(-1, *image_size)),1).flatten(1)
         elif 'other_viewpoints' in batch:
             other_viewpoints = batch['other_viewpoints']
             next_other_viewpoints = batch['next_other_viewpoints']
@@ -249,7 +249,7 @@ class CQLTrainer(TorchTrainer):
             next_obs = torch.cat((next_obs[None], next_other_viewpoints))
 
             if self.random_viewpoint:
-                view = torch.zeros((actions.shape[0],)) if self.first_viewpoint else torch.randint(0,3,(actions.shape[0],)) # chose viewpoint for each element in the batch
+                view = torch.randint(0,1,(actions.shape[0],)) if self.first_viewpoint else torch.randint(0,3,(actions.shape[0],)) # chose viewpoint for each element in the batch
                 view = view.repeat(1,obs.shape[-1],1).transpose(0,1).transpose(0,2)
 
                 obs = torch.transpose(obs, 0, 1)

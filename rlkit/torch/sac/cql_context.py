@@ -64,8 +64,7 @@ class CQLTrainerContext(TorchTrainer):
             random_viewpoint=False,
             first_viewpoint=False,
             
-            *args,
-            **kwargs,
+            *args, **kwargs
     ):
         super().__init__()
         self.env = env
