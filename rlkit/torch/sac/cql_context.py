@@ -83,6 +83,7 @@ class CQLTrainerContext(TorchTrainer):
 
         self.random_viewpoint = random_viewpoint
         self.first_viewpoint = first_viewpoint
+        self._log_epoch = 0
 
         self.wand_b = wand_b
         self.real_data = real_data
