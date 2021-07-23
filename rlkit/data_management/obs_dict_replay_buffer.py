@@ -344,6 +344,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
         self._rewards = np.zeros((max_size, 1))
         self._mcrewards = np.zeros((max_size, 1))
         self._object_positions = np.zeros((max_size, 2))
+        self._curr_diff = np.zeros((max_size,6))
         # self._obs[key][i] is the value of observation[key] at time i
 
         self._obs = {}
@@ -354,7 +355,8 @@ class ObsDictReplayBuffer(ReplayBuffer):
         self.num_viewpoints = num_viewpoints
         self.other_viewpoints = [np.zeros((max_size, self.ob_spaces['image'].low.size), dtype=np.uint8) for _ in range(num_viewpoints-1)]
         self.next_other_viewpoints = [np.zeros((max_size, self.ob_spaces['image'].low.size), dtype=np.uint8) for _ in range(num_viewpoints-1)]
-        
+        self._prev_observations = np.zeros((max_size, self.ob_spaces['image'].low.size), dtype=np.uint8)
+
         self.target_segment = target_segment
         
         for key in self.ob_keys_to_save + internal_keys:
@@ -439,6 +441,11 @@ class ObsDictReplayBuffer(ReplayBuffer):
         else:
             viewpoints = next_viewpoints = None
 
+        if 'prev_observations' in path:
+            prev_observations = path['prev_observations']
+        else:
+            prev_observations = None
+
         if 'mcrewards' in path:
             mcrewards = path['mcrewards']
         else:
@@ -452,6 +459,11 @@ class ObsDictReplayBuffer(ReplayBuffer):
             next_latents = path['next_latents']
         else:
             latents=next_latents=None
+        
+        if 'curr_diff' in path:
+            curr_diff = path['curr_diff']
+        else:
+            curr_diff = None
 
         path_len = len(rewards)
 
@@ -466,13 +478,28 @@ class ObsDictReplayBuffer(ReplayBuffer):
         self.add_processed_path(path_len, actions, terminals, obs, 
         next_obs, rewards, mcrewards=mcrewards, next_actions=next_actions,
         object_positions=object_positions if 'object_position' in path else None,
-        latents=latents, next_latents=next_latents, viewpoints = viewpoints, next_viewpoints=next_viewpoints)
+        latents=latents, next_latents=next_latents, viewpoints = viewpoints, 
+        next_viewpoints=next_viewpoints,curr_diff=curr_diff,prev_observations=prev_observations)
 
-    def add_processed_path(self, path_len, actions, terminals,
-                           obs, next_obs, rewards, mcrewards=None, 
-                           next_actions=None, object_positions=None,
-                           latents=None, next_latents=None,
-                           viewpoints=None, next_viewpoints=None):
+    def add_processed_path(
+            self, 
+            path_len,
+            actions,
+            terminals,
+            obs,
+            next_obs, 
+            rewards, 
+            mcrewards=None, 
+            next_actions=None, 
+            object_positions=None,
+            latents=None, 
+            next_latents=None,
+            viewpoints=None, 
+            next_viewpoints=None,
+            curr_diff=None,
+            prev_observations=None,
+        ):
+
         if self._top + path_len >= self.max_size:
             num_pre_wrap_steps = self.max_size - self._top
             # numpy slice
@@ -499,11 +526,16 @@ class ObsDictReplayBuffer(ReplayBuffer):
                 if latents is not None:
                     self._latents[buffer_slice] = latents[path_slice]
                     self._next_latents[buffer_slice] = next_latents[path_slice]
+                if curr_diff is not None:
+                    self._curr_diff[buffer_slice] = curr_diff[path_slice]
                 
                 if viewpoints is not None:
                     for i in range(len(self.other_viewpoints)):
                         self.other_viewpoints[i][buffer_slice] = viewpoints[i][path_slice]
                         self.next_other_viewpoints[i][buffer_slice] = next_viewpoints[i][path_slice]
+                
+                if prev_observations is not None:
+                    self._prev_observations[buffer_slice] = prev_observations[path_slice]
 
                 for key in self.ob_keys_to_save + self.internal_keys:
                     self._obs[key][buffer_slice] = obs[key][path_slice]
@@ -529,6 +561,8 @@ class ObsDictReplayBuffer(ReplayBuffer):
             self._terminals[slc] = terminals
             self._rewards[slc] = rewards
 
+            if prev_observations is not None:
+                self._prev_observations[slc] = prev_observations
             if next_actions is not None:
                 self._next_actions[slc] = next_actions
             if mcrewards is not None:
@@ -538,6 +572,8 @@ class ObsDictReplayBuffer(ReplayBuffer):
             if latents is not None:
                 self._latents[slc] = latents
                 self._next_latents[slc] = next_latents
+            if curr_diff is not None:
+                self._curr_diff[slc] = curr_diff
             
             if viewpoints is not None:
                 for i in range(len(self.other_viewpoints)):
@@ -600,6 +636,8 @@ class ObsDictReplayBuffer(ReplayBuffer):
         mcrewards = self._mcrewards[indices]
         object_positions=self._object_positions[indices]
         terminals = self._terminals[indices]
+        curr_diff = self._curr_diff[indices]
+        prev_obs = self._prev_observations[indices]
 
         other_viewpoints = []
         next_other_viewpoints = []
@@ -625,9 +663,12 @@ class ObsDictReplayBuffer(ReplayBuffer):
             other_viewpoints = [self.color_segment_img(x, target=self.target_segment) for x in other_viewpoints]
             next_other_viewpoints = [self.color_segment_img(x, target=self.target_segment) for x in next_other_viewpoints]
 
+            prev_obs = self.color_segment_img(prev_obs,target=self.target_segment)
+
         if self.observation_key == 'image':
             obs = normalize_image(obs)
             next_obs = normalize_image(next_obs)
+            prev_obs = normalize_image(prev_obs)
 
             other_viewpoints = [normalize_image(x) for x in other_viewpoints]
             next_other_viewpoints = [normalize_image(x) for x in next_other_viewpoints]
@@ -635,6 +676,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
         if self.color_jitter and np.random.rand() < self.jit_percent:
             obs = batch_crop(obs)
             next_obs = batch_crop(next_obs)
+            prev_obs = batch_crop(prev_obs)
 
             other_viewpoints = [batch_crop(x) for x in other_viewpoints]
             next_other_viewpoints = [batch_crop(x) for x in next_other_viewpoints]
@@ -664,7 +706,9 @@ class ObsDictReplayBuffer(ReplayBuffer):
             'object_positions': object_positions,
             'terminals': terminals,
             'next_observations': next_obs,
+            'curr_diff':curr_diff,
             'indices': np.array(indices).reshape(-1, 1),
+            'prev_observations':prev_obs,
         })
 
         if other_viewpoints is not None and other_viewpoints != []:

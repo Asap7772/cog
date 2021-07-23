@@ -38,7 +38,7 @@ import torch
 #     plt.show()
 
 from torchvision import transforms
-from skimage.transform import rescale, resize, downscale_local_mean
+from skimage.transform import resize
 
 def resize_small(img):
     if img.shape[0] == 6912 or img.flatten().shape[0] == 921600:
@@ -208,6 +208,9 @@ def load_path_kitchen(path, rew_path, replay_buffer, rescale=True, terminals=Fal
         replay_buffer._actions[:replay_buffer._top][:,4] = np.clip(all_actions[:,4]*20, -1, 1)
         replay_buffer._actions[:replay_buffer._top][:,5] = np.clip(all_actions[:,5]*20, -1, 1)
         replay_buffer._actions[:replay_buffer._top][:,6] = np.clip(all_actions[:,6]*-0.8+.9 + np.random.uniform(-.1,.1, all_actions[:,6].shape), -1, 1)
+        
+        replay_buffer._curr_diff[:replay_buffer._top] = np.clip(replay_buffer._curr_diff[:replay_buffer._top]*20, -1, 1)
+        
         all_actions = replay_buffer._actions[:replay_buffer._top]
 
 def add_data_to_buffer_kitchen(data, replay_buffer):
@@ -217,23 +220,34 @@ def add_data_to_buffer_kitchen(data, replay_buffer):
         rew = np.array(data[j]['rewards']).squeeze() * (0.99**np.arange(len(data[j]['rewards'])))
         mcrewards = np.cumsum(rew[::-1])[::-1].tolist() 
 
+        prev_observations = [x['images0']*255 for x in data[j]['observations']]
+        prev_observations = [np.zeros_like(prev_observations[0])] + prev_observations[:-1]
+
         viewpoints = []
         next_viewpoints = []
         if replay_buffer.num_viewpoints >= 1:
             for i in range(1,replay_buffer.num_viewpoints):
                 viewpoints.append([x['images' + str(i)]*255 for x in data[j]['observations']])
                 next_viewpoints.append([x['images' + str(i)]*255 for x in data[j]['next_observations']])
+        
+        diff = []
+        for i in range(len(data[j]['observations'])):
+            s1,s2 = data[j]['observations'][i]['state'], data[j]['next_observations'][i]['state']
+            curr_diff = (s2-s1)-data[j]['actions'][i]
+            diff.append(curr_diff[:6])
 
         path = dict(
             rewards=[np.asarray([r]) for r in data[j]['rewards']],
             mcrewards=[np.asarray([r]) for r in mcrewards],
             actions=data[j]['actions'],
-            next_actions =data[j]['next_actions'],
+            next_actions=data[j]['next_actions'],
             terminals=[np.asarray([t]) for t in data[j]['terminals']],
             observations=process_images_kitchen(data[j]['observations']),
             next_observations=process_images_kitchen(data[j]['next_observations']),
             viewpoints=viewpoints,
             next_viewpoints=next_viewpoints,
+            curr_diff=diff,
+            prev_observations=prev_observations,
         )
         replay_buffer.add_path(path)
 
@@ -272,3 +286,5 @@ if __name__ == "__main__":
     for path, rew_path in paths:
         print(path)
         load_path_kitchen(path, rew_path, replay_buffer)
+    batch = replay_buffer.random_batch(5)
+    import ipdb; ipdb.set_trace()

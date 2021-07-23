@@ -9,8 +9,9 @@ import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
 from torch import autograd
+import wandb
 
-class CQLTrainer(TorchTrainer):
+class CQLTrainerContext(TorchTrainer):
     def __init__(
             self, 
             env,
@@ -35,6 +36,7 @@ class CQLTrainer(TorchTrainer):
             target_entropy=None,
             policy_eval_start=0,
             num_qs=2,
+            context_key='curr_diff',
 
             # CQL
             min_q_version=3,
@@ -54,6 +56,16 @@ class CQLTrainer(TorchTrainer):
             dist_diff=False,
             dist1 = 0,
             dist2 = 1,
+
+            log_dir=None,
+            wand_b=True,
+            real_data=True,
+            variant_dict=None,
+            random_viewpoint=False,
+            first_viewpoint=False,
+            
+            *args,
+            **kwargs,
     ):
         super().__init__()
         self.env = env
@@ -63,12 +75,26 @@ class CQLTrainer(TorchTrainer):
         self.target_qf1 = target_qf1
         self.target_qf2 = target_qf2
         self.soft_target_tau = soft_target_tau
-
+        self.context_key = context_key
 
         self.hinge_trans=hinge_trans
         self.dist_diff=dist_diff
         self.dist1=dist1
         self.dist2=dist2
+
+        self.random_viewpoint = random_viewpoint
+        self.first_viewpoint = first_viewpoint
+
+        self.wand_b = wand_b
+        self.real_data = real_data
+        if self.wand_b:
+            if self.real_data:
+                wandb.init(project='real_drawer_cql', reinit=True)
+            else:
+                wandb.init(project='cog_cql', reinit=True)
+            wandb.run.name=log_dir.split('/')[-1]
+            if variant_dict is not None:
+                wandb.config.update(variant_dict)
 
         self.use_automatic_entropy_tuning = use_automatic_entropy_tuning
         if self.use_automatic_entropy_tuning:
@@ -169,7 +195,23 @@ class CQLTrainer(TorchTrainer):
         obs = batch['observations']
         actions = batch['actions']
         next_obs = batch['next_observations']
-        orient = batch['camera_orientation']
+        orient = batch[self.context_key] 
+
+        if 'other_viewpoints' in batch:
+            other_viewpoints = batch['other_viewpoints']
+            next_other_viewpoints = batch['next_other_viewpoints']
+            obs = torch.cat((obs[None], other_viewpoints))
+            next_obs = torch.cat((next_obs[None], next_other_viewpoints))
+
+            if self.random_viewpoint:
+                view = torch.zeros((actions.shape[0],)) if self.first_viewpoint else torch.randint(0,3,(actions.shape[0],)) # chose viewpoint for each element in the batch
+                view = view.repeat(1,obs.shape[-1],1).transpose(0,1).transpose(0,2)
+
+                obs = torch.transpose(obs, 0, 1)
+                next_obs = torch.transpose(next_obs, 0, 1)
+
+                obs = torch.gather(obs,1,view.cuda()).flatten(1)
+                next_obs = torch.gather(next_obs,1,view.cuda()).flatten(1)
 
         """
         Policy and Alpha Loss
@@ -438,6 +480,9 @@ class CQLTrainer(TorchTrainer):
                 self.eval_statistics['threshold action gap'] = self.target_action_gap
                 self.eval_statistics['alpha prime loss'] = alpha_prime_loss.item()
             
+            if self.wand_b:
+                wandb.log({'trainer/'+k:v for k,v in self.eval_statistics.items()}, step=self._log_epoch)
+            self._log_epoch += 1
         self._n_train_steps_total += 1
 
     def get_diagnostics(self):

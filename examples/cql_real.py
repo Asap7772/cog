@@ -9,6 +9,7 @@ from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_single import CQLSingleTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
+from rlkit.torch.sac.cql_context import CQLTrainerContext
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN,  VQVAEEncoderConcatCNN, \
     ConcatBottleneckVQVAECNN, VQVAEEncoderCNN, MultiToweredCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
@@ -78,9 +79,9 @@ def experiment(variant):
     cnn_params.update(
         input_width=64,
         input_height=64,
-        input_channels=3,
+        input_channels=6 if variant['history'] else 3,
         output_size=1,
-        added_fc_input_size=action_dim,
+        added_fc_input_size=action_dim + 6 if variant['context'] else 0,
         normalize_conv_activation=variant['normalize_conv_activation']
     )
 
@@ -160,15 +161,13 @@ def experiment(variant):
 
     cnn_params.update(
         output_size=256,
-        added_fc_input_size=0,
+        added_fc_input_size=6 if variant['context'] else 0, #todo remove hardcoding
         hidden_sizes=[1024, 512],
         spectral_norm_fc=False,
         spectral_norm_conv=False,
         normalize_conv_activation=False
     )
 
-
-    policy_obs_processor = CNN(**cnn_params)
 
     if variant['vqvae_policy'] and not variant['kitchen']:
         if variant['share_encoder']:
@@ -191,7 +190,7 @@ def experiment(variant):
             if variant['vqvae_policy']:
                 cnn_params.update(
                     output_size=256,
-                    added_fc_input_size=0,
+                    added_fc_input_size=6 if variant['context'] else 0,
                     hidden_sizes=[1024, 512],
                     spectral_norm_fc=False,
                     spectral_norm_conv=False,
@@ -200,7 +199,7 @@ def experiment(variant):
             else:
                 cnn_params.update(
                     output_size=256,
-                    added_fc_input_size=0,
+                    added_fc_input_size=6 if variant['context'] else 0,
                     hidden_sizes=[1024, 512],
                     spectral_norm_fc=False,
                     spectral_norm_conv=False,
@@ -211,7 +210,7 @@ def experiment(variant):
     else:
         cnn_params.update(
             output_size=256,
-            added_fc_input_size=0,
+            added_fc_input_size=6 if variant['context'] else 0,
             hidden_sizes=[1024, 512],
             spectral_norm_fc=False,
             spectral_norm_conv=False,
@@ -340,7 +339,10 @@ def experiment(variant):
     elif args.buffer == 9:
         print('Pick Kitchen 1')
         num_viewpoints = 5
-        paths.append(('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out.npy','/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out_rew.npy'))
+        if args.azure:
+            paths.append(('/home/asap7772/put_potato_on_plate/out.npy','/home/asap7772/put_potato_on_plate/out_rew.npy'))
+        else:
+            paths.append(('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out.npy','/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out_rew.npy'))
     else:
         assert False
     
@@ -436,6 +438,34 @@ def experiment(variant):
             real_data=True,
             **variant['trainer_kwargs']
         )
+    elif variant['context']:
+        trainer = CQLTrainerContext(
+            env=eval_env,
+            policy=policy,
+            qf1=qf1,
+            qf2=qf2,
+            target_qf1=target_qf1,
+            target_qf2=target_qf2,
+            bottleneck=variant['bottleneck'],
+            bottleneck_const=variant['bottleneck_const'],
+            bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
+            log_dir = variant['log_dir'],
+            wand_b=not variant['debug'],
+            only_bottleneck = variant['only_bottleneck'],
+            variant_dict=variant,
+            validation=variant['val'],
+            validation_buffer=replay_buffer_val,
+            real_data=True,
+            guassian_policy=variant['guassian_policy'],
+            start_bottleneck=variant['start_bottleneck'],
+            random_viewpoint = variant['random_viewpoint'],
+            context_key='curr_diff', #TODO change from hardcoded value
+            first_viewpoint=variant['first_viewpoint'],
+            **variant['trainer_kwargs']
+        )
     elif variant['bchead']:
         trainer = CQLBCTrainer(
             env=eval_env,
@@ -504,6 +534,8 @@ def experiment(variant):
             guassian_policy=variant['guassian_policy'],
             start_bottleneck=variant['start_bottleneck'],
             random_viewpoint = variant['random_viewpoint'],
+            first_viewpoint=variant['first_viewpoint'],
+            history=variant['history']
             **variant['trainer_kwargs']
         )
 
@@ -544,9 +576,9 @@ if __name__ == "__main__":
             # min_num_steps_before_training=100,
             # max_path_length=10,
             num_epochs=3000,
-            num_eval_steps_per_epoch=5,
+            num_eval_steps_per_epoch=0,
             num_trains_per_train_loop=1000,
-            num_expl_steps_per_train_loop=5,
+            num_expl_steps_per_train_loop=0,
             min_num_steps_before_training=1000,
             max_path_length=30,
             batch_size=256,
@@ -608,6 +640,7 @@ if __name__ == "__main__":
     parser.add_argument("--only_bottleneck", action="store_true", default=False)
     parser.add_argument("--mcret", action='store_true')
     parser.add_argument("--bchead", action='store_true')
+    parser.add_argument("--context", action='store_true')
     parser.add_argument("--azure", action='store_true', default=False)
     parser.add_argument("--prior-buffer", type=str, default=DEFAULT_PRIOR_BUFFER)
     parser.add_argument("--task-buffer", type=str, default=DEFAULT_TASK_BUFFER)
@@ -666,12 +699,18 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--kitchen', action='store_true')
     parser.add_argument('--random_viewpoint', action='store_true')
+    parser.add_argument('--first_viewpoint', action='store_true')
+    parser.add_argument('--history', action='store_true')
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
     variant['algorithm_kwargs']['batch_size'] = args.batch_size
     variant['kitchen'] = args.kitchen
+    
     variant['random_viewpoint'] = args.random_viewpoint
+    variant['first_viewpoint'] = args.first_viewpoint
+    variant['history'] = args.history
+    
     variant['dist_thresh'] = args.dist_thresh
     variant['warp'] = args.warp
     variant['no_terminals'] = args.no_terminals
@@ -706,6 +745,8 @@ if __name__ == "__main__":
     variant['dr3'] = args.dr3
     variant['dr3_feat'] = args.dr3_feat
     variant['dr3_weight'] = args.dr3_weight
+
+    variant['context'] = args.context
 
     variant['bottleneck_lagrange'] = args.bottleneck_lagrange
     variant['bottleneck_dim'] = args.bottleneck_dim

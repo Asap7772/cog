@@ -57,6 +57,7 @@ class CQLTrainer(TorchTrainer):
             log_pickle=True,
             pickle_log_rate=5,
             random_viewpoint=False,
+            first_viewpoint=False,
 
             # Handling of the transfer setting
             hinge_trans=False,
@@ -79,6 +80,8 @@ class CQLTrainer(TorchTrainer):
             dr3=False,
             dr3_feat=False,
             dr3_weight=0.0,
+
+            history=False
     ):
         super().__init__()
         self.env = env
@@ -92,6 +95,7 @@ class CQLTrainer(TorchTrainer):
         self.log_dir = log_dir
         self.log_pickle=log_pickle
         self.pickle_log_rate=pickle_log_rate
+        self.first_viewpoint = first_viewpoint
 
         self.hinge_trans=hinge_trans
         self.dist_diff=dist_diff
@@ -184,6 +188,7 @@ class CQLTrainer(TorchTrainer):
         self.tsne = True
         self.validation = validation
         self.validation_buffer = validation_buffer
+        self.history = history
 
         self.wand_b = wand_b
         self.real_data = real_data
@@ -232,15 +237,19 @@ class CQLTrainer(TorchTrainer):
         obs = batch['observations'] if 'observations' in batch else batch['observations_image']
         actions = batch['actions']
         next_obs = batch['next_observations'] if 'next_observations' in batch else batch['next_observations_image']
-
-        if 'other_viewpoints' in batch:
+        
+        if self.history:
+            prev_obs = batch['prev_observations']
+            next_obs = torch.cat((obs,next_obs),1) #6 channel image
+            obs = torch.cat((prev_obs,obs),1)
+        elif 'other_viewpoints' in batch:
             other_viewpoints = batch['other_viewpoints']
             next_other_viewpoints = batch['next_other_viewpoints']
             obs = torch.cat((obs[None], other_viewpoints))
             next_obs = torch.cat((next_obs[None], next_other_viewpoints))
 
             if self.random_viewpoint:
-                view = torch.randint(0,3,(actions.shape[0],)) # chose viewpoint for each element in the batch
+                view = torch.zeros((actions.shape[0],)) if self.first_viewpoint else torch.randint(0,3,(actions.shape[0],)) # chose viewpoint for each element in the batch
                 view = view.repeat(1,obs.shape[-1],1).transpose(0,1).transpose(0,2)
 
                 obs = torch.transpose(obs, 0, 1)
@@ -319,7 +328,7 @@ class CQLTrainer(TorchTrainer):
 
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
         q_target = q_target.detach()
-            
+
         qf1_loss = self.qf_criterion(q1_pred, q_target)
         if self.num_qs > 1:
             qf2_loss = self.qf_criterion(q2_pred, q_target)
