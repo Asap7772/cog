@@ -6,6 +6,7 @@ from rlkit.samplers.data_collector import MdpPathCollector, \
 from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
+from rlkit.torch.sac.cql_context import CQLTrainerContext
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
 from rlkit.torch.sac.cql_single import CQLSingleTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, \
@@ -13,6 +14,7 @@ from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHe
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.launchers.launcher_util import setup_logger
+import gym
 
 import argparse, os
 import roboverse
@@ -38,6 +40,15 @@ def experiment(variant):
     eval_env = roboverse.make(variant['env'], transpose_image=True)
     if variant['num_sample'] != 0:
         eval_env.num_obj_sample=variant['num_sample']
+    if variant['debug_scale_actions']:
+        class ActionWrapper(gym.ActionWrapper):
+            def __init__(self, env):
+                super().__init__(env)
+            
+            def action(self, act):
+                act = np.concatenate((np.zeros_like(act[:-1].shape), act))
+                return act
+        eval_env = ActionWrapper(eval_env)
     expl_env = eval_env
     action_dim = eval_env.action_space.low.size
     print(action_dim)
@@ -74,7 +85,7 @@ def experiment(variant):
         input_height=48,
         input_channels=3,
         output_size=1,
-        added_fc_input_size=action_dim,
+        added_fc_input_size=action_dim + 6 if variant['context'] else action_dim,
         normalize_conv_activation=variant['normalize_conv_activation']
     )
     if variant['vqvae_enc']:
@@ -147,7 +158,7 @@ def experiment(variant):
         else:
             cnn_params.update(
                 output_size=256,
-                added_fc_input_size=0,
+                added_fc_input_size=6 if variant['context'] else 0,
                 hidden_sizes=[1024, 512],
                 spectral_norm_fc=False,
                 spectral_norm_conv=False,
@@ -158,7 +169,7 @@ def experiment(variant):
     else:
         cnn_params.update(
             output_size=256,
-            added_fc_input_size=0,
+            added_fc_input_size=6 if variant['context'] else 0,
             hidden_sizes=[1024, 512],
             spectral_norm_fc=False,
             spectral_norm_conv=False,
@@ -189,7 +200,14 @@ def experiment(variant):
             variant, expl_env, observation_key)
     else:
         replay_buffer = load_data_from_npy_chaining(
-            variant, expl_env, observation_key, duplicate=variant['duplicate'], num_traj=variant['num_traj'])
+            variant,
+            expl_env, 
+            observation_key,
+            duplicate=variant['duplicate'],
+            num_traj=variant['num_traj'],
+            debug_scale_actions=variant['debug_scale_actions'],
+            debug_shift=variant['debug_shift']
+        )
 
     if variant['val']:
         if args.buffer in [5,6]:
@@ -308,6 +326,30 @@ def experiment(variant):
         )
         del qf2, target_qf2
         import torch; torch.cuda.empty_cache()
+    elif variant['debug_scale_actions'] and variant['context']:
+        trainer = CQLTrainerContext(
+            env=eval_env,
+            policy=policy,
+            qf1=qf1,
+            qf2=qf2,
+            target_qf1=target_qf1,
+            target_qf2=target_qf2,
+            bottleneck=variant['bottleneck'],
+            bottleneck_const=variant['bottleneck_const'],
+            bottleneck_lagrange=variant['bottleneck_lagrange'],
+            dr3=variant['dr3'],
+            dr3_feat=variant['dr3_feat'],
+            dr3_weight=variant['dr3_weight'],
+            log_dir = variant['log_dir'],
+            wand_b=not variant['debug'],
+            only_bottleneck = variant['only_bottleneck'],
+            variant_dict=variant,
+            validation=variant['val'],
+            validation_buffer=replay_buffer_val,
+            real_data=False,
+            context_key='curr_diff', #TODO change from hardcoded value
+            **variant['trainer_kwargs']
+        )
     else:
         trainer = CQLTrainer(
             env=eval_env,
@@ -369,7 +411,7 @@ if __name__ == "__main__":
             # min_num_steps_before_training=100,
             # max_path_length=10,
             num_epochs=3000,
-            num_eval_steps_per_epoch=300,
+            num_eval_steps_per_epoch=0, #TODO Change
             num_trains_per_train_loop=1000,
             num_expl_steps_per_train_loop=1000,
             min_num_steps_before_training=1000,
@@ -480,10 +522,18 @@ if __name__ == "__main__":
     parser.add_argument("--dr3_weight", default=0.001, type=float)
     parser.add_argument("--eval_every_n", default=1, type=int)
     parser.add_argument('--singleQ', action='store_true')
+    parser.add_argument('--debug_scale_actions', action='store_true')
+    parser.add_argument('--debug_shift', action='store_true')
+    parser.add_argument('--context', action='store_true')
     parser.add_argument('--normalize_conv_activation', action='store_true')
+    parser.add_argument('--batch_size', type=int, default=256)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['context'] = args.context
+    variant['debug_scale_actions'] = args.debug_scale_actions
+    variant['debug_shift'] = args.debug_shift
+    variant['algorithm_kwargs']['batch_size'] = args.batch_size
     variant['trainer_kwargs']['discount'] = args.discount
     variant['squared'] = args.squared
     variant['bigger_net'] = args.bigger_net

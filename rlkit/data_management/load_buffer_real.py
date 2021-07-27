@@ -213,15 +213,20 @@ def load_path_kitchen(path, rew_path, replay_buffer, rescale=True, terminals=Fal
         
         all_actions = replay_buffer._actions[:replay_buffer._top]
 
-def add_data_to_buffer_kitchen(data, replay_buffer):
+def add_data_to_buffer_kitchen(data, replay_buffer, num_hist = 2):
     for j in range(len(data)):
         if 'next_actions' not in data[j]:
             data[j]['next_actions'] = np.concatenate((data[j]['actions'][1:], data[j]['actions'][-1:]))
         rew = np.array(data[j]['rewards']).squeeze() * (0.99**np.arange(len(data[j]['rewards'])))
         mcrewards = np.cumsum(rew[::-1])[::-1].tolist() 
 
-        prev_observations = [x['images0']*255 for x in data[j]['observations']]
-        prev_observations = [np.zeros_like(prev_observations[0])] + prev_observations[:-1]
+
+        prev_observations = []
+        fv = [x['images0']*255 for x in data[j]['observations']]
+        for i in range(num_hist):
+            obs_prev = [np.zeros_like(fv[0])] * (i+1) + fv[:(-i-1)]
+            prev_observations.append(obs_prev)
+        prev_observations = prev_observations[::-1]
 
         viewpoints = []
         next_viewpoints = []

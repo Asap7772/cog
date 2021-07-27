@@ -79,9 +79,9 @@ def experiment(variant):
     cnn_params.update(
         input_width=64,
         input_height=64,
-        input_channels=6 if variant['history'] else 3,
+        input_channels=9 if variant['history'] else 3,
         output_size=1,
-        added_fc_input_size=action_dim + 6 if variant['context'] else 0,
+        added_fc_input_size=action_dim + 6 if variant['context'] else action_dim,
         normalize_conv_activation=variant['normalize_conv_activation']
     )
 
@@ -535,7 +535,7 @@ def experiment(variant):
             start_bottleneck=variant['start_bottleneck'],
             random_viewpoint = variant['random_viewpoint'],
             first_viewpoint=variant['first_viewpoint'],
-            history=variant['history']
+            history=variant['history'],
             **variant['trainer_kwargs']
         )
 

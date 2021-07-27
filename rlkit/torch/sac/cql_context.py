@@ -87,6 +87,8 @@ class CQLTrainerContext(TorchTrainer):
 
         self.wand_b = wand_b
         self.real_data = real_data
+        
+        self._log_epoch = 0
         if self.wand_b:
             if self.real_data:
                 wandb.init(project='real_drawer_cql', reinit=True)

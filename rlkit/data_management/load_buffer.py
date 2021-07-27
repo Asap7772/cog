@@ -14,7 +14,7 @@ def get_buffer_size(data):
     return num_transitions
 
 
-def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1):
+def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1, debug_shift=False, debug_scale_actions=False):
     for j in range(len(data)):
         # import ipdb; ipdb.set_trace()
         assert (len(data[j]['actions']) == len(data[j]['observations']) == len(
@@ -36,6 +36,19 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1)
                 data[j]['next_observations']),
             object_position = process_obj_positions(data[j]['observations'])
         )
+
+        if debug_shift:
+            shift_num = 2
+            for key in path:
+                if key not in ['observations', 'next_observations']:
+                    path[key] = path[key][:(-shift_num)]
+                else:
+                    path[key] = path[key][shift_num:]
+        
+        if debug_scale_actions:
+            # import ipdb; ipdb.set_trace()
+            curr_diff = path['curr_diff'] = [np.random.uniform(0, 0.25, x[:-2].shape) - 0.5 for x in path['actions']]
+            path['actions'] = [np.clip(path['actions'][i]-np.concatenate((curr_diff[i],[0,0])),-1,1) for i in range(len(path['actions']))]
 
         if scale_rew:
             path['rewards'] = [np.asarray([r*scale + shift]) for r in data[j]['rewards']]
@@ -204,12 +217,14 @@ def load_data_from_npy_mult(variant, expl_env, observation_key, extra_buffer_siz
     return CombinedReplayBuffer2(buffers=buffers, p=p)
 
 def load_data_from_npy_chaining(variant, expl_env, observation_key,
-                                extra_buffer_size=100, duplicate=False, num_traj=0):
+                                extra_buffer_size=100, duplicate=False, 
+                                num_traj=0, debug_shift=False, debug_scale_actions=False):
     if type(variant['prior_buffer']) == tuple:
         variant['prior_buffer'], p_dict = variant['prior_buffer']
         variant['task_buffer'], t_dict = variant['task_buffer'] # may change
     else:
         assert False
+
     with open(variant['prior_buffer'], 'rb') as f:
         data_prior = np.load(f, allow_pickle=True)
         if num_traj > 0:
@@ -218,6 +233,7 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
         elif p_dict['p'] != 1:
             print('truncated to size', p_dict['p'])
             data_prior = data_prior[:int(len(data_prior)*p_dict['p'])]
+
     with open(variant['task_buffer'], 'rb') as f:
         data_task = np.load(f, allow_pickle=True)
         if num_traj > 0:
@@ -259,7 +275,7 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
             observation_key=observation_key,
         )
 
-    add_data_to_buffer(data_prior, replay_buffer)
+    add_data_to_buffer(data_prior, replay_buffer,debug_shift=debug_shift, debug_scale_actions=debug_scale_actions)
     top = replay_buffer._top
     print('Prior data loaded from npy file', top)
     if p_dict['alter_type'] == 'zero':
@@ -275,7 +291,7 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
         assert False
 
     top2 = replay_buffer._top
-    add_data_to_buffer(data_task, replay_buffer)
+    add_data_to_buffer(data_task, replay_buffer, debug_shift=debug_shift, debug_scale_actions=debug_scale_actions)
     if t_dict['alter_type'] == 'zero':
         replay_buffer._rewards[top:top2] = 0.0*replay_buffer._rewards[top:top2]
         print('Zero-ed the rewards for task data', top)

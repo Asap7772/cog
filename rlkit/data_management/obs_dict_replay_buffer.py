@@ -300,6 +300,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
             num_viewpoints=1,
             color_jitter=False,
             jit_percent = 0.1,
+            num_prev=2,
     ):
         """
 
@@ -355,7 +356,8 @@ class ObsDictReplayBuffer(ReplayBuffer):
         self.num_viewpoints = num_viewpoints
         self.other_viewpoints = [np.zeros((max_size, self.ob_spaces['image'].low.size), dtype=np.uint8) for _ in range(num_viewpoints-1)]
         self.next_other_viewpoints = [np.zeros((max_size, self.ob_spaces['image'].low.size), dtype=np.uint8) for _ in range(num_viewpoints-1)]
-        self._prev_observations = np.zeros((max_size, self.ob_spaces['image'].low.size), dtype=np.uint8)
+        self._num_prev=num_prev
+        self._prev_observations = [np.zeros((max_size, self.ob_spaces['image'].low.size), dtype=np.uint8) for _ in range(num_prev)]
 
         self.target_segment = target_segment
         
@@ -535,7 +537,8 @@ class ObsDictReplayBuffer(ReplayBuffer):
                         self.next_other_viewpoints[i][buffer_slice] = next_viewpoints[i][path_slice]
                 
                 if prev_observations is not None:
-                    self._prev_observations[buffer_slice] = prev_observations[path_slice]
+                    for i in range(self._num_prev):
+                        self._prev_observations[i][buffer_slice] = prev_observations[i][path_slice]
 
                 for key in self.ob_keys_to_save + self.internal_keys:
                     self._obs[key][buffer_slice] = obs[key][path_slice]
@@ -562,7 +565,8 @@ class ObsDictReplayBuffer(ReplayBuffer):
             self._rewards[slc] = rewards
 
             if prev_observations is not None:
-                self._prev_observations[slc] = prev_observations
+                for i in range(self._num_prev):
+                    self._prev_observations[i][slc] = prev_observations[i]
             if next_actions is not None:
                 self._next_actions[slc] = next_actions
             if mcrewards is not None:
@@ -637,7 +641,11 @@ class ObsDictReplayBuffer(ReplayBuffer):
         object_positions=self._object_positions[indices]
         terminals = self._terminals[indices]
         curr_diff = self._curr_diff[indices]
-        prev_obs = self._prev_observations[indices]
+
+
+        prev_obs = []
+        for i in range(self._num_prev):
+            prev_obs.append(self._prev_observations[i][indices])
 
         other_viewpoints = []
         next_other_viewpoints = []
@@ -663,12 +671,12 @@ class ObsDictReplayBuffer(ReplayBuffer):
             other_viewpoints = [self.color_segment_img(x, target=self.target_segment) for x in other_viewpoints]
             next_other_viewpoints = [self.color_segment_img(x, target=self.target_segment) for x in next_other_viewpoints]
 
-            prev_obs = self.color_segment_img(prev_obs,target=self.target_segment)
+            prev_obs = [self.color_segment_img(x,target=self.target_segment) for x in prev_obs]
 
         if self.observation_key == 'image':
             obs = normalize_image(obs)
             next_obs = normalize_image(next_obs)
-            prev_obs = normalize_image(prev_obs)
+            prev_obs = [normalize_image(x) for x in prev_obs]
 
             other_viewpoints = [normalize_image(x) for x in other_viewpoints]
             next_other_viewpoints = [normalize_image(x) for x in next_other_viewpoints]
@@ -676,8 +684,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
         if self.color_jitter and np.random.rand() < self.jit_percent:
             obs = batch_crop(obs)
             next_obs = batch_crop(next_obs)
-            prev_obs = batch_crop(prev_obs)
-
+            prev_obs = [batch_crop(x) for x in prev_obs]
             other_viewpoints = [batch_crop(x) for x in other_viewpoints]
             next_other_viewpoints = [batch_crop(x) for x in next_other_viewpoints]
 
@@ -697,6 +704,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
         #         'camera_orientation' : np.array(list(data.values())),
         #         'next_camera_orientation' : np.array(list(next_data.values()))
         #     })
+
         batch.update({
             'observations': obs,
             'actions': actions,
@@ -708,7 +716,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
             'next_observations': next_obs,
             'curr_diff':curr_diff,
             'indices': np.array(indices).reshape(-1, 1),
-            'prev_observations':prev_obs,
+            'prev_observations':np.array(prev_obs),
         })
 
         if other_viewpoints is not None and other_viewpoints != []:
