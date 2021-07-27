@@ -19,7 +19,7 @@ def get_buffer(observation_key='image', buffer_size=MAX_SIZE, image_shape=(64,64
         internal_keys=None,
         color_jitter=color_jitter,
         num_viewpoints=num_viewpoints,
-        jit_percent=0.9, #TODO Change
+        jit_percent=0.1, #TODO Change
     )
     return replay_buffer
 

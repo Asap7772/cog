@@ -244,7 +244,6 @@ class CQLTrainer(TorchTrainer):
             
             obs = torch.transpose(all_obs[:-1],0,1).flatten(1)
             next_obs = torch.transpose(all_obs[1:],0,1).flatten(1)
-
         elif 'other_viewpoints' in batch:
             other_viewpoints = batch['other_viewpoints']
             next_other_viewpoints = batch['next_other_viewpoints']
