@@ -79,6 +79,8 @@ def rollout(
         max_path_length=np.inf,
         render=False,
         render_kwargs=None,
+        history=False,
+        history_len=3,
 ):
     """
     The following value for the following keys will be a 2D array, with the
@@ -108,13 +110,24 @@ def rollout(
     path_length = 0
     if render:
         env.render(**render_kwargs)
+    if history:
+        prev_imgs = [np.zeros_like(o['image']) for _ in range(history_len)]
     while path_length < max_path_length:
         # a, agent_info = agent.get_action(o)
         # TODO Remove hardcoding in the following line
-        try:
-            a, agent_info = agent.get_action(o['image'])
-        except:
-            a, agent_info = agent.get_action(o['image'], o['state'])
+        if history:
+            prev_imgs.append(o['image'])
+            prev_imgs.pop(0)
+            image = np.concatenate(prev_imgs)
+            try:
+                a, agent_info = agent.get_action(image)
+            except:
+                a, agent_info = agent.get_action(image, o['state'])
+        else:
+            try:
+                a, agent_info = agent.get_action(o['image'])
+            except:
+                a, agent_info = agent.get_action(o['image'], o['state'])
 
         next_o, r, d, env_info = env.step(a)
         observations.append(o)

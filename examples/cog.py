@@ -411,7 +411,7 @@ if __name__ == "__main__":
             # min_num_steps_before_training=100,
             # max_path_length=10,
             num_epochs=3000,
-            num_eval_steps_per_epoch=0, #TODO Change
+            num_eval_steps_per_epoch=5,
             num_trains_per_train_loop=1000,
             num_expl_steps_per_train_loop=1000,
             min_num_steps_before_training=1000,

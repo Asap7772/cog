@@ -14,6 +14,8 @@ class MdpPathCollector(PathCollector):
             render=False,
             sparse_reward=False,
             render_kwargs=None,
+            history=False,
+            history_len=3,
     ):
         if render_kwargs is None:
             render_kwargs = {}
@@ -27,6 +29,9 @@ class MdpPathCollector(PathCollector):
         self._num_steps_total = 0
         self._num_paths_total = 0
         self._sparse_reward = sparse_reward
+
+        self.history = history
+        self.history_len = history_len
 
     def update_policy(self, new_policy):
         self._policy = new_policy
@@ -49,6 +54,8 @@ class MdpPathCollector(PathCollector):
                 self._env,
                 self._policy,
                 max_path_length=max_path_length_this_loop,
+                history=self.history,
+                history_len=self.history_len,
             )
             path_len = len(path['actions'])
             if (
