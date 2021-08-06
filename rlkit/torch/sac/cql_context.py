@@ -9,7 +9,13 @@ import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
 from torch import autograd
+import matplotlib.pyplot as plt
+import os
+
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 import wandb
+
 
 class CQLTrainerContext(TorchTrainer):
     def __init__(
@@ -37,6 +43,9 @@ class CQLTrainerContext(TorchTrainer):
             policy_eval_start=0,
             num_qs=2,
             context_key='curr_diff',
+
+            log_pickle=True,
+            pickle_log_rate=5,
 
             # CQL
             min_q_version=3,
@@ -76,6 +85,9 @@ class CQLTrainerContext(TorchTrainer):
         self.soft_target_tau = soft_target_tau
         self.context_key = context_key
 
+        self.log_pickle=log_pickle
+        self.pickle_log_rate=pickle_log_rate
+
         self.hinge_trans=hinge_trans
         self.dist_diff=dist_diff
         self.dist1=dist1
@@ -88,7 +100,7 @@ class CQLTrainerContext(TorchTrainer):
         self.wand_b = wand_b
         self.real_data = real_data
         
-        self._log_epoch = 0
+        self.log_dir = log_dir
         if self.wand_b:
             if self.real_data:
                 wandb.init(project='real_drawer_cql', reinit=True)
@@ -197,7 +209,7 @@ class CQLTrainerContext(TorchTrainer):
         obs = batch['observations']
         actions = batch['actions']
         next_obs = batch['next_observations']
-        orient = batch[self.context_key] 
+        context = batch[self.context_key].flatten(1) # remove if necessary 
 
         if 'other_viewpoints' in batch:
             other_viewpoints = batch['other_viewpoints']
@@ -219,7 +231,7 @@ class CQLTrainerContext(TorchTrainer):
         Policy and Alpha Loss
         """
         new_obs_actions, policy_mean, policy_log_std, log_pi, *_ = self.policy(
-            obs, reparameterize=True, return_log_prob=True, extra_fc_input=orient
+            obs, reparameterize=True, return_log_prob=True, extra_fc_input=context
         )
         
         if self.use_automatic_entropy_tuning:
@@ -236,8 +248,8 @@ class CQLTrainerContext(TorchTrainer):
             q_new_actions = self.qf1(obs, new_obs_actions)
         else:
             q_new_actions = torch.min(
-                self.qf1(obs, new_obs_actions, orient),
-                self.qf2(obs, new_obs_actions, orient),
+                self.qf1(obs, new_obs_actions, context),
+                self.qf2(obs, new_obs_actions, context),
             )
 
         policy_loss = (alpha*log_pi - q_new_actions).mean()
@@ -248,21 +260,21 @@ class CQLTrainerContext(TorchTrainer):
             conventionally, there's not much difference in performance with having 20k 
             gradient steps here, or not having it
             """
-            policy_log_prob = self.policy.log_prob(obs, actions, extra_fc_input=orient)
+            policy_log_prob = self.policy.log_prob(obs, actions, extra_fc_input=context)
             policy_loss = (alpha * log_pi - policy_log_prob).mean()
         
         """
         QF Loss
         """
-        q1_pred = self.qf1(obs, actions,orient)
+        q1_pred = self.qf1(obs, actions,context)
         if self.num_qs > 1:
-            q2_pred = self.qf2(obs, actions,orient)
+            q2_pred = self.qf2(obs, actions,context)
         
         new_next_actions, _, _, new_log_pi, *_ = self.policy(
-            next_obs, reparameterize=True, return_log_prob=True, extra_fc_input=orient
+            next_obs, reparameterize=True, return_log_prob=True, extra_fc_input=context
         )
         new_curr_actions, _, _, new_curr_log_pi, *_ = self.policy(
-            obs, reparameterize=True, return_log_prob=True, extra_fc_input=orient
+            obs, reparameterize=True, return_log_prob=True, extra_fc_input=context
         )
 
         if not self.max_q_backup:
@@ -270,8 +282,8 @@ class CQLTrainerContext(TorchTrainer):
                 target_q_values = self.target_qf1(next_obs, new_next_actions)
             else:
                 target_q_values = torch.min(
-                    self.target_qf1(next_obs, new_next_actions, orient),
-                    self.target_qf2(next_obs, new_next_actions, orient),
+                    self.target_qf1(next_obs, new_next_actions, context),
+                    self.target_qf2(next_obs, new_next_actions, context),
                 )
             
             if not self.deterministic_backup:
@@ -305,14 +317,14 @@ class CQLTrainerContext(TorchTrainer):
 
         ## add CQL
         random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.num_random, actions.shape[-1]).uniform_(-1, 1).cuda()
-        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.policy, context=orient)
-        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.policy, context=orient)
-        q1_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.qf1, context=orient)
-        q2_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.qf2, context=orient)
-        q1_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.qf1, context=orient)
-        q2_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.qf2, context=orient)
-        q1_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf1, context=orient)
-        q2_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf2, context=orient)
+        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.policy, context=context)
+        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.policy, context=context)
+        q1_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.qf1, context=context)
+        q2_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.qf2, context=context)
+        q1_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.qf1, context=context)
+        q2_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.qf2, context=context)
+        q1_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf1, context=context)
+        q2_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf2, context=context)
 
         if self.min_q_version == 3:
             # importance sampled version
@@ -395,6 +407,19 @@ class CQLTrainerContext(TorchTrainer):
             Eval should set this to None.
             This way, these statistics are only computed for one batch.
             """
+
+            if self.log_pickle and self._log_epoch % self.pickle_log_rate == 0:
+                new_path = os.path.join(self.log_dir,'model_pkl')
+                if not os.path.isdir(new_path):
+                    os.mkdir(new_path)
+                torch.save({
+                    'qf1_state_dict': self.qf1.state_dict(),
+                    'qf2_state_dict': self.qf2.state_dict(),
+                    'targetqf1_state_dict': self.target_qf1.state_dict(),
+                    'targetqf2_state_dict': self.target_qf2.state_dict(),
+                    'policy_state_dict': self.policy.state_dict(),
+                }, os.path.join(new_path, str(self._log_epoch)+'.pt'))
+            
             policy_loss = (log_pi - q_new_actions).mean()
 
             self.eval_statistics['QF1 Loss'] = np.mean(ptu.get_numpy(qf1_loss))

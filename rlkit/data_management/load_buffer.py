@@ -14,7 +14,8 @@ def get_buffer_size(data):
     return num_transitions
 
 
-def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1, debug_shift=False, debug_scale_actions=False):
+def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1, debug_shift=False, debug_scale_actions=False, scale_type=1, num_hist=2, hist_state=False):
+    replay_buffer._num_prev = num_hist
     for j in range(len(data)):
         # import ipdb; ipdb.set_trace()
         assert (len(data[j]['actions']) == len(data[j]['observations']) == len(
@@ -25,6 +26,7 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
         
         rew = np.array(data[j]['rewards']) * (0.99**np.arange(len(data[j]['rewards'])))
         mcrewards = np.cumsum(rew[::-1])[::-1].tolist() 
+
         path = dict(
             rewards=[np.asarray([r]) for r in data[j]['rewards']],
             mcrewards=[np.asarray([r]) for r in mcrewards],
@@ -34,25 +36,57 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
             observations=process_images(data[j]['observations']),
             next_observations=process_images(
                 data[j]['next_observations']),
-            object_position = process_obj_positions(data[j]['observations'])
+            object_position = process_obj_positions(data[j]['observations']),
         )
 
         if debug_shift:
-            shift_num = 2
+            if hist_state:
+                prev_states = []
+                fv = [x['state'] for x in data[j]['observations']]
+                for i in range(num_hist):
+                    obs_prev = [np.zeros_like(fv[0])] * (i+1) + fv[:(-i-1)]
+                    prev_states.append(obs_prev)
+                prev_states = prev_states[::-1]
+                path['prev_states']=np.array(prev_states) 
+            else:
+                prev_observations = []
+                fv = [x['image']*255 for x in data[j]['observations']]
+                for i in range(num_hist):
+                    obs_prev = [np.zeros_like(fv[0])] * (i+1) + fv[:(-i-1)]
+                    prev_observations.append(obs_prev)
+                prev_observations = prev_observations[::-1]
+                path['prev_observations']=np.array(prev_observations)
+
+        if debug_scale_actions:
+            # import ipdb; ipdb.set_trace()
+            if scale_type == 1:
+                curr_diff = path['curr_diff'] = [(x[:-2])*1.1-x[:-2] for x in path['actions']]
+                path['actions'] = [np.clip(path['actions'][i]+np.concatenate((curr_diff[i],[0,0])),-1,1) for i in range(len(path['actions']))]
+            elif scale_type == 2:
+                curr_diff = path['curr_diff'] = [np.random.uniform(-0.05, 0.05, x[:-2].shape) for x in path['actions']]
+                path['actions'] = [np.clip(path['actions'][i]+np.concatenate((curr_diff[i],[0,0])),-1,1) for i in range(len(path['actions']))]
+            elif scale_type == 3:
+                a = 0.02
+                b = -0.01
+                c = 0.035
+                mod_val = int(len(path['actions'])/2.5)
+                curr_diff = [np.random.normal(a*(i%mod_val)+b,c,path['actions'][i][:-2].shape)**2 for i in range(len(path['actions']))]
+                path['actions'] = [np.clip(path['actions'][i]+np.concatenate((curr_diff[i],[0,0])),-1,1) for i in range(len(path['actions']))]
+            else:
+                assert False
+        if scale_rew:
+            path['rewards'] = [np.asarray([r*scale + shift]) for r in data[j]['rewards']]
+
+        if debug_shift:
+            shift_num = num_hist
             for key in path:
-                if key not in ['observations', 'next_observations']:
+                if key in ['prev_observations', 'prev_states']:
+                    path[key] = [path[key][i][shift_num:] for i in range(len(path[key]))]
+                elif key not in ['observations', 'next_observations']:
                     path[key] = path[key][:(-shift_num)]
                 else:
                     path[key] = path[key][shift_num:]
-        
-        if debug_scale_actions:
-            # import ipdb; ipdb.set_trace()
-            curr_diff = path['curr_diff'] = [np.random.uniform(0, 0.25, x[:-2].shape) - 0.5 for x in path['actions']]
-            path['actions'] = [np.clip(path['actions'][i]-np.concatenate((curr_diff[i],[0,0])),-1,1) for i in range(len(path['actions']))]
 
-        if scale_rew:
-            path['rewards'] = [np.asarray([r*scale + shift]) for r in data[j]['rewards']]
-            
         replay_buffer.add_path(path)
 
 
@@ -218,7 +252,8 @@ def load_data_from_npy_mult(variant, expl_env, observation_key, extra_buffer_siz
 
 def load_data_from_npy_chaining(variant, expl_env, observation_key,
                                 extra_buffer_size=100, duplicate=False, 
-                                num_traj=0, debug_shift=False, debug_scale_actions=False):
+                                num_traj=0, debug_shift=False, hist_state=False,
+                                debug_scale_actions=False,scale_type=1, num_hist=2):
     if type(variant['prior_buffer']) == tuple:
         variant['prior_buffer'], p_dict = variant['prior_buffer']
         variant['task_buffer'], t_dict = variant['task_buffer'] # may change
@@ -275,7 +310,7 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
             observation_key=observation_key,
         )
 
-    add_data_to_buffer(data_prior, replay_buffer,debug_shift=debug_shift, debug_scale_actions=debug_scale_actions)
+    add_data_to_buffer(data_prior, replay_buffer,debug_shift=debug_shift, debug_scale_actions=debug_scale_actions,scale_type=scale_type,hist_state=hist_state,num_hist=num_hist)
     top = replay_buffer._top
     print('Prior data loaded from npy file', top)
     if p_dict['alter_type'] == 'zero':
@@ -291,7 +326,7 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
         assert False
 
     top2 = replay_buffer._top
-    add_data_to_buffer(data_task, replay_buffer, debug_shift=debug_shift, debug_scale_actions=debug_scale_actions)
+    add_data_to_buffer(data_task, replay_buffer, debug_shift=debug_shift, debug_scale_actions=debug_scale_actions,scale_type=scale_type,hist_state=hist_state,num_hist=num_hist)
     if t_dict['alter_type'] == 'zero':
         replay_buffer._rewards[top:top2] = 0.0*replay_buffer._rewards[top:top2]
         print('Zero-ed the rewards for task data', top)

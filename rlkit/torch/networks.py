@@ -17,7 +17,6 @@ from rlkit.torch.modules import LayerNorm
 def identity(x):
     return x
 
-
 class Mlp(nn.Module):
     def __init__(
             self,

@@ -183,7 +183,7 @@ def process_images(observations, small_img=False, imgstate=False):
     return output
 
 
-def load_path_kitchen(path, rew_path, replay_buffer, rescale=True, terminals=False):
+def load_path_kitchen(path, rew_path, replay_buffer, rescale=True, terminals=False, true_actions=False):
     data = np.load(path,allow_pickle=True)
     if rew_path is not None:
         rew = np.load(rew_path,allow_pickle=True)
@@ -196,7 +196,7 @@ def load_path_kitchen(path, rew_path, replay_buffer, rescale=True, terminals=Fal
             data[i]['terminals'][-1] = 1
             data[i]['rewards'] = data[i]['terminals'] * 10
 
-    add_data_to_buffer_kitchen(data, replay_buffer)
+    add_data_to_buffer_kitchen(data, replay_buffer,true_actions=true_actions)
 
     if rescale:
         #rescaling of actions
@@ -213,7 +213,7 @@ def load_path_kitchen(path, rew_path, replay_buffer, rescale=True, terminals=Fal
         
         all_actions = replay_buffer._actions[:replay_buffer._top]
 
-def add_data_to_buffer_kitchen(data, replay_buffer, num_hist = 2):
+def add_data_to_buffer_kitchen(data, replay_buffer, num_hist = 2,true_actions=False):
     for j in range(len(data)):
         if 'next_actions' not in data[j]:
             data[j]['next_actions'] = np.concatenate((data[j]['actions'][1:], data[j]['actions'][-1:]))
@@ -236,24 +236,31 @@ def add_data_to_buffer_kitchen(data, replay_buffer, num_hist = 2):
                 next_viewpoints.append([x['images' + str(i)]*255 for x in data[j]['next_observations']])
         
         diff = []
+        diff_states = []
+        action_fs = []
         for i in range(len(data[j]['observations'])):
             s1,s2 = data[j]['observations'][i]['state'], data[j]['next_observations'][i]['state']
             curr_diff = (s2-s1)-data[j]['actions'][i]
+            diff_states.append((s2-s1)[:6])
             diff.append(curr_diff[:6])
 
         path = dict(
             rewards=[np.asarray([r]) for r in data[j]['rewards']],
             mcrewards=[np.asarray([r]) for r in mcrewards],
             actions=data[j]['actions'],
-            next_actions=data[j]['next_actions'],
+            next_actions=data[j]['next_actions'], #todo add fix for next actions
             terminals=[np.asarray([t]) for t in data[j]['terminals']],
             observations=process_images_kitchen(data[j]['observations']),
             next_observations=process_images_kitchen(data[j]['next_observations']),
             viewpoints=viewpoints,
             next_viewpoints=next_viewpoints,
             curr_diff=diff,
-            prev_observations=prev_observations,
+            diff_states=diff_states,
+            prev_observations=np.array(prev_observations),
         )
+
+        if true_actions:
+            path['actions'] = [path['actions'][i] - np.concatenate((diff[i], [0,0])) for i in range(len(path['actions']))]
         replay_buffer.add_path(path)
 
 def process_images_kitchen(observations):

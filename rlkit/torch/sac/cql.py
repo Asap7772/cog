@@ -80,7 +80,6 @@ class CQLTrainer(TorchTrainer):
             dr3=False,
             dr3_feat=False,
             dr3_weight=0.0,
-
             history=False
     ):
         super().__init__()

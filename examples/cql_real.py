@@ -272,6 +272,7 @@ def experiment(variant):
         if args.azure:
             data_path = px
         paths.append((data_path, None))
+        
     elif args.buffer == 6:
         print('Pick Kitchen 1')
         prior = [
@@ -350,18 +351,15 @@ def experiment(variant):
         print('loading')
         replay_buffer = pickle.load(open(path,'rb'))
         print('done loading')
-
-        if variant['no_terminals']:
-            replay_buffer._terminals *= 0 # no terminals
         variant['use_positive_rew'] = False
 
-        pts = np.load('toolusepts.npy', allow_pickle=True)
+        pts = np.load('/nfs/kun1/users/asap7772/cog/toolusepts.npy', allow_pickle=True)
         dist = np.array([np.linalg.norm(pts[i,0] - pts[i,1]) for i in range(pts.shape[0])])
         rew = (dist < variant['dist_thresh']) * 1 # change from bool to int
 
         replay_buffer._rewards[:rew.shape[0]] = rew[None].T
         replay_buffer._terminals[:rew.shape[0]] = rew[None].T
-        
+
         #original is (0, 1)
         if variant['rew_type'] == 1: #(0, 10)
             replay_buffer._rewards *= 10
@@ -372,8 +370,13 @@ def experiment(variant):
             replay_buffer._rewards[:rew.shape[0]] = (dist[None].T)/5 #move away task non sparse
         elif variant['rew_type'] == 4:
             replay_buffer._rewards[:rew.shape[0]] = (50-dist[None].T)/5 #move together task non sparse
+        elif variant['rew_type'] == 5:
+            tmp = replay_buffer._obs['state'][:,:2]-[0,0.5]
+            replay_buffer._rewards = ((np.abs(tmp).sum(1) < 0.1) * 10)[None].T
+            replay_buffer._terminals = replay_buffer._rewards/10
 
-        replay_buffer._size = rew.shape[0] # change buffer shape to updated size
+        if variant['rew_type'] not in [5]:
+            replay_buffer._size = rew.shape[0] # change buffer shape to updated size
 
         replay_buffer_new = ObsDictReplayBuffer(replay_buffer.max_size, replay_buffer.env, dummy=True)
         replay_buffer_new.load_from(replay_buffer)
@@ -383,11 +386,14 @@ def experiment(variant):
         replay_buffer.color_jitter=True
         replay_buffer.warp_img=variant['warp']
 
-        if variant['terminals']:
-            if variant['use_positive_rew']:
-                replay_buffer._terminals = (replay_buffer._rewards/10).int()
-            else:
-                replay_buffer._terminals = (replay_buffer._rewards).int()
+        if variant['no_terminals']:
+            replay_buffer._terminals *= 0 # no terminals
+        else:
+            if variant['terminals']:
+                if variant['use_positive_rew']:
+                    replay_buffer._terminals = (replay_buffer._rewards/10).int()
+                else:
+                    replay_buffer._terminals = (replay_buffer._rewards).int()
 
     elif args.buffer in [6,7,8,9]:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'], num_viewpoints=num_viewpoints, action_shape=(7,))

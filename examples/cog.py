@@ -46,7 +46,11 @@ def experiment(variant):
                 super().__init__(env)
             
             def action(self, act):
-                act = np.concatenate((np.zeros_like(act[:-1].shape), act))
+                if variant['scale_type'] == 1:
+                    act = np.concatenate((act-np.concatenate((act[:-2]*0.9,[0,0])), act))
+                elif variant['scale_type'] == 2:
+                    eps = np.random.uniform(-0.05, 0.05, act[:-2].shape)
+                    act = np.concatenate((eps, act[:-2]-eps, act[-2:]))
                 return act
         eval_env = ActionWrapper(eval_env)
     expl_env = eval_env
@@ -83,11 +87,15 @@ def experiment(variant):
     cnn_params.update(
         input_width=48,
         input_height=48,
-        input_channels=3,
+        input_channels=9 if variant['history'] else 3,
         output_size=1,
         added_fc_input_size=action_dim + 6 if variant['context'] else action_dim,
         normalize_conv_activation=variant['normalize_conv_activation']
     )
+
+    if variant['hist_state']:
+        cnn_params['added_fc_input_size'] = action_dim + 10 *variant['num_hist']
+    
     if variant['vqvae_enc']:
         if variant['bottleneck']:
             qf1 = ConcatBottleneckVQVAECNN(action_dim, bottleneck_dim=variant['bottleneck_dim'],
@@ -175,6 +183,9 @@ def experiment(variant):
             spectral_norm_conv=False,
             normalize_conv_activation=False,
         )
+
+        if variant['hist_state']:
+            cnn_params['added_fc_input_size'] = 10 *variant['num_hist']
         policy_obs_processor = CNN(**cnn_params)
 
     policy = TanhGaussianPolicy(
@@ -189,7 +200,9 @@ def experiment(variant):
     eval_path_collector = MdpPathCollector(
         eval_env,
         eval_policy,
+        history=variant['history'],
     )
+
     expl_path_collector = CustomMDPPathCollector(
         eval_env,
     )
@@ -206,7 +219,10 @@ def experiment(variant):
             duplicate=variant['duplicate'],
             num_traj=variant['num_traj'],
             debug_scale_actions=variant['debug_scale_actions'],
-            debug_shift=variant['debug_shift']
+            debug_shift=variant['debug_shift'],
+            scale_type=variant['scale_type'],
+            hist_state=variant['hist_state'],
+            num_hist=variant['num_hist'],
         )
 
     if variant['val']:
@@ -214,8 +230,7 @@ def experiment(variant):
             replay_buffer_val = load_data_from_npy_chaining_mult(
                 variant, expl_env, observation_key)
         else:
-            buffers = [
-            ]
+            buffers = []
             ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
             if args.buffer == 30:
                 path = p_data_path
@@ -326,7 +341,7 @@ def experiment(variant):
         )
         del qf2, target_qf2
         import torch; torch.cuda.empty_cache()
-    elif variant['debug_scale_actions'] and variant['context']:
+    elif variant['debug_scale_actions'] and variant['context'] or variant['hist_state']:
         trainer = CQLTrainerContext(
             env=eval_env,
             policy=policy,
@@ -347,7 +362,7 @@ def experiment(variant):
             validation=variant['val'],
             validation_buffer=replay_buffer_val,
             real_data=False,
-            context_key='curr_diff', #TODO change from hardcoded value
+            context_key='curr_diff' if variant['debug_scale_actions'] else 'prev_states', #TODO change from hardcoded value
             **variant['trainer_kwargs']
         )
     else:
@@ -371,6 +386,7 @@ def experiment(variant):
             validation=variant['val'],
             validation_buffer=replay_buffer_val,
             squared=variant['squared'],
+            history=variant['history'],
             **variant['trainer_kwargs']
         )
 
@@ -413,7 +429,7 @@ if __name__ == "__main__":
             num_epochs=3000,
             num_eval_steps_per_epoch=5,
             num_trains_per_train_loop=1000,
-            num_expl_steps_per_train_loop=1000,
+            num_expl_steps_per_train_loop=0,
             min_num_steps_before_training=1000,
             max_path_length=30,
             batch_size=256,
@@ -492,8 +508,8 @@ if __name__ == "__main__":
     parser.add_argument("--no-deterministic-backup", action="store_true",
                         default=False,
                         help="By default, deterministic backup is used")
-    parser.add_argument("--policy-eval-start", default=10000,
-                        type=int)
+    parser.add_argument("--policy-eval-start", default=1e9,
+                        type=float)
     parser.add_argument("--policy-lr", default=1e-4, type=float)
     parser.add_argument("--min-q-version", default=3, type=int,
                         help=("min_q_version = 3 (CQL(H)), "
@@ -524,15 +540,23 @@ if __name__ == "__main__":
     parser.add_argument('--singleQ', action='store_true')
     parser.add_argument('--debug_scale_actions', action='store_true')
     parser.add_argument('--debug_shift', action='store_true')
+    parser.add_argument('--hist_state', action='store_true')
     parser.add_argument('--context', action='store_true')
     parser.add_argument('--normalize_conv_activation', action='store_true')
+    parser.add_argument('--history', action='store_true')
     parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--scale_type', type=int, default=1)
+    parser.add_argument('--num_hist', type=int, default=1)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['scale_type']=args.scale_type
     variant['context'] = args.context
+    variant['history'] = args.history
     variant['debug_scale_actions'] = args.debug_scale_actions
     variant['debug_shift'] = args.debug_shift
+    variant['num_hist'] = args.num_hist
+    variant['hist_state'] = args.hist_state
     variant['algorithm_kwargs']['batch_size'] = args.batch_size
     variant['trainer_kwargs']['discount'] = args.discount
     variant['squared'] = args.squared
@@ -751,6 +775,14 @@ if __name__ == "__main__":
             path  = p_data_path
             ba('drawer_prior_multobj_Widow250DoubleDrawerOpenGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-06-23T11-52-07_10000.npy', p=args.prob, y='zero')
             ba('drawer_task_multobj_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-06-23T11-52-15_9750.npy', p=args.prob)
+        elif args.buffer == 38:
+            path  = p_data_path
+            ba('drawer_prior_multobj_Widow250DoubleDrawerOpenGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-08-02T23-59-33_9500.npy', p=args.prob, y='zero')
+            ba('drawer_task_multobj_Widow250DoubleDrawerGraspNeutralRandObj-v0_10K_save_all_noise_0.1_2021-08-02T23-59-38_9500.npy', p=args.prob)
+        elif args.buffer == 39:
+            path  = p_data_path
+            ba('drawer_prior_overlap_Widow250DoubleDrawerOpenGraspNeutralRandObjOverlap-v0_10K_save_all_noise_0.1_2021-08-02T23-58-16_9500.npy', p=args.prob, y='zero')
+            ba('drawer_task_overlap_Widow250DoubleDrawerGraspNeutralRandObjOverlap-v0_10K_save_all_noise_0.1_2021-08-02T23-58-16_9500.npy', p=args.prob)
         elif args.buffer == 9000:
             variant['debug'] = True
             path  = p_data_path
@@ -781,7 +813,7 @@ if __name__ == "__main__":
     variant['trainer_kwargs']['min_q_weight'] = args.min_q_weight
     variant['trainer_kwargs']['policy_lr'] = args.policy_lr
     variant['trainer_kwargs']['min_q_version'] = args.min_q_version
-    variant['trainer_kwargs']['policy_eval_start'] = args.policy_eval_start
+    variant['trainer_kwargs']['policy_eval_start'] = int(args.policy_eval_start)
     variant['trainer_kwargs']['lagrange_thresh'] = args.lagrange_thresh
     variant['trainer_kwargs']['with_lagrange'] = args.use_lagrange
     variant['duplicate'] = args.duplicate
