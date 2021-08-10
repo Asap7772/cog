@@ -344,6 +344,21 @@ def experiment(variant):
             paths.append(('/home/asap7772/put_potato_on_plate/out.npy','/home/asap7772/put_potato_on_plate/out_rew.npy'))
         else:
             paths.append(('/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out.npy','/home/asap7772/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen2_room8052/put_potato_on_plate/out_rew.npy'))
+    elif args.buffer == 10:
+        print('Pick Kitchen 1 Shifted')
+        num_viewpoints = 3
+        task = [
+            (
+                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy_shifted_128/toykitchen1/put_pepper_in_pan/out.npy',
+                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy_shifted_128/toykitchen1/put_pepper_in_pan/out_rew.npy'
+            ),
+            (
+                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy_shifted_128/toykitchen1/put_pepper_in_pot_or_pan/out.npy',
+                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy_shifted_128/toykitchen1/put_pepper_in_pot_or_pan/out_rew.npy'
+            )
+        ]
+        for t in task:
+            paths.append(t)
     else:
         assert False
     
@@ -395,7 +410,7 @@ def experiment(variant):
                 else:
                     replay_buffer._terminals = (replay_buffer._rewards).int()
 
-    elif args.buffer in [6,7,8,9]:
+    elif args.buffer in [6,7,8,9,10]:
         replay_buffer = get_buffer(observation_key=observation_key, color_jitter = variant['color_jitter'], num_viewpoints=num_viewpoints, action_shape=(7,))
         for path, rew_path in paths:
             print(path)

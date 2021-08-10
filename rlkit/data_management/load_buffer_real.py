@@ -88,7 +88,10 @@ def load_data(path, rew_path, small_img=False, bc=False, des_per=-1, num_traj = 
 def load_path(path, rew_path, replay_buffer, small_img=False, bc=False, imgstate=False, des_per=-1, num_traj = 100):
     data = np.load(path,allow_pickle=True)
     if rew_path is not None:
-        rew = pickle.load(open(rew_path, 'rb'))
+        try:
+            rew = pickle.load(open(rew_path, 'rb'))
+        except:
+            rew = np.load(open(rew_path, 'rb'), allow_pickle=True)
         assert len(data) == len(rew)
         for i in range(len(data)):
             data[i]['rewards'] = np.array(rew[i]).tolist()
