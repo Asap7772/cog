@@ -12,7 +12,7 @@ import wandb
 import os
 
 
-class BRACTrainer(TorchTrainer):
+class BRACShiftedTrainer(TorchTrainer):
     def __init__(
             self,
             env,
@@ -150,7 +150,7 @@ class BRACTrainer(TorchTrainer):
             self.qf1(obs, new_obs_actions),
             self.qf2(obs, new_obs_actions),
         )
-        policy_loss = (alpha*log_pi - self.beta * log_pi_behavior - q_new_actions).mean()
+        policy_loss = (alpha*log_pi - q_new_actions).mean()
 
 
         if self.continual:
@@ -174,15 +174,13 @@ class BRACTrainer(TorchTrainer):
             next_obs, reparameterize=True, return_log_prob=True,
         )
 
-        new_log_pi_behavior= self.behavior_policy.log_prob(next_obs, new_next_actions)
-
 
         target_q_values = torch.min(
             self.target_qf1(next_obs, new_next_actions),
             self.target_qf2(next_obs, new_next_actions),
-        ) - alpha * new_log_pi + self.beta * new_log_pi_behavior[None].T
+        ) - alpha * new_log_pi 
 
-        q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
+        q_target = self.reward_scale * (rewards + self.beta * log_pi_behavior[None].T) + (1. - terminals) * self.discount * target_q_values
 
         qf1_loss = self.qf_criterion(q1_pred, q_target.detach())
         qf2_loss = self.qf_criterion(q2_pred, q_target.detach())
