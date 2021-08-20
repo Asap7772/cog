@@ -38,6 +38,8 @@ class CNN(nn.Module):
             spectral_norm_conv=False,
             spectral_norm_fc=False,
             normalize_conv_activation=False,
+            dropout=False,
+            dropout_prob=0.2,
     ):
         if hidden_sizes is None:
             hidden_sizes = []
@@ -81,6 +83,13 @@ class CNN(nn.Module):
         self.pool_layers = nn.ModuleList()
         self.fc_layers = nn.ModuleList()
         self.fc_norm_layers = nn.ModuleList()
+
+
+        self.dropout = dropout
+        self.dropout_prob = dropout_prob
+
+        self.dropout_layer = nn.Dropout(p=self.dropout_prob)
+        self.dropout2d_layer = nn.Dropout2d(p=self.dropout_prob)
 
         for i, (out_channels, kernel_size, stride, padding) in enumerate(
                 zip(n_channels, kernel_sizes, strides, paddings)
@@ -225,6 +234,8 @@ class CNN(nn.Module):
             if self.pool_type != 'none' and len(self.pool_layers) > i:
                 h = self.pool_layers[i](h)
             h = self.hidden_activation(h)
+            if self.dropout:
+                h = self.dropout2d_layer(h)
         return h
 
     def apply_forward_fc(self, h):
@@ -232,15 +243,17 @@ class CNN(nn.Module):
             h = layer(h)
             if self.fc_normalization_type != 'none':
                 h = self.fc_norm_layers[i](h)
+
             h = self.hidden_activation(h)
+            if self.dropout:
+                h = self.dropout_layer(h)
         return h
 
-
-
 class RegressCNN(CNN):
-    def __init__(self, *args, dim=1, **kwargs):
+    def __init__(self, *args, dim=1,conv_output_flat_size=-1, **kwargs):
         super().__init__(*args, **kwargs)
         self.dim = dim
+        assert False
         
         init_w=1e-4
         self.regress_layer = nn.Linear(conv_output_flat_size, dim)

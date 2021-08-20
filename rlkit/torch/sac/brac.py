@@ -3,11 +3,13 @@ from collections import OrderedDict
 import numpy as np
 import torch
 import torch.optim as optim
-from torch import nn as nn
+from torch import log2_, nn as nn
 
 import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
+import wandb
+import os
 
 
 class BRACTrainer(TorchTrainer):
@@ -37,6 +39,15 @@ class BRACTrainer(TorchTrainer):
 
             use_automatic_entropy_tuning=True,
             target_entropy=None,
+            
+            log_dir=None,
+            wand_b=True,
+            variant_dict=None,
+            real_data=False,
+            log_pickle=True,
+            pickle_log_rate=5,
+            *args,
+            **kwargs
     ):
         super().__init__()
         self.env = env
@@ -49,6 +60,18 @@ class BRACTrainer(TorchTrainer):
         self.target_qf2 = target_qf2
         self.soft_target_tau = soft_target_tau
         self.target_update_period = target_update_period
+        self.real_data = real_data
+
+        self.log_pickle = log_pickle
+        self.pickle_log_rate = pickle_log_rate
+        self._log_epoch = 0
+        self.log_dir = log_dir
+        self.wand_b = wand_b
+        if self.wand_b:
+            wandb.init(project='cog_brac', reinit=True)
+            wandb.run.name=log_dir.split('/')[-1]
+            if variant_dict is not None:
+                wandb.config.update(variant_dict)
 
         self.use_automatic_entropy_tuning = use_automatic_entropy_tuning
         if self.use_automatic_entropy_tuning:
@@ -138,12 +161,12 @@ class BRACTrainer(TorchTrainer):
         target_q_values = torch.min(
             self.target_qf1(next_obs, new_next_actions),
             self.target_qf2(next_obs, new_next_actions),
-        ) - alpha * new_log_pi + self.beta * new_log_pi_behavior
+        ) - alpha * new_log_pi + self.beta * new_log_pi_behavior[None].T
 
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
+
         qf1_loss = self.qf_criterion(q1_pred, q_target.detach())
         qf2_loss = self.qf_criterion(q2_pred, q_target.detach())
-
 
         """
         Update networks
@@ -179,14 +202,28 @@ class BRACTrainer(TorchTrainer):
             """
             Eval should set this to None.
             This way, these statistics are only computed for one batch.
-            """
+            """ 
+            if self.log_pickle and self._log_epoch % self.pickle_log_rate == 0:
+                new_path = os.path.join(self.log_dir,'model_pkl')
+                if not os.path.isdir(new_path):
+                    os.mkdir(new_path)
+                torch.save({
+                    'qf1_state_dict': self.qf1.state_dict(),
+                    'qf2_state_dict': self.qf2.state_dict(),
+                    'targetqf1_state_dict': self.target_qf1.state_dict(),
+                    'targetqf2_state_dict': self.target_qf2.state_dict(),
+                    'policy_state_dict': self.policy.state_dict(),
+                }, os.path.join(new_path, str(self._log_epoch)+'.pt'))
+
             policy_loss = (log_pi - q_new_actions).mean()
+
+            log1 = (q_new_actions + self.beta * log_pi_behavior)
+            log2 = (q_new_actions - self.beta * log_pi_behavior)
 
             self.eval_statistics['QF1 Loss'] = np.mean(ptu.get_numpy(qf1_loss))
             self.eval_statistics['QF2 Loss'] = np.mean(ptu.get_numpy(qf2_loss))
-            self.eval_statistics['Policy Loss'] = np.mean(ptu.get_numpy(
-                policy_loss
-            ))
+            self.eval_statistics['Policy Loss'] = np.mean(ptu.get_numpy(policy_loss))
+
             self.eval_statistics.update(create_stats_ordered_dict(
                 'Q1 Predictions',
                 ptu.get_numpy(q1_pred),
@@ -195,6 +232,16 @@ class BRACTrainer(TorchTrainer):
                 'Q2 Predictions',
                 ptu.get_numpy(q2_pred),
             ))
+
+            self.eval_statistics.update(create_stats_ordered_dict(
+                'Conservative Q Value Plus',
+                ptu.get_numpy(log1),
+            ))
+            self.eval_statistics.update(create_stats_ordered_dict(
+                'Conservative Q Value Minus',
+                ptu.get_numpy(log2),
+            ))
+
             self.eval_statistics.update(create_stats_ordered_dict(
                 'Q Targets',
                 ptu.get_numpy(q_target),
@@ -204,8 +251,16 @@ class BRACTrainer(TorchTrainer):
                 ptu.get_numpy(log_pi),
             ))
             self.eval_statistics.update(create_stats_ordered_dict(
+                'Log Pis Behavior',
+                ptu.get_numpy(log_pi_behavior),
+            ))
+            self.eval_statistics.update(create_stats_ordered_dict(
                 'Policy mu',
                 ptu.get_numpy(policy_mean),
+            ))
+            self.eval_statistics.update(create_stats_ordered_dict(
+                'Q1 Predictions',
+                ptu.get_numpy(q1_pred),
             ))
             self.eval_statistics.update(create_stats_ordered_dict(
                 'Policy log std',
@@ -214,6 +269,10 @@ class BRACTrainer(TorchTrainer):
             if self.use_automatic_entropy_tuning:
                 self.eval_statistics['Alpha'] = alpha.item()
                 self.eval_statistics['Alpha Loss'] = alpha_loss.item()
+            
+            if self.wand_b:
+                wandb.log({'trainer/'+k:v for k,v in self.eval_statistics.items()}, step=self._log_epoch)
+            self._log_epoch += 1
         self._n_train_steps_total += 1
 
     def get_diagnostics(self):

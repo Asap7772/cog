@@ -11,6 +11,7 @@ from rlkit.torch.torch_rl_algorithm import TorchTrainer
 from torch import autograd
 import matplotlib.pyplot as plt
 import os
+# from rlkit.data_management.warp_replay_buffer_wrapper import WarpPerspective
 
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
@@ -80,7 +81,12 @@ class CQLTrainer(TorchTrainer):
             dr3=False,
             dr3_feat=False,
             dr3_weight=0.0,
-            history=False
+            history=False,
+            random_warp=False,
+
+            regularization=False,
+            regularization_weight=0.0,
+            regularization_type='l2',
     ):
         super().__init__()
         self.env = env
@@ -95,6 +101,14 @@ class CQLTrainer(TorchTrainer):
         self.log_pickle=log_pickle
         self.pickle_log_rate=pickle_log_rate
         self.first_viewpoint = first_viewpoint
+        self.regularization = regularization 
+        self.regularization_const = regularization_weight
+        self.regularization_type = regularization_type
+
+        self.random_warp = random_warp
+        if random_warp:
+            input_height=64
+            self.augmentation_transform = WarpPerspective(input_height) 
 
         self.hinge_trans=hinge_trans
         self.dist_diff=dist_diff
@@ -236,7 +250,12 @@ class CQLTrainer(TorchTrainer):
         obs = batch['observations'] if 'observations' in batch else batch['observations_image']
         actions = batch['actions']
         next_obs = batch['next_observations'] if 'next_observations' in batch else batch['next_observations_image']
-        
+
+        if self.random_warp:
+            full_img_size = (-1, 3) + image_size
+            obs = self.augmentation_transform(obs.reshape(full_img_size)).flatten(1)
+            next_obs = self.augmentation_transform(next_obs.reshape(full_img_size)).flatten(1)
+
         if self.history:
             prev_obs = batch['prev_observations']
             all_obs = torch.cat((prev_obs, obs[None],next_obs[None]),0) #9 channel image
@@ -392,6 +411,33 @@ class CQLTrainer(TorchTrainer):
             """Subtract the log likelihood of data"""
             min_qf1_loss = min_qf1_loss - q1_pred.mean() * self.min_q_weight
             min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.min_q_weight
+
+        if self.regularization:
+            if self.regularization_type == 'l1':
+                criterion = torch.nn.L1Loss()
+                
+                qf1_reg_loss = 0
+                for param in self.qf1.parameters():
+                    qf1_reg_loss += criterion(param)
+                min_qf1_loss += self.regularization_const * qf1_reg_loss
+
+                qf2_reg_loss = 0
+                for param in self.qf2.parameters():
+                    qf2_reg_loss += criterion(param)
+                min_qf2_loss += self.regularization_const * qf2_reg_loss
+            elif self.regularization_type == 'l2': # alternate to using weight decay
+                criterion = torch.nn.MSELoss() #MSE is squared L2 loss
+                
+                qf1_reg_loss = 0
+                for param in self.qf1.parameters():
+                    qf1_reg_loss += torch.sqrt(criterion(param))
+                min_qf1_loss += self.regularization_const * qf1_reg_loss
+
+                qf2_reg_loss = 0
+                for param in self.qf2.parameters():
+                    qf2_reg_loss += torch.sqrt(criterion(param))
+                min_qf2_loss += self.regularization_const * qf2_reg_loss
+
         
         if self.bottleneck:
             cond = self._current_epoch < self.start_bottleneck 

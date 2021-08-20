@@ -360,7 +360,7 @@ if __name__ == "__main__":
         variant['prior_buffer'] = buffers[0]
         variant['task_buffer'] = buffers[1]
     elif args.buffer == 37:
-        path = '/global/scratch/stephentian/offline_rl/cog_data/'
+        path = '/nfs/kun1/users/asap7772/cog_data/'
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path + x, dict(p=p, alter_type=y, )))
         ba('closed_drawer_prior.npy', y ='noise')

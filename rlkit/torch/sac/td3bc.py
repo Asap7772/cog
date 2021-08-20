@@ -5,6 +5,7 @@ from torch import nn as nn
 import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
+import torch.optim as optim
 
 
 class TD3BCTrainer(TorchTrainer):
@@ -84,7 +85,7 @@ class TD3BCTrainer(TorchTrainer):
             self.qf1(obs, new_obs_actions),
             self.qf2(obs, new_obs_actions),
         )
-        policy_loss = ((actions - q_new_actions)**2 + self.beta * q_new_actions).mean()
+        policy_loss = (-self.beta * q_new_actions + (actions - new_obs_actions)**2).mean()
 
         """
         QF Loss

@@ -745,7 +745,7 @@ class ObsDictReplayBuffer(ReplayBuffer):
             'action_fs': action_fs,
             'indices': np.array(indices).reshape(-1, 1),
             'prev_observations':np.array(prev_obs),
-            'prev_states':np.transpose(np.array(prev_states),(1,0,2)),
+            # 'prev_states':np.transpose(np.array(prev_states),(1,0,2)),
         })
 
         if other_viewpoints is not None and other_viewpoints != []:

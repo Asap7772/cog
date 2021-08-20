@@ -9,12 +9,14 @@ from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_context import CQLTrainerContext
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
 from rlkit.torch.sac.cql_single import CQLSingleTrainer
+from rlkit.torch.sac.brac import BRACTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, \
     ConcatBottleneckVQVAECNN, VQVAEEncoderCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.util.video import VideoSaveFunction
 from rlkit.launchers.launcher_util import setup_logger
 import gym
+import torch
 
 import argparse, os
 import roboverse
@@ -58,6 +60,12 @@ def experiment(variant):
     print(action_dim)
 
     cnn_params = variant['cnn_params']
+    
+    cnn_params.update(
+        dropout = variant['dropout'],
+        dropout_prob = variant['dropout_prob'],
+    )
+    
     if variant['bigger_net']:
         print('bigger_net')
         cnn_params.update(
@@ -200,7 +208,6 @@ def experiment(variant):
     eval_path_collector = MdpPathCollector(
         eval_env,
         eval_policy,
-        history=variant['history'],
     )
 
     expl_path_collector = CustomMDPPathCollector(
@@ -276,7 +283,41 @@ def experiment(variant):
         assert set(np.unique(replay_buffer._rewards)).issubset(
             set(6.0 * np.array([0, 1]) + 4.0))
 
-    if variant['mcret']:
+    if variant['brac']:
+        cnn_params.update(
+            output_size=256,
+            added_fc_input_size=6 if variant['context'] else 0,
+            hidden_sizes=[1024, 512],
+            spectral_norm_fc=False,
+            spectral_norm_conv=False,
+            normalize_conv_activation=False,
+        )
+
+        behavior_policy = TanhGaussianPolicy(
+            obs_dim=cnn_params['output_size'],
+            action_dim=action_dim,
+            hidden_sizes=[256, 256, 256],
+            obs_processor=CNN(**cnn_params),
+            shared_encoder=variant['share_encoder'],
+        )
+        
+        import torch
+        behavior_policy.load_state_dict(torch.load(variant['behavior_path'])['policy_state_dict'] if variant['behavior_path'] else None)
+
+        trainer = BRACTrainer(
+            env=eval_env,
+            policy=policy,
+            behavior_policy=behavior_policy.to(ptu.device),
+            qf1=qf1,
+            qf2=qf2,
+            target_qf1=target_qf1,
+            target_qf2=target_qf2,
+            beta=variant['beta'],
+            log_dir=variant['log_dir'],
+            variant_dict=variant,
+            **variant['trainer_kwargs']
+        )
+    elif variant['mcret']:
         trainer = CQLMCTrainer(
             env=eval_env,
             policy=policy,
@@ -387,6 +428,9 @@ def experiment(variant):
             validation_buffer=replay_buffer_val,
             squared=variant['squared'],
             history=variant['history'],
+            regularization = variant['regularization'],
+            regularization_type = variant['regularization_type'],
+            regularization_weight = variant['regularization_weight'],
             **variant['trainer_kwargs']
         )
 
@@ -547,11 +591,30 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--scale_type', type=int, default=1)
     parser.add_argument('--num_hist', type=int, default=1)
-
+    parser.add_argument('--brac', action='store_true')
+    parser.add_argument('--beta', type=float, default=1.0)
+    parser.add_argument('--behavior_path', default='/nfs/kun1/users/asap7772/cog/data/behavior-bc/behavior_bc_2021_08_18_21_07_43_0000--s-0/model_pkl/200.pt', type=str)
+    parser.add_argument('--regularization', action='store_true')
+    parser.add_argument('--regularization_type', type='str', default='l2')
+    parser.add_argument('--regularization_weight', type=float, default=0.0)
+    parser.add_argument('--dropout', action='store_true')
+    parser.add_argument('--dropout_prob', type=float, default=0.0)
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    
+    variant['regularization'] = args.regularization
+    variant['regularization_type'] = args.regularization_type
+    variant['regularization_weight'] = args.regularization_weight
+
+    variant['dropout'] = args.dropout
+    variant['dropout_prob'] = args.dropout_prob
+
+    variant['behavior_path'] = args.behavior_path
+    variant['num_traj'] = args.num_traj
+    variant['beta'] = args.beta
     variant['scale_type']=args.scale_type
     variant['context'] = args.context
+    variant['brac'] = args.brac
     variant['history'] = args.history
     variant['debug_scale_actions'] = args.debug_scale_actions
     variant['debug_shift'] = args.debug_shift

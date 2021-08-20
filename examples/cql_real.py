@@ -349,12 +349,12 @@ def experiment(variant):
         num_viewpoints = 3
         task = [
             (
-                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy_shifted_128/toykitchen1/put_pepper_in_pan/out.npy',
-                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy_shifted_128/toykitchen1/put_pepper_in_pan/out_rew.npy'
+                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pepper_in_pan/out.npy',
+                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pepper_in_pan/out_rew.npy'
             ),
             (
-                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy_shifted_128/toykitchen1/put_pepper_in_pot_or_pan/out.npy',
-                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy_shifted_128/toykitchen1/put_pepper_in_pot_or_pan/out_rew.npy'
+                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pepper_in_pot_or_pan/out.npy',
+                '/nfs/kun1/users/asap7772/real_data_kitchen/bridge_data_numpy/toykitchen1/put_pepper_in_pot_or_pan/out_rew.npy'
             )
         ]
         for t in task:

@@ -18,6 +18,70 @@ def atanh(x):
     one_minus_x = (1 - x).clamp(min=1e-6)
     return 0.5*torch.log(one_plus_x/ one_minus_x)
 
+class DeterministicPolicy(Mlp, ExplorationPolicy):
+    def __init__(
+            self,
+            hidden_sizes,
+            obs_dim,
+            action_dim,
+            std=None,
+            init_w=1e-3,
+            obs_processor=None,
+            shared_encoder=False,
+            **kwargs
+    ):
+        super().__init__(
+            hidden_sizes,
+            input_size=obs_dim,
+            output_size=action_dim,
+            init_w=init_w,
+            **kwargs
+        )
+        self.log_std = None
+        self.std = std
+        self.obs_processor = obs_processor
+        self.shared_encoder = shared_encoder # If shared encoder, don't backprop gradients through obs_processor
+
+    def get_action(self, obs_np, state=None, deterministic=False, context_key='camera_orientation'):
+        if type(obs_np) == dict:
+            obs_np, context = obs_np['image'], np.array(list(obs_np[context_key].values()))[None]
+        else: 
+            context = None
+        actions = self.get_actions(obs_np[None], deterministic=deterministic, fc_input=state[None] if state is not None else context)
+        return actions[0, :], {}
+
+    def get_actions(self, obs_np, state=None, deterministic=False, fc_input=None):
+        return eval_np(self, obs_np, extra_fc_input=fc_input)[0]
+
+    def forward(
+            self,
+            obs,
+            reparameterize=True,
+            return_log_prob=False,
+            extra_fc_input=None,
+    ):
+        """
+        :param obs: Observation
+        :param deterministic: If True, do not sample
+        :param return_log_prob: If True, return a sample and its log probability
+        """
+        # import ipdb; ipdb.set_trace()
+        if self.obs_processor is None:
+            h = obs
+        else:
+            h = obs
+            if extra_fc_input is not None:
+                h = torch.cat((h, extra_fc_input), dim=1)
+            h = self.obs_processor(h)
+            if self.shared_encoder:
+                h = h.detach()
+                        
+        for i, fc in enumerate(self.fcs):
+            h = self.hidden_activation(fc(h))
+        mean = self.last_fc(h)
+        
+        return mean
+
 
 class TanhGaussianPolicy(Mlp, ExplorationPolicy):
     """
