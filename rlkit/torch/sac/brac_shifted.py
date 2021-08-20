@@ -316,4 +316,4 @@ class BRACShiftedTrainer(TorchTrainer):
             target_qf1=self.qf1,
             target_qf2=self.qf2,
         )
-∑ 
+ 

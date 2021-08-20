@@ -6,7 +6,7 @@ import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
 import torch.optim as optim
-
+import numpy as np
 
 class TD3BCTrainer(TorchTrainer):
     def __init__(
