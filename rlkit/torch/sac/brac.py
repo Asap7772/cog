@@ -154,9 +154,7 @@ class BRACTrainer(TorchTrainer):
 
 
         if self.continual:
-            _, _, _, log_pi_behaviordata, *_ = self.behavior_policy(
-                obs, reparameterize=True, return_log_prob=True,
-            )
+            log_pi_behaviordata = self.behavior_policy.log_prob(obs,actions)
             policy_loss_behavioral = -log_pi_behaviordata.mean()
             
             self.behavior_policy_optimizer.zero_grad()

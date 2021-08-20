@@ -134,7 +134,7 @@ class BRACShiftedTrainer(TorchTrainer):
             obs, reparameterize=True, return_log_prob=True,
         )
 
-        log_pi_behavior = self.behavior_policy.log_prob(obs,new_obs_actions)
+        log_pi_behavior = self.behavior_policy.log_prob(obs, actions)
 
         if self.use_automatic_entropy_tuning:
             alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
@@ -154,9 +154,7 @@ class BRACShiftedTrainer(TorchTrainer):
 
 
         if self.continual:
-            _, _, _, log_pi_behaviordata, *_ = self.behavior_policy(
-                obs, reparameterize=True, return_log_prob=True,
-            )
+            log_pi_behaviordata = self.behavior_policy.log_prob(obs,actions)
             policy_loss_behavioral = -log_pi_behaviordata.mean()
             
             self.behavior_policy_optimizer.zero_grad()
