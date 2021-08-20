@@ -46,6 +46,7 @@ class BRACTrainer(TorchTrainer):
             real_data=False,
             log_pickle=True,
             pickle_log_rate=5,
+            continual=False,
             *args,
             **kwargs
     ):
@@ -84,7 +85,6 @@ class BRACTrainer(TorchTrainer):
                 [self.log_alpha],
                 lr=policy_lr,
             )
-
         self.plotter = plotter
         self.render_eval_paths = render_eval_paths
 

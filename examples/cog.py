@@ -595,7 +595,7 @@ if __name__ == "__main__":
     parser.add_argument('--beta', type=float, default=1.0)
     parser.add_argument('--behavior_path', default='/nfs/kun1/users/asap7772/cog/data/behavior-bc/behavior_bc_2021_08_18_21_07_43_0000--s-0/model_pkl/200.pt', type=str)
     parser.add_argument('--regularization', action='store_true')
-    parser.add_argument('--regularization_type', type='str', default='l2')
+    parser.add_argument('--regularization_type', type=str, default='l2')
     parser.add_argument('--regularization_weight', type=float, default=0.0)
     parser.add_argument('--dropout', action='store_true')
     parser.add_argument('--dropout_prob', type=float, default=0.0)
@@ -669,7 +669,7 @@ if __name__ == "__main__":
         p_data_path =  os.path.join(home, 'prior_data/') if args.azure else '/nfs/kun1/users/asap7772/prior_data/' 
         # p_data_path = '/home/stephentian/prior_data/'
         
-        path = '/nfs/kun1/users/asap7772/cog_data/'
+        path =  os.path.join(home, 'cog_data/') if args.azure else'/nfs/kun1/users/asap7772/cog_data/'
         # path = '/home/stian/cog_data/'
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
