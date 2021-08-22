@@ -430,12 +430,12 @@ class CQLTrainer(TorchTrainer):
                 
                 qf1_reg_loss = 0
                 for param in self.qf1.parameters():
-                    qf1_reg_loss += torch.sqrt(criterion(param))
+                    qf1_reg_loss += torch.sqrt(criterion(param, ptu.zeros_like(param)))
                 min_qf1_loss += self.regularization_const * qf1_reg_loss
 
                 qf2_reg_loss = 0
                 for param in self.qf2.parameters():
-                    qf2_reg_loss += torch.sqrt(criterion(param))
+                    qf2_reg_loss += torch.sqrt(criterion(param, ptu.zeros_like(param)))
                 min_qf2_loss += self.regularization_const * qf2_reg_loss
 
         

@@ -301,8 +301,9 @@ def experiment(variant):
             shared_encoder=variant['share_encoder'],
         )
         
-        import torch
-        behavior_policy.load_state_dict(torch.load(variant['behavior_path'])['policy_state_dict'] if variant['behavior_path'] else None)
+        if not variant['continual']:
+            import torch
+            behavior_policy.load_state_dict(torch.load(variant['behavior_path'])['policy_state_dict'] if variant['behavior_path'] else None)
 
         trainer = BRACTrainer(
             env=eval_env,
@@ -315,6 +316,7 @@ def experiment(variant):
             beta=variant['beta'],
             log_dir=variant['log_dir'],
             variant_dict=variant,
+            continual=variant['continual'],
             **variant['trainer_kwargs']
         )
     elif variant['mcret']:
