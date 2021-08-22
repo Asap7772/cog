@@ -367,6 +367,14 @@ if __name__ == "__main__":
         ba('drawer_task.npy', y ='noise')
         variant['prior_buffer'] = buffers[0]
         variant['task_buffer'] = buffers[1]
+    elif args.buffer == 33:
+        path = '/nfs/kun1/users/asap7772/cog_data/'
+        buffers = []
+        ba = lambda x, p=args.prob, y=None: buffers.append((path + x, dict(p=p, alter_type=y, )))
+        ba('blocked_drawer_1_prior.npy', p=args.prob,y='zero')
+        ba('drawer_task.npy', p=args.prob)
+        variant['prior_buffer'] = buffers[0]
+        variant['task_buffer'] = buffers[1]
 
     enable_gpus(args.gpu)
     variant['env'] = args.env

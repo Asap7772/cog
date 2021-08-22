@@ -593,6 +593,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_hist', type=int, default=1)
     parser.add_argument('--brac', action='store_true')
     parser.add_argument('--beta', type=float, default=1.0)
+    parser.add_argument('--continual', action='store_true')
     parser.add_argument('--behavior_path', default='/nfs/kun1/users/asap7772/cog/data/behavior-bc/behavior_bc_2021_08_18_21_07_43_0000--s-0/model_pkl/200.pt', type=str)
     parser.add_argument('--regularization', action='store_true')
     parser.add_argument('--regularization_type', type=str, default='l2')
@@ -608,7 +609,7 @@ if __name__ == "__main__":
 
     variant['dropout'] = args.dropout
     variant['dropout_prob'] = args.dropout_prob
-
+    variant['continual'] = args.continual
     variant['behavior_path'] = args.behavior_path
     variant['num_traj'] = args.num_traj
     variant['beta'] = args.beta
