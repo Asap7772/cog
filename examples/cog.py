@@ -3,13 +3,14 @@ from rlkit.data_management.load_buffer import load_data_from_npy_chaining,load_d
 from rlkit.samplers.data_collector import MdpPathCollector, \
     CustomMDPPathCollector
 
-from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
+from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic, DeterministicPolicy
 from rlkit.torch.sac.cql import CQLTrainer
 from rlkit.torch.sac.cql_montecarlo import CQLMCTrainer
 from rlkit.torch.sac.cql_context import CQLTrainerContext
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
 from rlkit.torch.sac.cql_single import CQLSingleTrainer
 from rlkit.torch.sac.brac import BRACTrainer
+from rlkit.torch.sac.td3bc import TD3BCTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, \
     ConcatBottleneckVQVAECNN, VQVAEEncoderCNN
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
@@ -196,13 +197,23 @@ def experiment(variant):
             cnn_params['added_fc_input_size'] = 10 *variant['num_hist']
         policy_obs_processor = CNN(**cnn_params)
 
-    policy = TanhGaussianPolicy(
-        obs_dim=cnn_params['output_size'],
-        action_dim=action_dim,
-        hidden_sizes=[256, 256, 256],
-        obs_processor=policy_obs_processor,
-        shared_encoder=variant['share_encoder'],
-    )
+
+    if variant['td3bc']:
+        policy = DeterministicPolicy(
+            obs_dim=cnn_params['output_size'],
+            action_dim=action_dim,
+            hidden_sizes=[256, 256, 256],
+            obs_processor=policy_obs_processor,
+            shared_encoder=variant['share_encoder'],
+        )
+    else:
+        policy = TanhGaussianPolicy(
+            obs_dim=cnn_params['output_size'],
+            action_dim=action_dim,
+            hidden_sizes=[256, 256, 256],
+            obs_processor=policy_obs_processor,
+            shared_encoder=variant['share_encoder'],
+        )
 
     eval_policy = MakeDeterministic(policy)
     eval_path_collector = MdpPathCollector(
@@ -309,6 +320,20 @@ def experiment(variant):
             env=eval_env,
             policy=policy,
             behavior_policy=behavior_policy.to(ptu.device),
+            qf1=qf1,
+            qf2=qf2,
+            target_qf1=target_qf1,
+            target_qf2=target_qf2,
+            beta=variant['beta'],
+            log_dir=variant['log_dir'],
+            variant_dict=variant,
+            continual=variant['continual'],
+            **variant['trainer_kwargs']
+        )
+    elif variant['td3bc']:
+        trainer = TD3BCTrainer(
+            env=eval_env,
+            policy=policy,
             qf1=qf1,
             qf2=qf2,
             target_qf1=target_qf1,
@@ -602,10 +627,12 @@ if __name__ == "__main__":
     parser.add_argument('--regularization_weight', type=float, default=0.0)
     parser.add_argument('--dropout', action='store_true')
     parser.add_argument('--dropout_prob', type=float, default=0.0)
+    parser.add_argument('--td3bc', action='store_true')
     args = parser.parse_args()
     enable_gpus(args.gpu)
     
     variant['regularization'] = args.regularization
+    variant['td3bc'] = args.td3bc
     variant['regularization_type'] = args.regularization_type
     variant['regularization_weight'] = args.regularization_weight
 

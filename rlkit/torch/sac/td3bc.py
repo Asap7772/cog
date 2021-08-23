@@ -7,6 +7,8 @@ from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
 import torch.optim as optim
 import numpy as np
+import wandb
+import os
 
 class TD3BCTrainer(TorchTrainer):
     def __init__(
@@ -30,6 +32,15 @@ class TD3BCTrainer(TorchTrainer):
             target_update_period=1,
             plotter=None,
             render_eval_paths=False,
+
+            log_dir=None,
+            wand_b=True,
+            variant_dict=None,
+            real_data=False,
+            log_pickle=True,
+            pickle_log_rate=5,
+            *args,
+            **kwargs
     ):
         super().__init__()
         self.env = env
@@ -41,6 +52,21 @@ class TD3BCTrainer(TorchTrainer):
         self.soft_target_tau = soft_target_tau
         self.target_update_period = target_update_period
         self.beta = beta
+
+        self.wand_b = wand_b
+        self.log_dir = log_dir
+        self.real_data = real_data
+        self.log_pickle = True
+        self.pickle_log_rate = 5
+        self._log_epoch = 0
+        if self.wand_b:
+            if self.real_data:
+                wandb.init(project='real_drawer_cql', reinit=True)
+            else:
+                wandb.init(project='cog_td3bc', reinit=True)
+            wandb.run.name=log_dir.split('/')[-1]
+            if variant_dict is not None:
+                wandb.config.update(variant_dict)
 
         self.plotter = plotter
         self.render_eval_paths = render_eval_paths
@@ -85,7 +111,7 @@ class TD3BCTrainer(TorchTrainer):
             self.qf1(obs, new_obs_actions),
             self.qf2(obs, new_obs_actions),
         )
-        policy_loss = (q_new_actions + -self.beta *(actions - new_obs_actions)**2).mean()
+        policy_loss = (-q_new_actions + self.beta *(actions - new_obs_actions)**2).mean()
 
         """
         QF Loss
@@ -135,6 +161,18 @@ class TD3BCTrainer(TorchTrainer):
             Eval should set this to None.
             This way, these statistics are only computed for one batch.
             """
+            if self.log_pickle and self._log_epoch % self.pickle_log_rate == 0:
+                new_path = os.path.join(self.log_dir,'model_pkl')
+                if not os.path.isdir(new_path):
+                    os.mkdir(new_path)
+                torch.save({
+                    'qf1_state_dict': self.qf1.state_dict(),
+                    'qf2_state_dict': self.qf2.state_dict(),
+                    'targetqf1_state_dict': self.target_qf1.state_dict(),
+                    'targetqf2_state_dict': self.target_qf2.state_dict(),
+                    'policy_state_dict': self.policy.state_dict(),
+                }, os.path.join(new_path, str(self._log_epoch)+'.pt'))
+
             policy_loss = ((actions - q_new_actions)**2 + self.beta * q_new_actions).mean()
 
             self.eval_statistics['QF1 Loss'] = np.mean(ptu.get_numpy(qf1_loss))
@@ -154,6 +192,9 @@ class TD3BCTrainer(TorchTrainer):
                 'Q Targets',
                 ptu.get_numpy(q_target),
             ))
+            if self.wand_b:
+                wandb.log({'trainer/'+k:v for k,v in self.eval_statistics.items()}, step=self._log_epoch)
+            self._log_epoch += 1
         self._n_train_steps_total += 1
 
     def get_diagnostics(self):

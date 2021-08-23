@@ -48,7 +48,7 @@ class DeterministicPolicy(Mlp, ExplorationPolicy):
         else: 
             context = None
         actions = self.get_actions(obs_np[None], deterministic=deterministic, fc_input=state[None] if state is not None else context)
-        return actions[0, :], {}
+        return actions, {}
 
     def get_actions(self, obs_np, state=None, deterministic=False, fc_input=None):
         return eval_np(self, obs_np, extra_fc_input=fc_input)[0]
