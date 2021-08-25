@@ -11,3 +11,4 @@ data/
 visual/
 images/
 wandb/
+slurm*
