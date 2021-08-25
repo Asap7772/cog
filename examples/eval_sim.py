@@ -227,12 +227,14 @@ def simulate_policy(args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", type=str, default='Widow250DoubleDrawerOpenGraspNeutralRandObj-v0')
+    parser.add_argument("--env", type=str, default='Widow250DoubleDrawerOpenGraspNeutral-v0')
     parser.add_argument('--N', type=int, default=10, help='Number of Trajectories')
     parser.add_argument('--H', type=int, default=50, help='Max length of rollout')
     parser.add_argument('--num_prev', type=int, default=2)
     # parser.add_argument()
-    parser.add_argument('--policy_path', type=str, default='evaluation')
+    # parser.add_argument('--policy_path', type=str, default='/nfs/kun1/users/asap7772/cog/data/updatedbuffer-rebuttal-v1-drawer-minq2/updatedbuffer_rebuttal_v1_drawer_minq2_2021_08_22_10_39_45_0000--s-0/model_pkl/190.pt')
+    parser.add_argument('--policy_path', type=str, default='/nfs/kun1/users/asap7772/cog/data/shifted-relaunchedv2-brac-drawer-beta5/shifted_relaunchedv2_brac_drawer_beta5_2021_08_20_00_41_51_0000--s-0/model_pkl/620.pt')
+    
     parser.add_argument('--out_path', type=str, default='evaluation')
     parser.add_argument('--env_type', type=str, default='evaluation')
     parser.add_argument('--gpu', action='store_true')

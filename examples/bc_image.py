@@ -116,6 +116,12 @@ def experiment(variant):
     if variant['val']:
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path + x, dict(p=p, alter_type=y, )))
+        if args.buffer == 33:
+            path = '/nfs/kun1/users/asap7772/prior_data/'
+            ba('coglike_prior_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-00_10000.npy', p=args.prob,y='zero')
+            ba('coglike_task_Widow250DoubleDrawerGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-05_10000.npy', p=args.prob)
+            variant['prior_buffer'] = buffers[0]
+            variant['task_buffer'] = buffers[1]
         if args.buffer == 35:
             path = '/home/stephentian/prior_data/'
             ba('val_pick_35_Widow250PickTrayMult-v0_100_save_all_noise_0.1_2021-06-14T21-52-13_100.npy',

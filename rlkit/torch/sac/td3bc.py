@@ -111,7 +111,9 @@ class TD3BCTrainer(TorchTrainer):
             self.qf1(obs, new_obs_actions),
             self.qf2(obs, new_obs_actions),
         )
-        policy_loss = (-q_new_actions + self.beta *(actions - new_obs_actions)**2).mean()
+
+        crit = torch.nn.MSELoss()
+        policy_loss = (-q_new_actions + self.beta*crit(actions, new_obs_actions)).mean()
 
         """
         QF Loss

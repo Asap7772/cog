@@ -47,6 +47,9 @@ class BRACTrainer(TorchTrainer):
             log_pickle=True,
             pickle_log_rate=5,
             continual=False,
+            bottleneck=False,
+            bottleneck_const=1.0,
+            start_bottleneck=0,
             *args,
             **kwargs
     ):
@@ -63,12 +66,16 @@ class BRACTrainer(TorchTrainer):
         self.target_update_period = target_update_period
         self.real_data = real_data
         self.continual = continual
+        self.bottleneck = bottleneck
+        self.bottleneck_const = bottleneck_const
 
         self.log_pickle = log_pickle
         self.pickle_log_rate = pickle_log_rate
         self._log_epoch = 0
         self.log_dir = log_dir
         self.wand_b = wand_b
+        self.start_bottleneck =start_bottleneck
+        
         if self.wand_b:
             wandb.init(project='cog_brac', reinit=True)
             wandb.run.name=log_dir.split('/')[-1]
@@ -152,6 +159,10 @@ class BRACTrainer(TorchTrainer):
         )
         policy_loss = (alpha*log_pi - self.beta * log_pi_behavior - q_new_actions).mean()
 
+        if self.bottleneck:
+            cond = self._log_epoch < self.start_bottleneck 
+            policy_bottleneck_loss = self.policy.obs_processor.detailed_forward(obs,return_conv_outputs=False)[2]
+            policy_loss = policy_loss + (0 if cond else self.bottleneck_const) * policy_bottleneck_loss.mean()
 
         if self.continual:
             log_pi_behaviordata = self.behavior_policy.log_prob(obs,actions)
@@ -172,8 +183,7 @@ class BRACTrainer(TorchTrainer):
             next_obs, reparameterize=True, return_log_prob=True,
         )
 
-        new_log_pi_behavior= self.behavior_policy.log_prob(next_obs, new_next_actions)
-
+        new_log_pi_behavior = self.behavior_policy.log_prob(next_obs, new_next_actions)
 
         target_q_values = torch.min(
             self.target_qf1(next_obs, new_next_actions),

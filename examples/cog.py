@@ -10,6 +10,7 @@ from rlkit.torch.sac.cql_context import CQLTrainerContext
 from rlkit.torch.sac.cql_bchead import CQLBCTrainer
 from rlkit.torch.sac.cql_single import CQLSingleTrainer
 from rlkit.torch.sac.brac import BRACTrainer
+from rlkit.torch.sac.brac_shifted import BRACShiftedTrainer
 from rlkit.torch.sac.td3bc import TD3BCTrainer
 from rlkit.torch.conv_networks import CNN, ConcatCNN, ConcatBottleneckCNN, TwoHeadCNN, VQVAEEncoderConcatCNN, \
     ConcatBottleneckVQVAECNN, VQVAEEncoderCNN
@@ -165,7 +166,17 @@ def experiment(variant):
     target_qf1.load_state_dict(qf1.state_dict())
     target_qf2.load_state_dict(qf2.state_dict())
 
-    if variant['vqvae_policy']:
+    if variant['bottleneck_policy']:
+        cnn_params.update(
+            output_size=256,
+            added_fc_input_size=6 if variant['context'] else 0,
+            hidden_sizes=[1024, 512],
+            spectral_norm_fc=False,
+            spectral_norm_conv=False,
+            normalize_conv_activation=False,
+        )
+        policy_obs_processor = ConcatBottleneckCNN(cnn_params['added_fc_input_size'], bottleneck_dim=variant['bottleneck_dim'],deterministic=variant['deterministic_bottleneck'], output_size=cnn_params['output_size'])
+    elif variant['vqvae_policy']:
         if variant['share_encoder']:
             print('sharing encoder weights between QF and Policy with VQVAE Encoder')
             policy_obs_processor = qf1.encoder
@@ -316,20 +327,40 @@ def experiment(variant):
             import torch
             behavior_policy.load_state_dict(torch.load(variant['behavior_path'])['policy_state_dict'] if variant['behavior_path'] else None)
 
-        trainer = BRACTrainer(
-            env=eval_env,
-            policy=policy,
-            behavior_policy=behavior_policy.to(ptu.device),
-            qf1=qf1,
-            qf2=qf2,
-            target_qf1=target_qf1,
-            target_qf2=target_qf2,
-            beta=variant['beta'],
-            log_dir=variant['log_dir'],
-            variant_dict=variant,
-            continual=variant['continual'],
-            **variant['trainer_kwargs']
-        )
+
+        if variant['brac_shifted']:
+            trainer = BRACShiftedTrainer(
+                env=eval_env,
+                policy=policy,
+                behavior_policy=behavior_policy.to(ptu.device),
+                qf1=qf1,
+                qf2=qf2,
+                target_qf1=target_qf1,
+                target_qf2=target_qf2,
+                beta=variant['beta'],
+                log_dir=variant['log_dir'],
+                variant_dict=variant,
+                continual=variant['continual'],
+                **variant['trainer_kwargs']
+            )
+        else:
+            trainer = BRACTrainer(
+                env=eval_env,
+                policy=policy,
+                behavior_policy=behavior_policy.to(ptu.device),
+                qf1=qf1,
+                qf2=qf2,
+                target_qf1=target_qf1,
+                target_qf2=target_qf2,
+                beta=variant['beta'],
+                log_dir=variant['log_dir'],
+                variant_dict=variant,
+                continual=variant['continual'],
+                bottleneck=variant['bottleneck_policy'],
+                bottleneck_const=variant['bottleneck_const'],
+                start_bottleneck=0,
+                **variant['trainer_kwargs']
+            )
     elif variant['td3bc']:
         trainer = TD3BCTrainer(
             env=eval_env,
@@ -621,21 +652,24 @@ if __name__ == "__main__":
     parser.add_argument('--brac', action='store_true')
     parser.add_argument('--beta', type=float, default=1.0)
     parser.add_argument('--continual', action='store_true')
-    parser.add_argument('--behavior_path', default='/nfs/kun1/users/asap7772/cog/data/behavior-bc/behavior_bc_2021_08_18_21_07_43_0000--s-0/model_pkl/200.pt', type=str)
+    parser.add_argument('--brac_shifted', action='store_true')
+    parser.add_argument('--behavior_path', default='/nfs/kun1/users/asap7772/cog/data/updatedbuffer-behavior-bc/updatedbuffer_behavior_bc_2021_08_22_09_52_28_0000--s-0/model_pkl/250.pt', type=str)
     parser.add_argument('--regularization', action='store_true')
     parser.add_argument('--regularization_type', type=str, default='l2')
     parser.add_argument('--regularization_weight', type=float, default=0.0)
     parser.add_argument('--dropout', action='store_true')
     parser.add_argument('--dropout_prob', type=float, default=0.0)
     parser.add_argument('--td3bc', action='store_true')
+    parser.add_argument('--bottleneck_policy', action='store_true')
     args = parser.parse_args()
     enable_gpus(args.gpu)
     
+    variant['bottleneck_policy'] = args.bottleneck_policy
     variant['regularization'] = args.regularization
     variant['td3bc'] = args.td3bc
     variant['regularization_type'] = args.regularization_type
     variant['regularization_weight'] = args.regularization_weight
-
+    variant['brac_shifted'] = args.brac_shifted
     variant['dropout'] = args.dropout
     variant['dropout_prob'] = args.dropout_prob
     variant['continual'] = args.continual
