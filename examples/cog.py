@@ -43,6 +43,12 @@ def experiment(variant):
     print(action_dim)
 
     cnn_params = variant['cnn_params']
+    
+    cnn_params.update(
+        dropout = variant['dropout'],
+        dropout_prob = variant['dropout_prob'],
+    )
+
     if variant['bigger_net']:
         print('bigger_net')
         cnn_params.update(
@@ -328,6 +334,9 @@ def experiment(variant):
             variant_dict=variant,
             validation=variant['val'],
             validation_buffer=replay_buffer_val,
+            regularization=variant['regularization'],
+            regularization_type=variant['regularization_type'],
+            regularization_const=variant['regularization_const'],
             squared=variant['squared'],
             **variant['trainer_kwargs']
         )
@@ -480,10 +489,22 @@ if __name__ == "__main__":
     parser.add_argument("--dr3_weight", default=0.001, type=float)
     parser.add_argument("--eval_every_n", default=1, type=int)
     parser.add_argument('--singleQ', action='store_true')
+    parser.add_argument('--regularization', action='store_true')
+    parser.add_argument('--regularization_type', type=str, default='l1')
+    parser.add_argument('--regularization_const', type=float, default=1)
     parser.add_argument('--normalize_conv_activation', action='store_true')
+    parser.add_argument('--dropout', action='store_true')
+    parser.add_argument('--dropout_prob', type=float, default=0.0)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['regularization'] = args.regularization
+    variant['regularization_type'] = args.regularization_type
+    variant['regularization_const'] = args.regularization_const
+
+    variant['dropout'] = args.dropout
+    variant['dropout_prob'] = args.dropout_prob
+
     variant['trainer_kwargs']['discount'] = args.discount
     variant['squared'] = args.squared
     variant['bigger_net'] = args.bigger_net
