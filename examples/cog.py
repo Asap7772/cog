@@ -356,7 +356,8 @@ def experiment(variant):
                 log_dir=variant['log_dir'],
                 variant_dict=variant,
                 continual=variant['continual'],
-                bottleneck=variant['bottleneck_policy'],
+                bottleneck=variant['bottleneck_policy'] or variant['bottleneck'],
+                bottleneck_type = 'policy' if variant['bottleneck_policy'] else 'qf',
                 bottleneck_const=variant['bottleneck_const'],
                 start_bottleneck=0,
                 **variant['trainer_kwargs']

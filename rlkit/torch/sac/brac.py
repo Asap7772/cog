@@ -48,6 +48,7 @@ class BRACTrainer(TorchTrainer):
             pickle_log_rate=5,
             continual=False,
             bottleneck=False,
+            bottleneck_type='policy',
             bottleneck_const=1.0,
             start_bottleneck=0,
             *args,
@@ -62,6 +63,7 @@ class BRACTrainer(TorchTrainer):
         self.qf2 = qf2
         self.target_qf1 = target_qf1
         self.target_qf2 = target_qf2
+        self.bottleneck_type=bottleneck_type
         self.soft_target_tau = soft_target_tau
         self.target_update_period = target_update_period
         self.real_data = real_data
@@ -159,10 +161,6 @@ class BRACTrainer(TorchTrainer):
         )
         policy_loss = (alpha*log_pi - self.beta * log_pi_behavior - q_new_actions).mean()
 
-        if self.bottleneck:
-            cond = self._log_epoch < self.start_bottleneck 
-            policy_bottleneck_loss = self.policy.obs_processor.detailed_forward(obs,return_conv_outputs=False)[2]
-            policy_loss = policy_loss + (0 if cond else self.bottleneck_const) * policy_bottleneck_loss.mean()
 
         if self.continual:
             log_pi_behaviordata = self.behavior_policy.log_prob(obs,actions)
@@ -194,7 +192,25 @@ class BRACTrainer(TorchTrainer):
 
         qf1_loss = self.qf_criterion(q1_pred, q_target.detach())
         qf2_loss = self.qf_criterion(q2_pred, q_target.detach())
+        
+        """
+        Bottleneck Loss
+        """
+        if self.bottleneck:
+            cond = self._log_epoch < self.start_bottleneck 
+            w = (0 if cond else self.bottleneck_const)
 
+            if self.bottleneck_type=='policy':
+                reg_loss = self.policy.obs_processor.detailed_forward(obs,return_conv_outputs=False)[2]
+                policy_loss = policy_loss + w * reg_loss.mean()
+            elif self.bottleneck_type=='qf':
+                _, _, qf1_bottleneck_loss, _, _, _ = self.qf1.detailed_forward(obs,actions)
+                _, _, qf2_bottleneck_loss, _, _, _ = self.qf2.detailed_forward(obs,actions)
+                qf1_loss = qf1_loss + w * qf1_bottleneck_loss.mean()
+                qf2_loss = qf2_loss + w * qf2_bottleneck_loss.mean() 
+                reg_loss = qf1_bottleneck_loss.mean() + qf2_bottleneck_loss.mean()
+            else:
+                raise NotImplementedError
         """
         Update networks
         """
@@ -250,6 +266,8 @@ class BRACTrainer(TorchTrainer):
             self.eval_statistics['QF1 Loss'] = np.mean(ptu.get_numpy(qf1_loss))
             self.eval_statistics['QF2 Loss'] = np.mean(ptu.get_numpy(qf2_loss))
             self.eval_statistics['Policy Loss'] = np.mean(ptu.get_numpy(policy_loss))
+            if self.bottleneck:
+                self.eval_statistics['Bottleneck Reg Loss'] = np.mean(ptu.get_numpy(reg_loss))
 
             self.eval_statistics.update(create_stats_ordered_dict(
                 'Q1 Predictions',
