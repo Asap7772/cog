@@ -78,6 +78,9 @@ class CQLTrainer(TorchTrainer):
             dr3=False,
             dr3_feat=False,
             dr3_weight=0.0,
+            regularization=False,
+            regularization_type='l1',
+            regularization_const=1e-3,
     ):
         super().__init__()
         self.env = env
@@ -91,6 +94,10 @@ class CQLTrainer(TorchTrainer):
         self.log_dir = log_dir
         self.log_pickle=log_pickle
         self.pickle_log_rate=pickle_log_rate
+
+        self.regularization = regularization
+        self.regularization_type = regularization_type
+        self.regularization_const = regularization_const
 
         self.hinge_trans=hinge_trans
         self.dist_diff=dist_diff
@@ -386,6 +393,32 @@ class CQLTrainer(TorchTrainer):
             alpha_prime_loss = (-min_qf1_loss - min_qf2_loss)*0.5 
             alpha_prime_loss.backward(retain_graph=True)
             self.alpha_prime_optimizer.step()
+
+        if self.regularization:
+            if self.regularization_type == 'l1':
+                criterion = torch.nn.L1Loss()
+                
+                qf1_reg_loss = 0
+                for param in self.qf1.parameters():
+                    qf1_reg_loss += criterion(param, ptu.zeros_like(param))
+                min_qf1_loss += self.regularization_const * qf1_reg_loss
+
+                qf2_reg_loss = 0
+                for param in self.qf2.parameters():
+                    qf2_reg_loss += criterion(param, ptu.zeros_like(param))
+                min_qf2_loss += self.regularization_const * qf2_reg_loss
+            elif self.regularization_type == 'l2': # alternate to using weight decay
+                criterion = torch.nn.MSELoss() #MSE is squared L2 loss
+                
+                qf1_reg_loss = 0
+                for param in self.qf1.parameters():
+                    qf1_reg_loss += torch.sqrt(criterion(param, ptu.zeros_like(param)))
+                min_qf1_loss += self.regularization_const * qf1_reg_loss
+
+                qf2_reg_loss = 0
+                for param in self.qf2.parameters():
+                    qf2_reg_loss += torch.sqrt(criterion(param, ptu.zeros_like(param)))
+                min_qf2_loss += self.regularization_const * qf2_reg_loss
 
         if self.dr3:
             q1_next_pred = self.qf1(next_obs, new_next_actions)

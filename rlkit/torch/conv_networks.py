@@ -38,6 +38,8 @@ class CNN(nn.Module):
             spectral_norm_conv=False,
             spectral_norm_fc=False,
             normalize_conv_activation=False,
+            dropout=False,
+            dropout_prob=0.2,
     ):
         if hidden_sizes is None:
             hidden_sizes = []
@@ -67,6 +69,12 @@ class CNN(nn.Module):
         self.pool_type = pool_type
         self.image_augmentation = image_augmentation
         self.image_augmentation_padding = image_augmentation_padding
+
+        self.dropout = dropout
+        self.dropout_prob = dropout_prob
+
+        self.dropout_layer = nn.Dropout(p=self.dropout_prob)
+        self.dropout2d_layer = nn.Dropout2d(p=self.dropout_prob)
 
         self.spectral_norm_conv = spectral_norm_conv
         self.spectral_norm_fc = spectral_norm_fc
@@ -224,6 +232,8 @@ class CNN(nn.Module):
                 h = self.conv_norm_layers[i](h)
             if self.pool_type != 'none' and len(self.pool_layers) > i:
                 h = self.pool_layers[i](h)
+            if self.dropout:
+                h = self.dropout2d_layer(h)
             h = self.hidden_activation(h)
         return h
 
@@ -232,6 +242,8 @@ class CNN(nn.Module):
             h = layer(h)
             if self.fc_normalization_type != 'none':
                 h = self.fc_norm_layers[i](h)
+            if self.dropout:
+                h = self.dropout_layer(h)
             h = self.hidden_activation(h)
         return h
 
