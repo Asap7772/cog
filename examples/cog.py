@@ -65,6 +65,20 @@ def experiment(variant):
             pool_strides=[2, 2, 1, 1, 1],
             pool_paddings=[0, 0, 0, 0, 0]
         )
+    
+    if variant['smaller_net']:
+        print('smaller conv net')
+        cnn_params.update(
+            kernel_sizes=[3],
+            n_channels=[32],
+            strides=[1],
+            paddings=[1],
+            pool_sizes=[2],
+            pool_strides=[2],
+            pool_paddings=[0],
+            hidden_sizes=[16,],
+        )
+
 
     if variant['spectral_norm_conv']:
         cnn_params.update(
@@ -489,6 +503,7 @@ if __name__ == "__main__":
     parser.add_argument("--dr3_weight", default=0.001, type=float)
     parser.add_argument("--eval_every_n", default=1, type=int)
     parser.add_argument('--singleQ', action='store_true')
+    parser.add_argument('--smaller_net', action='store_true')
     parser.add_argument('--regularization', action='store_true')
     parser.add_argument('--regularization_type', type=str, default='l1')
     parser.add_argument('--regularization_const', type=float, default=1)
@@ -498,6 +513,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+    variant['smaller_net'] = args.smaller_net
     variant['regularization'] = args.regularization
     variant['regularization_type'] = args.regularization_type
     variant['regularization_const'] = args.regularization_const
