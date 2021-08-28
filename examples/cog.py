@@ -532,7 +532,7 @@ if __name__ == "__main__":
         p_data_path =  os.path.join(home, 'prior_data/') if args.azure else '/nfs/kun1/users/asap7772/prior_data/' 
         # p_data_path = '/home/stephentian/prior_data/'
         
-        path = '/nfs/kun1/users/asap7772/cog_data/'
+        path = '/home/asap7772/cog_data/' if args.azure else '/nfs/kun1/users/asap7772/cog_data/'
         # path = '/home/stian/cog_data/'
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
