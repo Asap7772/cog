@@ -14,7 +14,7 @@ def get_buffer_size(data):
     return num_transitions
 
 
-def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1):
+def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1, initial_sd=False):
     for j in range(len(data)):
         # import ipdb; ipdb.set_trace()
         assert (len(data[j]['actions']) == len(data[j]['observations']) == len(
@@ -37,6 +37,10 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1)
             object_position = process_obj_positions(data[j]['observations'])
         )
 
+        if initial_sd:
+            for key in path:
+                path[key] = path[key][0:1]
+        
         if scale_rew:
             path['rewards'] = [np.asarray([r*scale + shift]) for r in data[j]['rewards']]
             
@@ -210,6 +214,7 @@ def load_data_from_npy_chaining(variant, expl_env, observation_key,
         variant['task_buffer'], t_dict = variant['task_buffer'] # may change
     else:
         assert False
+
     with open(variant['prior_buffer'], 'rb') as f:
         data_prior = np.load(f, allow_pickle=True)
         if num_traj > 0:

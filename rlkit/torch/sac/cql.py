@@ -141,14 +141,27 @@ class CQLTrainer(TorchTrainer):
             self.policy.parameters(),
             lr=policy_lr,
         )
-        self.qf1_optimizer = optimizer_class(
-            self.qf1.parameters(),
-            lr=qf_lr,
-        )
-        self.qf2_optimizer = optimizer_class(
-            self.qf2.parameters(),
-            lr=qf_lr,
-        )
+
+        if self.regularization and self.regularization_type == 'l2':
+            self.qf1_optimizer = optimizer_class(
+                self.qf1.parameters(),
+                lr=qf_lr,
+                weight_decay=self.regularization_const,
+            )
+            self.qf2_optimizer = optimizer_class(
+                self.qf2.parameters(),
+                lr=qf_lr,
+                weight_decay=self.regularization_const,
+            )
+        else:
+            self.qf1_optimizer = optimizer_class(
+                self.qf1.parameters(),
+                lr=qf_lr,
+            )
+            self.qf2_optimizer = optimizer_class(
+                self.qf2.parameters(),
+                lr=qf_lr,
+            )
 
         self.bottleneck = bottleneck
         self.bottleneck_const = bottleneck_const
@@ -406,18 +419,6 @@ class CQLTrainer(TorchTrainer):
                 qf2_reg_loss = 0
                 for param in self.qf2.parameters():
                     qf2_reg_loss += criterion(param, ptu.zeros_like(param))
-                min_qf2_loss += self.regularization_const * qf2_reg_loss
-            elif self.regularization_type == 'l2': # alternate to using weight decay
-                criterion = torch.nn.MSELoss() #MSE is squared L2 loss
-                
-                qf1_reg_loss = 0
-                for param in self.qf1.parameters():
-                    qf1_reg_loss += torch.sqrt(criterion(param, ptu.zeros_like(param)))
-                min_qf1_loss += self.regularization_const * qf1_reg_loss
-
-                qf2_reg_loss = 0
-                for param in self.qf2.parameters():
-                    qf2_reg_loss += torch.sqrt(criterion(param, ptu.zeros_like(param)))
                 min_qf2_loss += self.regularization_const * qf2_reg_loss
 
         if self.dr3:
