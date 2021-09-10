@@ -14,16 +14,54 @@ from rlkit.torch.core import np_to_pytorch_batch
 import rlkit.torch.pytorch_util as ptu
 ptu.set_gpu_mode(True)
 
-def load_buffer():
+
+import matplotlib
+import os
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+import gc
+
+
+def format_func(value, tick_number):
+    return(str(int(value // 100) * 0.1)[:3] + 'M')
+
+def format_func_y(value, tick_number):
+    return (str(int(value))[:4] + 'K')
+
+def configure_matplotlib(matplotlib):
+    plt.rcParams.update({
+        'text.usetex': True,
+        'text.latex.preamble': r'\usepackage{amsfonts} \usepackage{amsmath}',
+    })
+
+    matplotlib.rc('font', family='serif', serif='cm10')
+    # matplotlib.rcParams['font.weight']= 'heavy
+    font = {'family' : 'normal',
+            'weight' : 'normal',
+            'size': 15}
+    matplotlib.rc('font', **font)
+    matplotlib.rcParams['lines.linewidth'] = 2.5
+
+configure_matplotlib(matplotlib)
+
+def load_buffer(buffer=0):
     home = os.path.expanduser("~")
     p_data_path =  os.path.join(home, 'prior_data/')
             
     path = '/nfs/kun1/users/asap7772/cog_data/'
     buffers = []
     ba = lambda x, p=0, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
-    ba('blocked_drawer_1_prior.npy', p=1,y='zero')
-    ba('drawer_task.npy', p=1)
 
+    if buffer == 0:
+        ba('blocked_drawer_1_prior.npy', p=1,y='zero')
+        ba('drawer_task.npy', p=1)
+    else:
+        ba('pickplace_prior.npy',y='zero')
+        ba('pickplace_task.npy') 
+
+    print(buffers)
 
     eval_env = roboverse.make('Widow250DoubleDrawerCloseOpenGraspNeutral-v0', transpose_image=True)
 
@@ -41,6 +79,49 @@ def load_buffer():
     )
 
     add_data_to_buffer(data_prior, replay_buffer, initial_sd=True)
+    return replay_buffer, eval_env
+
+def load_buffer_full(buffer=0):
+    home = os.path.expanduser("~")
+    p_data_path =  os.path.join(home, 'prior_data/')
+            
+    path = '/nfs/kun1/users/asap7772/cog_data/'
+    buffers = []
+    ba = lambda x, p=0, y=None: buffers.append((path+x,dict(p=p,alter_type=y,)))
+    
+    if buffer == 0:
+        ba('blocked_drawer_1_prior.npy', p=1,y='zero')
+        ba('drawer_task.npy', p=1)
+    else:
+        ba('pickplace_prior.npy',y='zero')
+        ba('pickplace_task.npy')
+
+    print(buffers)
+
+    eval_env = roboverse.make('Widow250DoubleDrawerCloseOpenGraspNeutral-v0', transpose_image=True)
+
+    variant = dict()
+    variant['prior_buffer'] = buffers[0][0]
+
+    with open(variant['prior_buffer'], 'rb') as f:
+        data_prior = np.load(f, allow_pickle=True)
+    buffer_size = get_buffer_size(data_prior)
+
+
+    variant['task_buffer'] = buffers[1][0]
+
+    with open(variant['task_buffer'], 'rb') as f:
+        data_task = np.load(f, allow_pickle=True)
+    buffer_size =  get_buffer_size(data_prior) + 2*get_buffer_size(data_task)
+
+    replay_buffer = ObsDictReplayBuffer(
+        buffer_size,
+        eval_env,
+        observation_key='image',
+    )
+
+    add_data_to_buffer(data_prior, replay_buffer, initial_sd=False)
+    add_data_to_buffer(data_task, replay_buffer, initial_sd=False)
     return replay_buffer, eval_env
 
 def load_qfunc_pol(eval_env, path):
@@ -96,29 +177,64 @@ def load_qfunc_pol(eval_env, path):
     return qfunc, policy
 
 if __name__ == "__main__":
-    replay_buffer, eval_env = load_buffer()
+    replay_buffer, eval_env = load_buffer(buffer=1)
+    replay_buffer_full, eval_env = load_buffer_full(buffer=1)
 
     path = '/home/asap7772/asap7772/cog_stephen/cog/data/debug-pp100-minq2/debug_pp100_minq2_2021_08_27_01_06_13_0000--s-0/model_pkl'
+    # path = '/nfs/kun1/users/asap7772/cog_stephen/cog/data/debug-minq2-origcog-50traj/debug_minq2_origcog_50traj_2021_08_24_00_42_48_0000--s-0/model_pkl'
 
     lst = sorted([p for p in os.listdir(path) if p.endswith('.pt')], key= lambda p: int(p.split('.')[0]))
-    qvals, epochs = [], []
+    qvals, epochs, metrics = [], [], []
     for p in lst:
         epoch = int(p.split('.')[0])
         qfunc, policy = load_qfunc_pol(eval_env, os.path.join(path, p))
 
-        batch = np_to_pytorch_batch(replay_buffer.random_batch(100))
+        batch = np_to_pytorch_batch(replay_buffer.random_batch(256))
+        batch_f = np_to_pytorch_batch(replay_buffer_full.random_batch(256))
+
         qval = qfunc(batch['observations'], policy(batch['observations'])[0])
+        met = qfunc(batch_f['observations'], batch_f['actions'])
         
         qval = qval.detach().cpu().numpy()
+        met = met.detach().cpu().numpy()
+
         epochs.append(epoch)
         qvals.append(qval.mean())
+        metrics.append(met.mean())
 
-        print(epoch, qval.mean())
+        print(epoch, qval.mean(), met.mean())
 
         del qfunc, policy
-        torch.cuda.empty_cache()
-    
-    import matplotlib.pyplot as plt
-    plt.plot(epochs, qvals)
-    plt.show()
-    plt.savefig('qvals.png')
+        gc.collect()
+        torch.cuda.empty_cache()  
+
+    plt.title('Metric Comparison — Pick Place Task')
+    plt.figure(figsize=(5, 5))
+    fig, ax1 = plt.subplots()
+    p1 = plt.plot(epochs, qvals, color='C0', label='Initial State Q Value', linewidth=2)
+    p2 = plt.plot(epochs, metrics, color='C1', label='Metric 4.1', linewidth=2)
+
+    plt.xlabel(r'Gradient steps')
+    plt.ylabel(r'Metric Value')
+    plt.xlim(20, 300)
+
+    plt.tight_layout()
+    plt.grid(color='grey', linestyle='dotted', linewidth=1)
+    plt.gca().xaxis.set_major_formatter(plt.FuncFormatter(format_func_y))
+
+    ps = [p1,p2]
+    labels = ['Initial State Q Value', 'Metric 4.1']
+    fig.legend(handles=[p[0] for p in ps], labels=labels,loc='upper right', bbox_to_anchor=(0.87, 0.90))
+
+    storage_loc = '/nfs/kun1/users/asap7772/workflow_plotting/plots'
+    storage_loc = os.path.join(storage_loc, 'metriccomp')
+    save_path = 'metric_pp'
+
+    if not os.path.exists(storage_loc):
+        os.mkdir(storage_loc)
+    f_name = save_path +'.pdf'
+    f_path = os.path.join(storage_loc, f_name)
+    plt.savefig(f_path)
+    plt.close()
+
+    import ipdb; ipdb.set_trace()

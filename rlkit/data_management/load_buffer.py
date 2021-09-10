@@ -40,7 +40,7 @@ def add_data_to_buffer(data, replay_buffer, scale_rew=False, scale=200, shift=1,
         if initial_sd:
             for key in path:
                 path[key] = path[key][0:1]
-        
+
         if scale_rew:
             path['rewards'] = [np.asarray([r*scale + shift]) for r in data[j]['rewards']]
             

@@ -352,6 +352,9 @@ def experiment(variant):
             regularization_type=variant['regularization_type'],
             regularization_const=variant['regularization_const'],
             squared=variant['squared'],
+            modify_grad=variant['modify_grad'],
+            modify_type=variant['modify_type'],
+            orthogonalize_grads=variant['orthogonalize_grads'],
             **variant['trainer_kwargs']
         )
 
@@ -510,9 +513,22 @@ if __name__ == "__main__":
     parser.add_argument('--normalize_conv_activation', action='store_true')
     parser.add_argument('--dropout', action='store_true')
     parser.add_argument('--dropout_prob', type=float, default=0.0)
+    parser.add_argument('--modify_grad', action='store_true')
+    parser.add_argument('--modify_type', default=None, type=str)
+    parser.add_argument('--orthogonalize_grads', action='store_true')
+    parser.add_argument('--clip_targets', action='store_true')
+    parser.add_argument('--target_clip_val', type=int, default=-250)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+
+    variant['modify_grad'] = args.modify_grad
+    variant['modify_type'] = args.modify_type
+    variant['orthogonalize_grads'] = args.orthogonalize_grads
+
+    variant['clip_targets'] = args.clip_targets
+    variant['target_clip_val'] = args.target_clip_val
+    
     variant['smaller_net'] = args.smaller_net
     variant['regularization'] = args.regularization
     variant['regularization_type'] = args.regularization_type
