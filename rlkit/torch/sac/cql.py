@@ -3,7 +3,7 @@ from collections import OrderedDict
 import numpy as np
 import torch
 import torch.optim as optim
-from torch import nn as nn, triu_indices
+from torch import nn as nn
 
 import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
@@ -565,22 +565,23 @@ class CQLTrainer(TorchTrainer):
                 if self.num_qs > 1:
                     qf2_mod_grad = self.compute_normalized_grad(qf2_loss_grad, min_qf2_grad,True)
             if self.modify_grad and self.modify_type == 'clip':
-                qf1_loss = qf1_loss + min_qf1_loss
-                qf1_loss_grad = torch.autograd.grad(qf1_loss, 
-                    inputs=[p for p in self.qf1.parameters()], 
-                    create_graph=True, retain_graph=True, only_inputs=True
-                )
-                qf1_mod_grad = self.compute_clipped_grad(qf1_loss_grad, self.clip_grad_val)
+                pass
+            #     qf1_loss = qf1_loss + min_qf1_loss
+            #     qf1_loss_grad = torch.autograd.grad(qf1_loss, 
+            #         inputs=[p for p in self.qf1.parameters()], 
+            #         create_graph=True, retain_graph=True, only_inputs=True
+            #     )
+            #     qf1_mod_grad = self.compute_clipped_grad(qf1_loss_grad, self.clip_grad_val)
 
-                if self.num_qs > 1:
-                    qf2_loss = qf2_loss + min_qf2_loss
+            #     if self.num_qs > 1:
+            #         qf2_loss = qf2_loss + min_qf2_loss
 
-                    qf2_loss_grad = torch.autograd.grad(qf2_loss, 
-                        inputs=[p for p in self.qf2.parameters()], 
-                        create_graph=True, retain_graph=True, only_inputs=True
-                    )
+            #         qf2_loss_grad = torch.autograd.grad(qf2_loss, 
+            #             inputs=[p for p in self.qf2.parameters()], 
+            #             create_graph=True, retain_graph=True, only_inputs=True
+            #         )
 
-                    qf2_mod_grad = self.compute_clipped_grad(qf2_loss_grad, self.clip_grad_val)
+            #         qf2_mod_grad = self.compute_clipped_grad(qf2_loss_grad, self.clip_grad_val)
             else:
                 assert False
         else:
@@ -633,6 +634,8 @@ class CQLTrainer(TorchTrainer):
         if self.modify_grad and self.modify_type == 'normalization':
             for (p, proj_grad) in zip(self.qf1.parameters(), qf1_mod_grad):
                 p.grad.data = proj_grad
+        elif self.modify_grad and self.modify_type == 'clip':
+            torch.nn.utils.clip_grad_norm_(self.qf1.parameters(), self.clip_grad_val)
         self.qf1_optimizer.step()
 
         if self.num_qs > 1:
@@ -641,6 +644,8 @@ class CQLTrainer(TorchTrainer):
             if self.modify_grad and self.modify_type == 'normalization':
                 for (p, proj_grad) in zip(self.qf2.parameters(), qf2_mod_grad):
                     p.grad.data = proj_grad
+            elif self.modify_grad and self.modify_type == 'clip':
+                torch.nn.utils.clip_grad_norm_(self.qf2.parameters(), self.clip_grad_val)
             self.qf2_optimizer.step()
 
         self._num_policy_update_steps += 1

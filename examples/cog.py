@@ -355,6 +355,11 @@ def experiment(variant):
             modify_grad=variant['modify_grad'],
             modify_type=variant['modify_type'],
             orthogonalize_grads=variant['orthogonalize_grads'],
+            no_td=variant['no_td'],
+            no_data_qval=variant['no_data_qval'],
+            shifting=variant['shifting'],
+            rew_regress=variant['rew_regress'],
+            clip_grad_val=variant['clip_grad_val'],
             **variant['trainer_kwargs']
         )
 
@@ -517,10 +522,22 @@ if __name__ == "__main__":
     parser.add_argument('--modify_type', default=None, type=str)
     parser.add_argument('--orthogonalize_grads', action='store_true')
     parser.add_argument('--clip_targets', action='store_true')
-    parser.add_argument('--target_clip_val', type=int, default=-250)
+    parser.add_argument('--target_clip_val', type=float, default=-250)
+
+    parser.add_argument('--no_td', action='store_true')
+    parser.add_argument('--no_data_qval', action='store_true')
+    parser.add_argument('--shifting', action='store_true')
+    parser.add_argument('--rew_regress', action='store_true')
+    parser.add_argument('--clip_grad_val', type=float, default=10)
 
     args = parser.parse_args()
     enable_gpus(args.gpu)
+
+    variant['no_td'] = args.no_td
+    variant['no_data_qval'] = args.no_data_qval
+    variant['shifting'] = args.shifting
+    variant['rew_regress'] = args.rew_regress
+    variant['clip_grad_val'] = args.clip_grad_val
 
     variant['modify_grad'] = args.modify_grad
     variant['modify_type'] = args.modify_type
