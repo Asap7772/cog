@@ -360,6 +360,10 @@ def experiment(variant):
             shifting=variant['shifting'],
             rew_regress=variant['rew_regress'],
             clip_grad_val=variant['clip_grad_val'],
+            modify_func=variant['modify_func'],
+            modify_func_type=variant['modify_func_type'],
+            modify_func_const=variant['modify_func_const'],
+            moving_mfconst=variant['moving_mfconst'],
             **variant['trainer_kwargs']
         )
 
@@ -530,8 +534,18 @@ if __name__ == "__main__":
     parser.add_argument('--rew_regress', action='store_true')
     parser.add_argument('--clip_grad_val', type=float, default=10)
 
+    parser.add_argument('--modify_func', action='store_true')
+    parser.add_argument('--modify_func_type', default=None, type=str)
+    parser.add_argument('--modify_func_const', default=1, type=float)  
+    parser.add_argument('--moving_mfconst', action='store_true')
+
     args = parser.parse_args()
     enable_gpus(args.gpu)
+
+    variant['modify_func'] = args.modify_func
+    variant['modify_func_type'] = args.modify_func_type
+    variant['modify_func_const'] = args.modify_func_const
+    variant['moving_mfconst'] = args.moving_mfconst
 
     variant['no_td'] = args.no_td
     variant['no_data_qval'] = args.no_data_qval

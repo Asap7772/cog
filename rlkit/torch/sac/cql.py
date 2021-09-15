@@ -93,6 +93,11 @@ class CQLTrainer(TorchTrainer):
             shifting=False,
             rew_regress=False,
             clip_grad_val=10,
+
+            modify_func=False,
+            modify_func_type='exp',
+            modify_func_const=1,
+            moving_mfconst=False,
     ):
         super().__init__()
         self.no_td = no_td
@@ -113,6 +118,11 @@ class CQLTrainer(TorchTrainer):
         self.log_dir = log_dir
         self.log_pickle=log_pickle
         self.pickle_log_rate=pickle_log_rate
+
+        self.modify_func = modify_func
+        self.modify_func_type = modify_func_type
+        self.moving_mfconst = moving_mfconst
+        self.modify_func_const = ptu.zeros(1, requires_grad=True) if self.moving_mfconst else modify_func_const
 
         self.clip_targets = clip_targets
         self.target_clip_val = target_clip_val
@@ -168,24 +178,27 @@ class CQLTrainer(TorchTrainer):
             lr=policy_lr,
         )
 
+        qf1_parameters = list(self.qf1.parameters()) + [self.modify_func_const] if self.moving_mfconst else list(self.qf1.parameters())
+        qf2_parameters = list(self.qf2.parameters()) + [self.modify_func_const] if self.moving_mfconst else list(self.qf2.parameters())
+
         if self.regularization and self.regularization_type == 'l2':
             self.qf1_optimizer = optimizer_class(
-                self.qf1.parameters(),
+                qf1_parameters,
                 lr=qf_lr,
                 weight_decay=self.regularization_const,
             )
             self.qf2_optimizer = optimizer_class(
-                self.qf2.parameters(),
+                qf2_parameters,
                 lr=qf_lr,
                 weight_decay=self.regularization_const,
             )
         else:
             self.qf1_optimizer = optimizer_class(
-                self.qf1.parameters(),
+                qf1_parameters,
                 lr=qf_lr,
             )
             self.qf2_optimizer = optimizer_class(
-                self.qf2.parameters(),
+                qf2_parameters,
                 lr=qf_lr,
             )
 
@@ -440,12 +453,47 @@ class CQLTrainer(TorchTrainer):
         std_q1 = torch.std(cat_q1, dim=1)
         std_q2 = torch.std(cat_q2, dim=1)
         
-        if self.squared:
-            min_qf1_loss = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean()**2 * self.min_q_weight * self.temp
-            min_qf2_loss = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean()**2 * self.min_q_weight * self.temp
-        else:            
-            min_qf1_loss = q1act = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
-            min_qf2_loss = q2act = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
+
+        if self.modify_func:
+            eps = 1e-9
+            if self.moving_mfconst:
+                var = torch.exp(self.modify_func_const)
+            else:
+                var = self.modify_func_const
+                
+            if self.modify_func_type == 'exp':
+                def f(x):
+                    return torch.exp(x/(var + eps))
+                g = torch.log
+            elif self.modify_func_type == 'tanh':
+                def f(x):
+                    return var*torch.exp(x/(var + eps))
+                def g(x):
+                    return x
+            elif self.modify_func_type == 'exp_nolog':
+                def f(x):
+                    return torch.exp(x/(var + eps))
+                def g(x):
+                    return x
+            else:
+                assert False
+
+            min_qf1_loss = q1act = torch.logsumexp(f(cat_q1) / self.temp, dim=1,).mean() * self.temp
+            min_qf2_loss = q2act = torch.logsumexp(f(cat_q2) / self.temp, dim=1,).mean() * self.temp
+
+            q1data = f(q1_pred).mean()
+            q2data = f(q2_pred).mean()
+            """Subtract the log likelihood of data"""
+            min_qf1_loss = g(min_qf1_loss - q1data) * self.min_q_weight
+            min_qf2_loss = g(min_qf2_loss - q2data) * self.min_q_weight
+
+        else:
+            if self.squared:
+                min_qf1_loss =  q1act = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean()**2 * self.min_q_weight * self.temp
+                min_qf2_loss =  q2act = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean()**2 * self.min_q_weight * self.temp
+            else:            
+                min_qf1_loss = q1act = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
+                min_qf2_loss = q2act = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
                     
             """Subtract the log likelihood of data"""
             q1data = q1_pred.mean() * self.min_q_weight
@@ -566,22 +614,6 @@ class CQLTrainer(TorchTrainer):
                     qf2_mod_grad = self.compute_normalized_grad(qf2_loss_grad, min_qf2_grad,True)
             if self.modify_grad and self.modify_type == 'clip':
                 pass
-            #     qf1_loss = qf1_loss + min_qf1_loss
-            #     qf1_loss_grad = torch.autograd.grad(qf1_loss, 
-            #         inputs=[p for p in self.qf1.parameters()], 
-            #         create_graph=True, retain_graph=True, only_inputs=True
-            #     )
-            #     qf1_mod_grad = self.compute_clipped_grad(qf1_loss_grad, self.clip_grad_val)
-
-            #     if self.num_qs > 1:
-            #         qf2_loss = qf2_loss + min_qf2_loss
-
-            #         qf2_loss_grad = torch.autograd.grad(qf2_loss, 
-            #             inputs=[p for p in self.qf2.parameters()], 
-            #             create_graph=True, retain_graph=True, only_inputs=True
-            #         )
-
-            #         qf2_mod_grad = self.compute_clipped_grad(qf2_loss_grad, self.clip_grad_val)
             else:
                 assert False
         else:
@@ -694,6 +726,7 @@ class CQLTrainer(TorchTrainer):
                         inputs=[p for p in self.qf2.parameters()], 
                         create_graph=True, retain_graph=True, only_inputs=True
                     ),
+
                     qf1_loss_grad = torch.autograd.grad(qf1_loss-min_qf1_loss, 
                         inputs=[p for p in self.qf1.parameters()], 
                         create_graph=True, retain_graph=True, only_inputs=True, allow_unused=self.no_td
@@ -711,6 +744,7 @@ class CQLTrainer(TorchTrainer):
                         inputs=[p for p in self.qf2.parameters()], 
                         create_graph=True, retain_graph=True, only_inputs=True
                     ),
+
                     q1_data_grad= torch.autograd.grad(q1data, 
                         inputs=[p for p in self.qf1.parameters()], 
                         create_graph=True, retain_graph=True, only_inputs=True, allow_unused = self.no_data_qval
@@ -730,19 +764,24 @@ class CQLTrainer(TorchTrainer):
                 dict_curr['Q1 Policy Actions Grad Norm'] = torch.norm(flattened_grads_dict['q1_act_grad'])
                 dict_curr['Min QF1 Loss Grad Norm'] = torch.norm(flattened_grads_dict['min_qf1_grad'])
                 dict_curr['QF1 Loss Grad Norm'] = torch.norm(flattened_grads_dict['qf1_loss_grad'])
+
                 dict_curr['Q2 Dataset Actions Grad Norm'] = torch.norm(flattened_grads_dict['q2_data_grad'])
                 dict_curr['Q2 Policy Actions Grad Norm'] = torch.norm(flattened_grads_dict['q2_act_grad'])
                 dict_curr['Min QF2 Loss Grad Norm'] = torch.norm(flattened_grads_dict['min_qf2_grad'])
                 dict_curr['QF2 Loss Grad Norm'] = torch.norm(flattened_grads_dict['qf2_loss_grad'])
+                
                 dict_curr['QF1 Grad Dot Policy Dataset'] = torch.dot(flattened_grads_dict['q1_data_grad'], flattened_grads_dict['q1_act_grad'])                
                 dict_curr['QF1 Grad Dot Policy TD Loss'] = torch.dot(flattened_grads_dict['q1_act_grad'], flattened_grads_dict['qf1_loss_grad'])               
-                dict_curr['QF1 Grad Dot Dataset TD Loss'] = torch.dot(flattened_grads_dict['q1_data_grad'], flattened_grads_dict['qf1_loss_grad'])                
+                dict_curr['QF1 Grad Dot Dataset TD Loss'] = torch.dot(flattened_grads_dict['q1_data_grad'], flattened_grads_dict['qf1_loss_grad'])       
+
                 dict_curr['QF2 Grad Dot Policy Dataset'] = torch.dot(flattened_grads_dict['q2_data_grad'], flattened_grads_dict['q2_act_grad'])                
                 dict_curr['QF2 Grad Dot Policy TD Loss'] = torch.dot(flattened_grads_dict['q2_act_grad'], flattened_grads_dict['qf2_loss_grad'])               
                 dict_curr['QF2 Grad Dot Dataset TD Loss'] = torch.dot(flattened_grads_dict['q2_data_grad'], flattened_grads_dict['qf2_loss_grad']) 
+
                 dict_curr['QF1 Grad Cos Sim Policy Dataset'] = torch.dot(flattened_grads_dict['q1_data_grad'], flattened_grads_dict['q1_act_grad'])/(torch.norm(flattened_grads_dict['q1_data_grad']) * torch.norm(flattened_grads_dict['q1_act_grad']) + 1e-9)                
                 dict_curr['QF1 Grad Cos Sim Policy TD Loss'] = torch.dot(flattened_grads_dict['q1_act_grad'], flattened_grads_dict['qf1_loss_grad'])/(torch.norm(flattened_grads_dict['q1_act_grad']) * torch.norm(flattened_grads_dict['qf1_loss_grad']) + 1e-9)                               
                 dict_curr['QF1 Grad Cos Sim Dataset TD Loss'] = torch.dot(flattened_grads_dict['q1_data_grad'], flattened_grads_dict['qf1_loss_grad'])/(torch.norm(flattened_grads_dict['q1_data_grad']) * torch.norm(flattened_grads_dict['qf1_loss_grad']) + 1e-9)  
+                
                 dict_curr['QF2 Grad Cos Sim Policy Dataset'] = torch.dot(flattened_grads_dict['q2_data_grad'], flattened_grads_dict['q2_act_grad'])/(torch.norm(flattened_grads_dict['q2_data_grad']) * torch.norm(flattened_grads_dict['q2_act_grad']) + 1e-9)                
                 dict_curr['QF2 Grad Cos Sim Policy TD Loss'] = torch.dot(flattened_grads_dict['q2_act_grad'], flattened_grads_dict['qf2_loss_grad'])/(torch.norm(flattened_grads_dict['q2_act_grad']) * torch.norm(flattened_grads_dict['qf2_loss_grad']) + 1e-9)                               
                 dict_curr['QF2 Grad Cos Sim Dataset TD Loss'] = torch.dot(flattened_grads_dict['q2_data_grad'], flattened_grads_dict['qf2_loss_grad'])/(torch.norm(flattened_grads_dict['q2_data_grad']) * torch.norm(flattened_grads_dict['qf2_loss_grad']) + 1e-9)                               
@@ -852,6 +891,8 @@ class CQLTrainer(TorchTrainer):
                     'rewards',
                     ptu.get_numpy(rewards)
                 ))
+
+                self.eval_statistics['mfconst'] = self.modify_func_const
 
             self.eval_statistics['Num Q Updates'] = self._num_q_update_steps
             self.eval_statistics['Num Policy Updates'] = self._num_policy_update_steps
