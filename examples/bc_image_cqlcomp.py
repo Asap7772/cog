@@ -384,12 +384,8 @@ if __name__ == "__main__":
     variant['bufferidx'] = args.buffer
 
     if variant['buffer'] is not None:
-        if args.buffer in [5,6]:
-            variant['prior_buffer'] = buffers[1:]
-            variant['task_buffer'] = buffers[0]
-        else:
-            variant['prior_buffer'] = buffers[0]
-            variant['task_buffer'] = buffers[1]
+        variant['prior_buffer'] = buffers[0]
+        variant['task_buffer'] = buffers[1]
 
     enable_gpus(args.gpu)
     variant['env'] = args.env

@@ -76,7 +76,7 @@ def load_data_from_npy_drawermult(variant, expl_env, observation_key, extra_buff
             print('zero')
             replay_buffer._rewards = np.zeros_like(replay_buffer._rewards)
         else:
-            assert False
+            print('not changed wrong alter type')
 
         buffers.append(replay_buffer)
         ps.append(p_params['p'])
