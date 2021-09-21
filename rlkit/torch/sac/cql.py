@@ -122,7 +122,7 @@ class CQLTrainer(TorchTrainer):
         self.modify_func = modify_func
         self.modify_func_type = modify_func_type
         self.moving_mfconst = moving_mfconst
-        self.modify_func_const = ptu.zeros(1, requires_grad=True) if self.moving_mfconst else modify_func_const
+        self.modify_func_const = nn.Parameter(torch.tensor(modify_func_const, requires_grad=True).to(ptu.device)) if self.moving_mfconst else modify_func_const
 
         self.clip_targets = clip_targets
         self.target_clip_val = target_clip_val
@@ -430,30 +430,7 @@ class CQLTrainer(TorchTrainer):
         q2_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.qf2)
         q1_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf1)
         q2_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.qf2)
-
-        if self.min_q_version == 3:
-            # importance sampled version
-            random_density = np.log(0.5 ** curr_actions_tensor.shape[-1])
-            cat_q1 = torch.cat(
-                [q1_rand - random_density, q1_next_actions - new_log_pis.detach(), q1_curr_actions - curr_log_pis.detach()], 1
-            )
-            cat_q2 = torch.cat(
-                [q2_rand - random_density, q2_next_actions - new_log_pis.detach(), q2_curr_actions - curr_log_pis.detach()], 1
-            )
-        else:
-            cat_q1 = torch.cat(
-                [q1_rand, q1_next_actions,
-                 q1_curr_actions], 1
-            )
-            cat_q2 = torch.cat(
-                [q2_rand, q2_next_actions,
-                 q2_curr_actions], 1
-            )
-
-        std_q1 = torch.std(cat_q1, dim=1)
-        std_q2 = torch.std(cat_q2, dim=1)
         
-
         if self.modify_func:
             eps = 1e-9
             if self.moving_mfconst:
@@ -475,11 +452,36 @@ class CQLTrainer(TorchTrainer):
                     return torch.exp(x/(var + eps))
                 def g(x):
                     return x
+            elif self.modify_func_type == 'exp_zerograd':
+                def f(x):
+                    return torch.exp(x/(var + eps)).detach() * x
+                def g(x):
+                    return x
             else:
                 assert False
 
-            min_qf1_loss = q1act = torch.logsumexp(f(cat_q1) / self.temp, dim=1,).mean() * self.temp
-            min_qf2_loss = q2act = torch.logsumexp(f(cat_q2) / self.temp, dim=1,).mean() * self.temp
+            if self.min_q_version == 3:
+                # importance sampled version
+                random_density = np.log(0.5 ** curr_actions_tensor.shape[-1])
+                cat_q1 = torch.cat(
+                    [f(q1_rand) - random_density, f(q1_next_actions) - new_log_pis.detach(), f(q1_curr_actions) - curr_log_pis.detach()], 1
+                )
+                cat_q2 = torch.cat(
+                    [f(q2_rand) - random_density, f(q2_next_actions) - new_log_pis.detach(), f(q2_curr_actions) - curr_log_pis.detach()], 1
+                )
+            else:
+                cat_q1 = torch.cat(
+                    [f(q1_rand), f(q1_next_actions), f(q1_curr_actions)], 1
+                )
+                cat_q2 = torch.cat(
+                    [f(q2_rand), f(q2_next_actions), f(q2_curr_actions)], 1
+                )
+
+            std_q1 = torch.std(cat_q1, dim=1)
+            std_q2 = torch.std(cat_q2, dim=1)
+
+            min_qf1_loss = q1act = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean() * self.temp
+            min_qf2_loss = q2act = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean() * self.temp
 
             q1data = f(q1_pred).mean()
             q2data = f(q2_pred).mean()
@@ -488,6 +490,28 @@ class CQLTrainer(TorchTrainer):
             min_qf2_loss = g(min_qf2_loss - q2data) * self.min_q_weight
 
         else:
+            if self.min_q_version == 3:
+                # importance sampled version
+                random_density = np.log(0.5 ** curr_actions_tensor.shape[-1])
+                cat_q1 = torch.cat(
+                    [q1_rand - random_density, q1_next_actions - new_log_pis.detach(), q1_curr_actions - curr_log_pis.detach()], 1
+                )
+                cat_q2 = torch.cat(
+                    [q2_rand - random_density, q2_next_actions - new_log_pis.detach(), q2_curr_actions - curr_log_pis.detach()], 1
+                )
+            else:
+                cat_q1 = torch.cat(
+                    [q1_rand, q1_next_actions,
+                    q1_curr_actions], 1
+                )
+                cat_q2 = torch.cat(
+                    [q2_rand, q2_next_actions,
+                    q2_curr_actions], 1
+                )
+
+            std_q1 = torch.std(cat_q1, dim=1)
+            std_q2 = torch.std(cat_q2, dim=1)
+
             if self.squared:
                 min_qf1_loss =  q1act = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean()**2 * self.min_q_weight * self.temp
                 min_qf2_loss =  q2act = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean()**2 * self.min_q_weight * self.temp
@@ -892,7 +916,7 @@ class CQLTrainer(TorchTrainer):
                     ptu.get_numpy(rewards)
                 ))
 
-                self.eval_statistics['mfconst'] = self.modify_func_const
+                self.eval_statistics['mfconst'] = np.mean(ptu.get_numpy(self.modify_func_const)) if self.moving_mfconst else self.modify_func_const
 
             self.eval_statistics['Num Q Updates'] = self._num_q_update_steps
             self.eval_statistics['Num Policy Updates'] = self._num_policy_update_steps
