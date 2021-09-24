@@ -370,6 +370,7 @@ def experiment(variant):
             modify_func_type=variant['modify_func_type'],
             modify_func_const=variant['modify_func_const'],
             moving_mfconst=variant['moving_mfconst'],
+            bc_cql_comp=True,
             **variant['trainer_kwargs']
         )
 
@@ -826,7 +827,45 @@ if __name__ == "__main__":
 
             ba('suboptimal_closedraweropen_stocdynam0.3_saveall_Widow250DoubleDrawerCloseOpenGraspNeutral-v0_1000_save_all_noise_0.1_2021-09-18T11-40-53_900.npy', y='zero')
             ba('suboptimal_grasp_stocdynam0.3_saveall_Widow250DoubleDrawerGraspNeutral-v0_1000_save_all_noise_0.1_2021-09-18T11-49-57_1000.npy', y='zero')
-
+        # ======================
+        if args.buffer == 24:
+            ba('expert_draweropen_nosaveall_Widow250DoubleDrawerOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-42-19_900.npy', y='zero')
+            ba('expert_grasp_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-09_1000.npy', y='zero')
+        elif args.buffer == 25:	
+            ba('expert_draweropen_stocdynam0.1_nosaveall_Widow250DoubleDrawerOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-42-22_1000.npy', y='zero')
+            ba('expert_grasp_stocdynam0.1_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-14_1000.npy', y='zero')
+        elif args.buffer == 26:
+            ba('expert_draweropen_stocdynam0.2_nosaveall_Widow250DoubleDrawerOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-42-25_900.npy', y='zero')
+            ba('expert_grasp_stocdynam0.2_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-18_800.npy', y='zero')
+        elif args.buffer == 27:
+            ba('expert_draweropen_stocdynam0.3_nosaveall_Widow250DoubleDrawerOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-42-29_800.npy', y='zero')
+            ba('expert_grasp_stocdynam0.3_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-22_600.npy', y='zero')
+        # ======================
+        elif args.buffer == 28:
+            ba('expert_draweropen_nosaveall_Widow250DoubleDrawerPickPlaceOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-39-01_900.npy', y='zero')
+            ba('expert_grasp_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-09_1000.npy', y='zero')
+        elif args.buffer == 29:
+            ba('expert_draweropen_stocdynam0.1_nosaveall_Widow250DoubleDrawerPickPlaceOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-39-05_1000.npy', y='zero')
+            ba('expert_grasp_stocdynam0.1_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-14_1000.npy', y='zero')
+        elif args.buffer == 30:
+            ba('expert_draweropen_stocdynam0.2_nosaveall_Widow250DoubleDrawerPickPlaceOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-39-09_1000.npy', y='zero')
+            ba('expert_grasp_stocdynam0.2_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-18_800.npy', y='zero')
+        elif args.buffer == 31:
+            ba('expert_draweropen_stocdynam0.3_nosaveall_Widow250DoubleDrawerPickPlaceOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-39-13_1000.npy', y='zero')
+            ba('expert_grasp_stocdynam0.3_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-22_600.npy', y='zero')
+        # ======================
+        elif args.buffer == 32:
+            ba('expert_closedraweropen_nosaveall_Widow250DoubleDrawerCloseOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-40-58_900.npy', y='zero')
+            ba('expert_grasp_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-09_1000.npy', y='zero')
+        elif args.buffer == 33:
+            ba('expert_closedraweropen_stocdynam0.1_nosaveall_Widow250DoubleDrawerCloseOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-41-01_1000.npy', y='zero')
+            ba('expert_grasp_stocdynam0.1_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-14_1000.npy', y='zero')
+        elif args.buffer == 34:
+            ba('expert_closedraweropen_stocdynam0.2_nosaveall_Widow250DoubleDrawerCloseOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-41-05_800.npy', y='zero')
+            ba('expert_grasp_stocdynam0.2_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-18_800.npy', y='zero')
+        elif args.buffer == 35:
+            ba('expert_closedraweropen_stocdynam0.3_nosaveall_Widow250DoubleDrawerCloseOpenGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-41-08_900.npy', y='zero')
+            ba('expert_grasp_stocdynam0.3_nosaveall_Widow250DoubleDrawerGraspNeutral-v0_1000_noise_0.0_2021-09-18T11-53-22_600.npy', y='zero')
         
         variant['buffer'] = buffers
         variant['bufferidx'] = args.buffer

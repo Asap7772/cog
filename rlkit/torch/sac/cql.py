@@ -98,6 +98,7 @@ class CQLTrainer(TorchTrainer):
             modify_func_type='exp',
             modify_func_const=1,
             moving_mfconst=False,
+            bc_cql_comp = False,
     ):
         super().__init__()
         self.no_td = no_td
@@ -253,7 +254,7 @@ class CQLTrainer(TorchTrainer):
             if self.real_data:
                 wandb.init(project='real_drawer_cql', reinit=True)
             else:
-                wandb.init(project='cog_cql', reinit=True)
+                wandb.init(project='bc_cql_comp' if bc_cql_comp else 'cog_cql', reinit=True)
             wandb.run.name=log_dir.split('/')[-1]
             if variant_dict is not None:
                 wandb.config.update(variant_dict)

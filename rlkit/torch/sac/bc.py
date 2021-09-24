@@ -26,6 +26,7 @@ class BCTrainer(TorchTrainer):
             imgstate = False,
             validation=False,
             validation_buffer=None,
+            bc_cql_comp=False,
             *args, **kwargs
     ):
         super().__init__()
@@ -62,7 +63,7 @@ class BCTrainer(TorchTrainer):
         self.wand_b = wand_b
 
         if self.wand_b:
-            wandb.init(project='cog_cql', reinit=True)
+            wandb.init(project='bc_cql_comp' if bc_cql_comp else 'cog_cql', reinit=True)
             wandb.run.name=log_dir.split('/')[-1]
             if variant_dict is not None:
                 wandb.config.update(variant_dict)
@@ -126,7 +127,7 @@ class BCTrainer(TorchTrainer):
                 ))
                 self.eval_statistics.update(create_stats_ordered_dict(
                     'Val Log Pis',
-                    ptu.get_numpy(val_log_pi),
+                    ptu.get_numpy(val_policy_log_prob),
                 ))
                 self.eval_statistics.update(create_stats_ordered_dict(
                     'Val Policy mu',

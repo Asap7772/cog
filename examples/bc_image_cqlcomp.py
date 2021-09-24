@@ -178,6 +178,7 @@ def experiment(variant):
         dist_diff=variant['dist_diff'],
         log_dir=variant['log_dir'],
         variant_dict=variant,
+        bc_cql_comp=True,
         **variant['trainer_kwargs']
     )
 
