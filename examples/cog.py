@@ -62,11 +62,15 @@ def experiment(variant):
     print(action_dim)
 
     cnn_params = variant['cnn_params']
-    
+
     cnn_params.update(
-        dropout = variant['dropout'],
+        dropout = (variant['dropout'] and variant['dropout_type'] == 'all') 
+            or (variant['dropout'] and variant['dropout_type'] == 'qfunc')
+            or (variant['dropout'] and variant['dropout_type'] == 'behqf'),
         dropout_prob = variant['dropout_prob'],
     )
+
+    print('qfunc dropout', cnn_params['dropout'])
     
     if variant['bigger_net']:
         print('bigger_net')
@@ -165,6 +169,14 @@ def experiment(variant):
 
     target_qf1.load_state_dict(qf1.state_dict())
     target_qf2.load_state_dict(qf2.state_dict())
+
+
+    cnn_params.update(
+        dropout = (variant['dropout'] and variant['dropout_type'] == 'all') or (variant['dropout'] and variant['dropout_type'] == 'pol'),
+        dropout_prob = variant['dropout_prob'],
+    )
+
+    print('policy dropout', cnn_params['dropout'])
 
     if variant['bottleneck_policy']:
         cnn_params.update(
@@ -306,6 +318,16 @@ def experiment(variant):
             set(6.0 * np.array([0, 1]) + 4.0))
 
     if variant['brac']:
+        cnn_params.update(
+            dropout = (variant['dropout'] and variant['dropout_type'] == 'all') 
+                or (variant['dropout'] and variant['dropout_type'] == 'pol') 
+                or (variant['dropout'] and variant['dropout_type'] == 'beh')
+                or (variant['dropout'] and variant['dropout_type'] == 'behqf'),
+            dropout_prob = variant['dropout_prob'],
+        )
+
+        print('behavior policy dropout', cnn_params['dropout'])
+
         cnn_params.update(
             output_size=256,
             added_fc_input_size=6 if variant['context'] else 0,
@@ -490,6 +512,11 @@ def experiment(variant):
             regularization = variant['regularization'],
             regularization_type = variant['regularization_type'],
             regularization_weight = variant['regularization_weight'],
+            modify_grad=variant['modify_grad'],
+            modify_type=variant['modify_type'],
+            orthogonalize_grads=variant['orthogonalize_grads'],
+            clip_targets=variant['clip_targets'],
+            target_clip_val=variant['target_clip_val'],
             **variant['trainer_kwargs']
         )
 
@@ -660,11 +687,23 @@ if __name__ == "__main__":
     parser.add_argument('--regularization_weight', type=float, default=0.0)
     parser.add_argument('--dropout', action='store_true')
     parser.add_argument('--dropout_prob', type=float, default=0.0)
+    parser.add_argument('--dropout_type', type=str, default='all')
     parser.add_argument('--td3bc', action='store_true')
     parser.add_argument('--bottleneck_policy', action='store_true')
+    parser.add_argument('--modify_grad', action='store_true')
+    parser.add_argument('--modify_type', default=None, type=str)
+    parser.add_argument('--orthogonalize_grads', action='store_true')
+    parser.add_argument('--clip_targets', action='store_true')
+    parser.add_argument('--target_clip_val', type=int, default=-250)
+    
     args = parser.parse_args()
     enable_gpus(args.gpu)
     
+    variant['modify_grad'] = args.modify_grad
+    variant['modify_type'] = args.modify_type
+    variant['clip_targets'] = args.clip_targets
+    variant['target_clip_val'] = args.target_clip_val
+    variant['orthogonalize_grads'] = args.orthogonalize_grads
     variant['bottleneck_policy'] = args.bottleneck_policy
     variant['regularization'] = args.regularization
     variant['td3bc'] = args.td3bc
@@ -672,6 +711,7 @@ if __name__ == "__main__":
     variant['regularization_weight'] = args.regularization_weight
     variant['brac_shifted'] = args.brac_shifted
     variant['dropout'] = args.dropout
+    variant['dropout_type'] = args.dropout_type
     variant['dropout_prob'] = args.dropout_prob
     variant['continual'] = args.continual
     variant['behavior_path'] = args.behavior_path

@@ -87,6 +87,12 @@ class CQLTrainer(TorchTrainer):
             regularization=False,
             regularization_weight=0.0,
             regularization_type='l2',
+
+            modify_grad = False,
+            modify_type = None,
+            orthogonalize_grads=False,
+            clip_targets=False,
+            target_clip_val=-250
     ):
         super().__init__()
         self.env = env
@@ -104,6 +110,8 @@ class CQLTrainer(TorchTrainer):
         self.regularization = regularization 
         self.regularization_const = regularization_weight
         self.regularization_type = regularization_type
+        self.clip_targets = clip_targets
+        self.target_clip_val = target_clip_val
 
         self.random_warp = random_warp
         if random_warp:
@@ -203,6 +211,10 @@ class CQLTrainer(TorchTrainer):
         self.validation_buffer = validation_buffer
         self.history = history
 
+        self.modify_grad = modify_grad
+        self.modify_type = modify_type 
+        self.orthogonalize_grads = orthogonalize_grads
+
         self.wand_b = wand_b
         self.real_data = real_data
         if self.wand_b:
@@ -213,35 +225,59 @@ class CQLTrainer(TorchTrainer):
             wandb.run.name=log_dir.split('/')[-1]
             if variant_dict is not None:
                 wandb.config.update(variant_dict)
+
+    def compute_normalized_grad(self, grad1, grad2, mult_const = False, const=None):
+        if const is None:
+            const = self.min_q_weight #default use case
+        new_grad = []
+        for (grad1i, grad2i) in zip(grad1, grad2):
+            l2_norm_grad1i = torch.norm(grad1i)
+            l2_norm_grad2i = torch.norm(grad2i)
+            if mult_const:
+                # to control weight of each term
+                new_grad.append(grad1i/l2_norm_grad1i +  const*grad2i/l2_norm_grad2i) 
+            else:
+                new_grad.append(grad1i/l2_norm_grad1i + grad2i/l2_norm_grad2i)
+        return new_grad
+
+
+    def alpha_orthogonal(self, grad1, grad2):
+        """Equation (4) of https://arxiv.org/pdf/1810.04650.pdf"""
+        flattened_grad1 = torch.cat([x.flatten() for x in grad1])
+        flattened_grad2 = torch.cat([x.flatten() for x in grad2])
+        
+        diff = flattened_grad1-flattened_grad2
+        top = torch.dot(diff, flattened_grad2)
+        # top = torch.bmm(diff.view(-1, 1, diff.shape[0]), flattened_grad2.view(-1,diff.shape[0],1))
+        bottom = torch.norm(flattened_grad1-flattened_grad2)**2
+        alpha = torch.clamp(top/(bottom + 1e-9), 0, 1)
+        return alpha
     
-    def _get_tensor_values(self, obs, actions, network=None):
-        flag = len(obs.shape) == 3 # multiple viewpoints
+    def compute_normalized_grad(self, grad1, grad2, mult_const = False, const=None):
+        if const is None:
+            const = self.min_q_weight #default use case
+        new_grad = []
+        for (grad1i, grad2i) in zip(grad1, grad2):
+            l2_norm_grad1i = torch.norm(grad1i) + 1e-9
+            l2_norm_grad2i = torch.norm(grad2i) + 1e-9
+            if mult_const:
+                # to control weight of each term
+                new_grad.append(grad1i/l2_norm_grad1i +  const*grad2i/l2_norm_grad2i) 
+            else:
+                new_grad.append(grad1i/l2_norm_grad1i + grad2i/l2_norm_grad2i)
+        return new_grad
 
-        action_shape = actions.shape[0]
-        obs_shape = obs.shape[1 if flag else 0]
-        num_repeat = int (action_shape / obs_shape)
 
-        if flag:
-            obs_temp = obs.unsqueeze(1).repeat(1, 1, num_repeat, 1).view(obs.shape[0], obs.shape[1] * num_repeat, obs.shape[2])
-        else:
-            obs_temp = obs.unsqueeze(1).repeat(1, num_repeat, 1).view(obs.shape[0] * num_repeat, obs.shape[1])
-        preds = network(obs_temp, actions)
-        preds = preds.view(obs.shape[1 if flag else 0], num_repeat, 1)
-        return preds
-
-    def _get_policy_actions(self, obs, num_actions, network=None):
-        flag = len(obs.shape) == 3
-        if flag:
-            obs_temp = obs.unsqueeze(1).repeat(1, 1, num_actions, 1).view(obs.shape[0], obs.shape[1] * num_actions, obs.shape[2])
-        else:
-            obs_temp = obs.unsqueeze(1).repeat(1, num_actions, 1).view(obs.shape[0] * num_actions, obs.shape[1])
-        new_obs_actions, _, _, new_obs_log_pi, *_ = network(
-            obs_temp, reparameterize=True, return_log_prob=True,
-        )
-        if not self.discrete:
-            return new_obs_actions, new_obs_log_pi.view(obs.shape[1 if flag else 0], num_actions, 1)
-        else:
-            return new_obs_actions
+    def alpha_orthogonal(self, grad1, grad2):
+        """Equation (4) of https://arxiv.org/pdf/1810.04650.pdf"""
+        flattened_grad1 = torch.cat([x.flatten() for x in grad1])
+        flattened_grad2 = torch.cat([x.flatten() for x in grad2])
+        
+        top = torch.dot(flattened_grad1-flattened_grad2, flattened_grad2)
+        # top = torch.bmm(diff.view(-1, 1, diff.shape[0]), flattened_grad2.view(-1,diff.shape[0],1))
+        bottom = torch.norm(flattened_grad1-flattened_grad2)**2
+        alpha = torch.clamp(top/(bottom + 1e-9), 0, 1)
+        return alpha
 
     def train_from_torch(self, batch, image_size=(64,64)):
         self._current_epoch += 1
@@ -349,6 +385,9 @@ class CQLTrainer(TorchTrainer):
 
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
         q_target = q_target.detach()
+
+        if self.clip_targets:
+            q_target[q_target<self.target_clip_val] = self.target_clip_val
 
         qf1_loss = self.qf_criterion(q1_pred, q_target)
         if self.num_qs > 1:
@@ -516,9 +555,64 @@ class CQLTrainer(TorchTrainer):
 
         # =====
 
-        qf1_loss = qf1_loss + min_qf1_loss
-        if self.num_qs > 1:
-            qf2_loss = qf2_loss + min_qf2_loss
+        if self.modify_grad and self.modify_type is not None:
+            min_qf1_grad = torch.autograd.grad(min_qf1_loss, 
+                inputs=[p for p in self.qf1.parameters()], 
+                create_graph=True, retain_graph=True, only_inputs=True
+            )
+            min_qf2_grad = torch.autograd.grad(min_qf2_loss, 
+                inputs=[p for p in self.qf2.parameters()], 
+                create_graph=True, retain_graph=True, only_inputs=True
+            )
+            qf1_loss_grad = torch.autograd.grad(qf1_loss, 
+                inputs=[p for p in self.qf1.parameters()], 
+                create_graph=True, retain_graph=True, only_inputs=True
+            )
+            qf2_loss_grad = torch.autograd.grad(qf2_loss, 
+                inputs=[p for p in self.qf2.parameters()], 
+                create_graph=True, retain_graph=True, only_inputs=True
+            )
+
+            if self.modify_grad and self.modify_type == 'normalization':
+                qf1_mod_grad = self.compute_normalized_grad(qf1_loss_grad, min_qf1_grad,True)
+                if self.num_qs > 1:
+                    qf2_mod_grad = self.compute_normalized_grad(qf2_loss_grad, min_qf2_grad,True)
+            else:
+                assert False
+        else:
+            """Orthogonalize Grads https://arxiv.org/pdf/1810.04650.pdf"""
+            if self.orthogonalize_grads and self.min_q_weight > 0: # no division by zero error
+                # remove minq weight
+                min_qf1_loss = min_qf1_loss / self.min_q_weight 
+                min_qf2_loss = min_qf2_loss / self.min_q_weight
+
+                min_qf1_grad = torch.autograd.grad(min_qf1_loss, 
+                    inputs=[p for p in self.qf1.parameters()], 
+                    create_graph=True, retain_graph=True, only_inputs=True
+                )
+                min_qf2_grad = torch.autograd.grad(min_qf2_loss, 
+                    inputs=[p for p in self.qf2.parameters()], 
+                    create_graph=True, retain_graph=True, only_inputs=True
+                )
+                qf1_loss_grad = torch.autograd.grad(qf1_loss, 
+                    inputs=[p for p in self.qf1.parameters()], 
+                    create_graph=True, retain_graph=True, only_inputs=True
+                )
+                qf2_loss_grad = torch.autograd.grad(qf2_loss, 
+                    inputs=[p for p in self.qf2.parameters()], 
+                    create_graph=True, retain_graph=True, only_inputs=True
+                )
+                #l1 is td error term and l2 is cql loss in equation (4) 
+                qf1_alpha = self.alpha_orthogonal(qf1_loss_grad, min_qf1_grad)
+                qf2_alpha = self.alpha_orthogonal(qf2_loss_grad, min_qf2_grad)
+
+                qf1_loss = qf1_alpha * qf1_loss + (1- qf1_alpha) * min_qf1_loss
+                if self.num_qs > 1:
+                    qf2_loss = qf2_alpha * qf2_loss + (1- qf2_alpha) * min_qf2_loss
+            else:
+                qf1_loss = qf1_loss + min_qf1_loss
+                if self.num_qs > 1:
+                    qf2_loss = qf2_loss + min_qf2_loss
 
         if self.dr3 or self.dr3_feat:
             qf1_loss = qf1_loss + self.dr3_weight * qf1_dr3_loss
@@ -532,11 +626,19 @@ class CQLTrainer(TorchTrainer):
         self._num_q_update_steps += 1
         self.qf1_optimizer.zero_grad()
         qf1_loss.backward(retain_graph=True)
+
+        if self.modify_grad and self.modify_type == 'normalization':
+            for (p, proj_grad) in zip(self.qf1.parameters(), qf1_mod_grad):
+                p.grad.data = proj_grad 
+
         self.qf1_optimizer.step()
 
         if self.num_qs > 1:
             self.qf2_optimizer.zero_grad()
             qf2_loss.backward(retain_graph=True)
+            if self.modify_grad and self.modify_type == 'normalization':
+                for (p, proj_grad) in zip(self.qf2.parameters(), qf2_mod_grad):
+                    p.grad.data = proj_grad
             self.qf2_optimizer.step()
 
         self._num_policy_update_steps += 1
@@ -626,9 +728,18 @@ class CQLTrainer(TorchTrainer):
 
             self.eval_statistics['QF1 Loss'] = np.mean(ptu.get_numpy(qf1_loss))
             self.eval_statistics['min QF1 Loss'] = np.mean(ptu.get_numpy(min_qf1_loss))
+
+            if self.orthogonalize_grads and self.min_q_weight > 0: 
+                self.eval_statistics['QF1 Alpha'] = np.mean(ptu.get_numpy(qf1_alpha))
+            if self.modify_grad and self.modify_type == 'normalization':
+                self.eval_statistics['Orthogonal Qf1 Loss'] = np.mean(ptu.get_numpy(qf1_mod_grad[0]))
             if self.num_qs > 1:
                 self.eval_statistics['QF2 Loss'] = np.mean(ptu.get_numpy(qf2_loss))
                 self.eval_statistics['min QF2 Loss'] = np.mean(ptu.get_numpy(min_qf2_loss))
+                if self.modify_grad and self.modify_type == 'normalization':
+                    self.eval_statistics['Orthogonal Qf2 Loss'] = np.mean(ptu.get_numpy(qf2_mod_grad[0]))
+                if self.orthogonalize_grads and self.min_q_weight > 0: 
+                    self.eval_statistics['QF2 Alpha'] = np.mean(ptu.get_numpy(qf2_alpha))
 
             if not self.discrete:
                 self.eval_statistics['Std QF1 values'] = np.mean(ptu.get_numpy(std_q1))

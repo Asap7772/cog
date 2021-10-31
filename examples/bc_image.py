@@ -116,6 +116,13 @@ def experiment(variant):
     if variant['val']:
         buffers = []
         ba = lambda x, p=args.prob, y=None: buffers.append((path + x, dict(p=p, alter_type=y, )))
+        
+        if args.buffer == 29:
+            path = '/nfs/kun1/users/asap7772/cog_data/'
+            ba('pickplace_prior.npy', p=args.prob,y='zero')
+            ba('pickplace_task.npy', p=args.prob)
+            variant['prior_buffer'] = buffers[0]
+            variant['task_buffer'] = buffers[1]
         if args.buffer == 33:
             path = '/nfs/kun1/users/asap7772/prior_data/'
             ba('coglike_prior_Widow250DoubleDrawerOpenGraspNeutral-v0_10K_save_all_noise_0.1_2021-04-03T17-32-00_10000.npy', p=args.prob,y='zero')
@@ -355,6 +362,14 @@ if __name__ == "__main__":
         ba('pick_35obj_Widow250PickTrayMult-v0_5K_save_all_noise_0.1_2021-05-07T01-17-10_4375.npy', p=args.prob,
            y='zero')
         ba('place_35obj_Widow250PlaceTrayMult-v0_5K_save_all_noise_0.1_2021-04-30T01-17-42_4875.npy', p=args.prob)
+        variant['prior_buffer'] = buffers[0]
+        variant['task_buffer'] = buffers[1]
+    elif args.buffer == 29:
+        path = '/nfs/kun1/users/asap7772/cog_data/'
+        buffers = []
+        ba = lambda x, p=args.prob, y=None: buffers.append((path + x, dict(p=p, alter_type=y, )))
+        ba('pickplace_prior.npy', p=args.prob,y='zero')
+        ba('pickplace_task.npy', p=args.prob)
         variant['prior_buffer'] = buffers[0]
         variant['task_buffer'] = buffers[1]
     elif args.buffer == 36:
