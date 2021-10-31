@@ -287,32 +287,32 @@ class CQLTrainer(TorchTrainer):
         actions = batch['actions']
         next_obs = batch['next_observations'] if 'next_observations' in batch else batch['next_observations_image']
 
-        # if self.random_warp:
-        #     full_img_size = (-1, 3) + image_size
-        #     obs = self.augmentation_transform(obs.reshape(full_img_size)).flatten(1)
-        #     next_obs = self.augmentation_transform(next_obs.reshape(full_img_size)).flatten(1)
+        if self.random_warp:
+            full_img_size = (-1, 3) + image_size
+            obs = self.augmentation_transform(obs.reshape(full_img_size)).flatten(1)
+            next_obs = self.augmentation_transform(next_obs.reshape(full_img_size)).flatten(1)
 
-        # if self.history:
-        #     prev_obs = batch['prev_observations']
-        #     all_obs = torch.cat((prev_obs, obs[None],next_obs[None]),0) #9 channel image
+        if self.history:
+            prev_obs = batch['prev_observations']
+            all_obs = torch.cat((prev_obs, obs[None],next_obs[None]),0) #9 channel image
             
-        #     obs = torch.transpose(all_obs[:-1],0,1).flatten(1)
-        #     next_obs = torch.transpose(all_obs[1:],0,1).flatten(1)
-        # elif 'other_viewpoints' in batch:
-        #     other_viewpoints = batch['other_viewpoints']
-        #     next_other_viewpoints = batch['next_other_viewpoints']
-        #     obs = torch.cat((obs[None], other_viewpoints))
-        #     next_obs = torch.cat((next_obs[None], next_other_viewpoints))
+            obs = torch.transpose(all_obs[:-1],0,1).flatten(1)
+            next_obs = torch.transpose(all_obs[1:],0,1).flatten(1)
+        elif 'other_viewpoints' in batch:
+            other_viewpoints = batch['other_viewpoints']
+            next_other_viewpoints = batch['next_other_viewpoints']
+            obs = torch.cat((obs[None], other_viewpoints))
+            next_obs = torch.cat((next_obs[None], next_other_viewpoints))
 
-        #     if self.random_viewpoint:
-        #         view = torch.randint(0,1,(actions.shape[0],)) if self.first_viewpoint else torch.randint(0,3,(actions.shape[0],)) # chose viewpoint for each element in the batch
-        #         view = view.repeat(1,obs.shape[-1],1).transpose(0,1).transpose(0,2)
+            if self.random_viewpoint:
+                view = torch.randint(0,1,(actions.shape[0],)) if self.first_viewpoint else torch.randint(0,3,(actions.shape[0],)) # chose viewpoint for each element in the batch
+                view = view.repeat(1,obs.shape[-1],1).transpose(0,1).transpose(0,2)
 
-        #         obs = torch.transpose(obs, 0, 1)
-        #         next_obs = torch.transpose(next_obs, 0, 1)
+                obs = torch.transpose(obs, 0, 1)
+                next_obs = torch.transpose(next_obs, 0, 1)
 
-        #         obs = torch.gather(obs,1,view.cuda()).flatten(1)
-        #         next_obs = torch.gather(next_obs,1,view.cuda()).flatten(1)
+                obs = torch.gather(obs,1,view.cuda()).flatten(1)
+                next_obs = torch.gather(next_obs,1,view.cuda()).flatten(1)
 
         """
         Policy and Alpha Loss
